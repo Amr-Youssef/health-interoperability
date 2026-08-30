@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: saudi-health-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: saudi_health_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d saudi_health_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  saudi-health-platform:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: saudi-health-interop-engine
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - NATIONAL_STANDARDS=FHIR_R4,NPHIES_CHI,SFDA_SDC,NCA_AUDIT
+      - TZ=Asia/Riyadh
+      - DATABASE_URL=postgresql://admin:password@postgres:5432/saudi_health_db?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/fhir/metadata"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  pgdata:

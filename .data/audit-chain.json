@@ -1,0 +1,38 @@
+[
+  {
+    "index": 0,
+    "blockId": "genesis-block-0",
+    "timestamp": "2026-01-01T00:00:00.000Z",
+    "action": "INGEST",
+    "actor": "SYSTEM_BOOTSTRAP",
+    "entityType": "SaudiNationalHealthInteroperabilityEngine",
+    "entityId": "ROOT",
+    "details": "Genesis audit block initialized with SHA-256 cryptographic chaining (NCA Compliant).",
+    "previousHash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "currentHash": "1683e1f21161d7e20e317823a7b509cafd231bef95fd8e7d006e5dd62cbb2633"
+  },
+  {
+    "index": 1,
+    "blockId": "7e4bff70-c458-4f38-bb11-5af698ddc79a",
+    "timestamp": "2026-08-29T21:30:39.415Z",
+    "action": "INGEST",
+    "actor": "ADAPTER_EXTRACTOR",
+    "entityType": "RawBatch",
+    "entityId": "90d8697c-1811-4523-920a-d62c0f43fa56",
+    "details": "Ingested 0 raw records across all source systems",
+    "previousHash": "1683e1f21161d7e20e317823a7b509cafd231bef95fd8e7d006e5dd62cbb2633",
+    "currentHash": "f2b6ba8c48df399d36218a71c7fe879297d45095ae21e2130eb786ee6d7c622e"
+  },
+  {
+    "index": 2,
+    "blockId": "f478dad1-7fac-4c0b-ac32-dcf9032361da",
+    "timestamp": "2026-08-30T13:36:50.554Z",
+    "action": "INGEST",
+    "actor": "HL7_MLLP_FEED",
+    "entityType": "HL7v2Message",
+    "entityId": "synthetic-unique-test-001",
+    "details": "Normalized HL7 v2 [ADT^A01] from SYS-1",
+    "previousHash": "f2b6ba8c48df399d36218a71c7fe879297d45095ae21e2130eb786ee6d7c622e",
+    "currentHash": "dfe046b9d5571c3300f2bafa592a86c277e43a1571a7e2804999666749dc4818"
+  }
+]

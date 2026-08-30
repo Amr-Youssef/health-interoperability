@@ -1,0 +1,641 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// 4.1 Users
+model User {
+  id                 String             @id @default(uuid())
+  username           String             @unique
+  email              String?            @unique
+  phone              String?
+  password_hash      String
+  full_name          String
+  role_id            String
+  role               Role               @relation(fields: [role_id], references: [id])
+  organization_id    String
+  organization       Organization       @relation(fields: [organization_id], references: [id])
+  patient_profile_id String?            // If the user is a patient
+  is_active          Boolean            @default(true)
+  created_at         DateTime           @default(now())
+  updated_at         DateTime           @updatedAt
+  deleted_at         DateTime?
+
+  permissions        UserPermission[]
+}
+
+// 4.2 Organizations
+model Organization {
+  id                     String         @id @default(uuid())
+  organization_name      String
+  organization_name_ar   String?
+  organization_type      String         // e.g., 'MOH', 'HOSPITAL', 'CLINIC'
+  region                 String?
+  status                 String         @default("ACTIVE")
+  parent_organization_id String?
+  parent                 Organization?  @relation("OrgHierarchy", fields: [parent_organization_id], references: [id])
+  children               Organization[] @relation("OrgHierarchy")
+  created_at             DateTime       @default(now())
+
+  users                  User[]
+  patients               PatientOrganization[]
+  encounters             Encounter[]
+  conditions             Condition[]
+  observations           Observation[]
+  medication_requests    MedicationRequest[]
+  immunizations          Immunization[]
+  coverages              Coverage[]
+  claims                 Claim[]
+  consents               Consent[]
+  audit_logs             AuditLog[]
+  data_imports           DataImport[]
+}
+
+// 4.3 Roles
+model Role {
+  id             String           @id @default(uuid())
+  role_name      String
+  role_code      String           @unique // e.g., 'HOSPITAL_ADMIN', 'MOH_ADMIN', 'PATIENT'
+  description    String?
+  is_system_role Boolean          @default(false)
+  users          User[]
+  permissions    RolePermission[]
+}
+
+// 4.4 RolePermissions
+model RolePermission {
+  id              String   @id @default(uuid())
+  role_id         String
+  role            Role     @relation(fields: [role_id], references: [id])
+  permission_code String
+  granted         Boolean  @default(true)
+  created_at      DateTime @default(now())
+}
+
+// 4.5 UserPermissions
+model UserPermission {
+  id              String   @id @default(uuid())
+  user_id         String
+  user            User     @relation(fields: [user_id], references: [id])
+  permission_code String
+  granted         Boolean  @default(true)
+  created_at      DateTime @default(now())
+}
+
+// 4.6 Patients (Canonical)
+model Patient {
+  id                    String                @id @default(uuid())
+  internal_id           String                @unique
+  first_name            String?
+  last_name             String?
+  first_name_ar         String?
+  last_name_ar          String?
+  birth_date            DateTime?
+  gender                String?
+  phone                 String?
+  email                 String?
+  status                String                @default("ACTIVE")
+  
+  // Provenance fields
+  source_system_id      String?
+  source_record_id      String?
+
+  created_at            DateTime              @default(now())
+  updated_at            DateTime              @updatedAt
+
+  identifiers           PatientIdentifier[]
+  organizations         PatientOrganization[]
+  encounters            Encounter[]
+  conditions            Condition[]
+  observations          Observation[]
+  medication_requests   MedicationRequest[]
+  immunizations         Immunization[]
+  coverages             Coverage[]
+  claims                Claim[]
+  consents              Consent[]
+  allergies             AllergyIntolerance[]
+  diagnostic_reports    DiagnosticReport[]
+}
+
+// Patient Identifiers (NID, Iqama, MRN)
+model PatientIdentifier {
+  id                String   @id @default(uuid())
+  patient_id        String
+  patient           Patient  @relation(fields: [patient_id], references: [id], onDelete: Cascade)
+  value             String
+  type              String   // NID, IQAMA, MRN
+  system            String?
+  source_system_id  String?
+  is_active         Boolean  @default(true)
+  first_seen_at     DateTime @default(now())
+}
+
+// 4.7 PatientOrganizations
+model PatientOrganization {
+  id                String       @id @default(uuid())
+  patient_id        String
+  patient           Patient      @relation(fields: [patient_id], references: [id])
+  organization_id   String
+  organization      Organization @relation(fields: [organization_id], references: [id])
+  relationship_type String       // e.g., 'PRIMARY_CARE', 'TREATED'
+  assigned_at       DateTime     @default(now())
+  active            Boolean      @default(true)
+}
+
+// 4.8 Encounters
+model Encounter {
+  id               String       @id @default(uuid())
+  internal_id      String       @unique
+  patient_id       String
+  patient          Patient      @relation(fields: [patient_id], references: [internal_id])
+  organization_id  String?
+  organization     Organization? @relation(fields: [organization_id], references: [id])
+  
+  source_visit_id  String?
+  encounter_class  String?      // AMB, IMP, EMR
+  status           String       @default("FINISHED")
+  period_start     DateTime?
+  period_end       DateTime?
+  
+  source_system_id String?
+  source_record_id String?
+  
+  created_at       DateTime     @default(now())
+
+  conditions       Condition[]
+  observations     Observation[]
+  medication_requests MedicationRequest[]
+  diagnostic_reports DiagnosticReport[]
+  claims           Claim[]
+  immunizations    Immunization[]
+}
+
+// 4.9 Conditions
+model Condition {
+  id               String       @id @default(uuid())
+  internal_id      String       @unique
+  patient_id       String
+  patient          Patient      @relation(fields: [patient_id], references: [internal_id])
+  encounter_id     String?
+  encounter        Encounter?   @relation(fields: [encounter_id], references: [internal_id])
+  organization_id  String?
+  organization     Organization? @relation(fields: [organization_id], references: [id])
+  
+  clinical_status  String?
+  verification_status String?
+  
+  // ClinicalCode fields mapped
+  code_source_code String?
+  code_source_system String?
+  code_source_display String?
+  code_snomed_code String?
+  code_snomed_display String?
+  code_icd10am_code String?
+  code_icd10am_display String?
+
+  recorded_date    DateTime?
+  
+  source_system_id String?
+  source_record_id String?
+  
+  created_at       DateTime     @default(now())
+}
+
+// 4.10 Observations
+model Observation {
+  id               String       @id @default(uuid())
+  internal_id      String       @unique
+  patient_id       String
+  patient          Patient      @relation(fields: [patient_id], references: [internal_id])
+  encounter_id     String?
+  encounter        Encounter?   @relation(fields: [encounter_id], references: [internal_id])
+  organization_id  String?
+  organization     Organization? @relation(fields: [organization_id], references: [id])
+  
+  status           String?
+  
+  code_source_code String?
+  code_source_system String?
+  code_source_display String?
+  code_loinc_code  String?
+  code_loinc_display String?
+  code_sbs_code    String?
+  code_sbs_display String?
+  
+  value_quantity   Float?
+  value_unit       String?
+  value_string     String?
+  
+  effective_date   DateTime?
+  
+  source_system_id String?
+  source_record_id String?
+  
+  created_at       DateTime     @default(now())
+}
+
+// 4.11 MedicationRequests
+model MedicationRequest {
+  id               String       @id @default(uuid())
+  internal_id      String       @unique
+  patient_id       String
+  patient          Patient      @relation(fields: [patient_id], references: [internal_id])
+  encounter_id     String?
+  encounter        Encounter?   @relation(fields: [encounter_id], references: [internal_id])
+  organization_id  String?
+  organization     Organization? @relation(fields: [organization_id], references: [id])
+  
+  status           String?
+  intent           String?
+  
+  code_source_code String?
+  code_source_system String?
+  code_source_display String?
+  code_sfda_code   String?
+  code_sfda_display String?
+  code_rxnorm_code String?
+  code_rxnorm_display String?
+  code_atc_code    String?
+  
+  dosage_text      String?
+  authored_on      DateTime?
+  
+  source_system_id String?
+  source_record_id String?
+  
+  created_at       DateTime     @default(now())
+}
+
+// 4.12 Immunizations
+model Immunization {
+  id               String       @id @default(uuid())
+  internal_id      String       @unique
+  patient_id       String
+  patient          Patient      @relation(fields: [patient_id], references: [internal_id])
+  encounter_id     String?
+  encounter        Encounter?   @relation(fields: [encounter_id], references: [internal_id])
+  organization_id  String?
+  organization     Organization? @relation(fields: [organization_id], references: [id])
+  
+  status           String?
+  
+  code_source_code String?
+  code_source_system String?
+  code_source_display String?
+  code_cvx_code    String?
+  code_cvx_display String?
+  
+  occurrence_date  DateTime?
+  
+  source_system_id String?
+  source_record_id String?
+  
+  created_at       DateTime     @default(now())
+}
+
+// 4.13 Coverages
+model Coverage {
+  id               String       @id @default(uuid())
+  internal_id      String       @unique
+  patient_id       String
+  patient          Patient      @relation(fields: [patient_id], references: [internal_id])
+  organization_id  String?
+  organization     Organization? @relation(fields: [organization_id], references: [id])
+  
+  status           String?
+  type             String?
+  subscriber_id    String?
+  beneficiary_id   String?
+  payor_id         String?
+  
+  period_start     DateTime?
+  period_end       DateTime?
+  
+  source_system_id String?
+  source_record_id String?
+  
+  created_at       DateTime     @default(now())
+
+  claims           Claim[]
+}
+
+// 4.14 Claims
+model Claim {
+  id               String       @id @default(uuid())
+  internal_id      String       @unique
+  patient_id       String
+  patient          Patient      @relation(fields: [patient_id], references: [internal_id])
+  organization_id  String?
+  organization     Organization? @relation(fields: [organization_id], references: [id])
+  encounter_id     String?
+  encounter        Encounter?   @relation(fields: [encounter_id], references: [internal_id])
+  coverage_id      String?
+  coverage         Coverage?    @relation(fields: [coverage_id], references: [internal_id])
+  
+  status           String?
+  type             String?
+  use              String?
+  
+  total_value      Float?
+  total_currency   String?
+  
+  submission_date  DateTime?
+  
+  source_system_id String?
+  source_record_id String?
+  
+  created_at       DateTime     @default(now())
+
+  claim_responses  ClaimResponse[]
+}
+
+// ClaimResponse
+model ClaimResponse {
+  id               String       @id @default(uuid())
+  claim_id         String
+  claim            Claim        @relation(fields: [claim_id], references: [internal_id])
+  
+  status           String?
+  outcome          String?
+  
+  payment_value    Float?
+  payment_currency String?
+  
+  created_at       DateTime     @default(now())
+}
+
+// AllergyIntolerance
+model AllergyIntolerance {
+  id               String       @id @default(uuid())
+  internal_id      String       @unique
+  patient_id       String
+  patient          Patient      @relation(fields: [patient_id], references: [internal_id])
+  
+  clinical_status  String?
+  verification_status String?
+  type             String?
+  
+  code_source_code String?
+  code_source_system String?
+  code_source_display String?
+  code_snomed_code String?
+  code_snomed_display String?
+  
+  recorded_date    DateTime?
+  
+  source_system_id String?
+  source_record_id String?
+  
+  created_at       DateTime     @default(now())
+}
+
+// DiagnosticReport
+model DiagnosticReport {
+  id               String       @id @default(uuid())
+  internal_id      String       @unique
+  patient_id       String
+  patient          Patient      @relation(fields: [patient_id], references: [internal_id])
+  encounter_id     String?
+  encounter        Encounter?   @relation(fields: [encounter_id], references: [internal_id])
+  
+  status           String?
+  
+  code_source_code String?
+  code_source_system String?
+  code_source_display String?
+  code_loinc_code  String?
+  code_loinc_display String?
+  
+  issued           DateTime?
+  
+  source_system_id String?
+  source_record_id String?
+  
+  created_at       DateTime     @default(now())
+}
+
+// 4.15 Consents
+model Consent {
+  id               String       @id @default(uuid())
+  patient_id       String
+  patient          Patient      @relation(fields: [patient_id], references: [internal_id])
+  organization_id  String?
+  organization     Organization? @relation(fields: [organization_id], references: [id])
+  consent_type     String
+  granted          Boolean      @default(true)
+  granted_at       DateTime     @default(now())
+  revoked_at       DateTime?
+  scope            String
+  consent_source   String
+}
+
+// 4.16 AuditLogs
+model AuditLog {
+  id               String       @id @default(uuid())
+  entity_type      String
+  entity_id        String
+  action           String
+  
+  actor_id         String?
+  organization_id  String?
+  organization     Organization? @relation(fields: [organization_id], references: [id])
+
+  old_values       String?      // JSON string
+  new_values       String?      // JSON string
+  ip_address       String?
+  
+  details          String?
+  
+  created_at       DateTime     @default(now())
+}
+
+// 4.17 DataImports
+model DataImport {
+  id                String       @id @default(uuid())
+  organization_id   String
+  organization      Organization @relation(fields: [organization_id], references: [id])
+  source_system     String
+  file_name         String?
+  import_type       String
+  status            String
+  started_at        DateTime     @default(now())
+  completed_at      DateTime?
+  records_processed Int          @default(0)
+  records_failed    Int          @default(0)
+}
+
+// -------------------------------------------------------------------
+// RAW STORE
+// -------------------------------------------------------------------
+model RawRecord {
+  id                String   @id
+  source_system_id  String
+  source_entity_type String
+  source_record_id  String
+  
+  payload           String   // Storing JSON as string to be DB agnostic, but since Postgres could use JsonB
+  payload_format    String
+  adapter_version   String
+  
+  ingested_at       DateTime
+  batch_id          String
+  checksum          String
+  
+  processing_status String
+  error_message     String?
+  
+  reprocess_count   Int      @default(0)
+  last_reprocessed_at DateTime?
+  
+  @@unique([source_system_id, source_entity_type, source_record_id])
+}
+
+// -------------------------------------------------------------------
+// MASTER PATIENT INDEX (MPI)
+// -------------------------------------------------------------------
+model InternalPatientIdentity {
+  id                   String   @id // internalPatientId
+  status               String   // ACTIVE, MERGED
+  
+  // Demographics
+  given_name_norm      String?
+  family_name_norm     String?
+  birth_date           String?
+  gender               String?
+  phone_norm           String?
+  
+  merged_into          String?
+  created_at           DateTime @default(now())
+  last_updated_at      DateTime @default(now())
+
+  mpi_identifiers      MpiIdentifier[]
+  match_history        MatchHistory[]
+}
+
+model MpiIdentifier {
+  id                   String   @id @default(uuid())
+  identity_id          String
+  identity             InternalPatientIdentity @relation(fields: [identity_id], references: [id], onDelete: Cascade)
+  value                String
+  type                 String
+  system               String?
+  source_system_id     String?
+  is_active            Boolean  @default(true)
+  first_seen_at        DateTime @default(now())
+}
+
+model MatchHistory {
+  id                   String   @id @default(uuid())
+  identity_id          String
+  identity             InternalPatientIdentity @relation(fields: [identity_id], references: [id], onDelete: Cascade)
+  
+  matched_identifier   String?
+  match_strategy       String
+  confidence           Float
+  matched_by           String
+  decision             String
+  details              String?
+  
+  matched_at           DateTime @default(now())
+}
+
+model DuplicateCandidate {
+  id                   String   @id
+  patient_id_1         String
+  patient_id_2         String
+  confidence           Float
+  status               String
+  
+  name_score           Float?
+  dob_score            Float?
+  gender_score         Float?
+  phone_score          Float?
+  
+  flagged_at           DateTime @default(now())
+}
+
+// -------------------------------------------------------------------
+// TERMINOLOGY
+// -------------------------------------------------------------------
+model TerminologyConcept {
+  id                String   @id
+  preferred_term    String
+  preferred_term_ar String?
+  domain            String
+  
+  codings           TerminologyCoding[]
+}
+
+model TerminologyCoding {
+  id                String   @id @default(uuid())
+  concept_id        String
+  concept           TerminologyConcept @relation(fields: [concept_id], references: [id], onDelete: Cascade)
+  system            String
+  code              String
+  display           String
+}
+
+model TerminologyMapping {
+  id                   String   @id // mappingId
+  source_system_id     String
+  source_code          String
+  source_display       String?
+  canonical_concept_id String
+  equivalence          String
+  confidence           Float
+  rule_version         String
+}
+
+// -------------------------------------------------------------------
+// PROVENANCE
+// -------------------------------------------------------------------
+model ProvenanceRecord {
+  id                   String   @id
+  target_entity_type   String
+  target_entity_id     String
+  
+  source_system_id     String
+  source_record_id     String
+  
+  mapping_version      String
+  adapter_version      String
+  
+  persisted_at         DateTime @default(now())
+}
+
+// -------------------------------------------------------------------
+// END
+// -------------------------------------------------------------------
+
+// -------------------------------------------------------------------
+// SMART ON FHIR OAUTH TOKENS
+// -------------------------------------------------------------------
+model SmartToken {
+  id               String   @id @default(uuid())
+  token            String   @unique
+  client_id        String
+  patient_id       String?
+  scope            String
+  expires_at       DateTime
+  created_at       DateTime @default(now())
+}
+
+// -------------------------------------------------------------------
+// DYNAMIC HOSPITALS
+// -------------------------------------------------------------------
+model DynamicHospital {
+  hospitalId            String   @id
+  hospitalName          String
+  hospitalNameAr        String
+  facilityType          String
+  region                String
+  adapterVersion        String
+  sourceSchema          String
+  defaultMappingConfigs String
+  createdAt             String
+}
+

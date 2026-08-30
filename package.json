@@ -1,0 +1,53 @@
+{
+  "name": "saudi-health-interoperability-platform",
+  "version": "0.2.4",
+  "description": "Saudi National Health Interoperability Platform Prototype - Normalization & Interoperability Engine",
+  "type": "module",
+  "main": "dist/api/server.js",
+  "scripts": {
+    "dev": "tsx watch src/api/server.ts",
+    "build": "tsc",
+    "start": "node dist/api/server.js",
+    "test": "vitest run",
+    "demo": "tsx src/demo/run-demo.ts",
+    "benchmark": "tsx src/benchmark/benchmark-runner.ts",
+    "clean:data": "node -e \"const fs = require('fs'); fs.rmSync('.data', { recursive: true, force: true }); fs.rmSync('data/hospitals-registry.json', { force: true }); fs.rmSync('data/dynamic-hospitals.json', { force: true }); console.log('Cleaned all persistent data.');\""
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "keywords": [
+    "healthcare",
+    "interoperability",
+    "fhir",
+    "saudi-arabia",
+    "nphies",
+    "snomed-ct",
+    "icd-10-am",
+    "loinc",
+    "mpi",
+    "normalization"
+  ],
+  "author": "Antigravity Senior Healthcare Interoperability Architect",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@prisma/client": "^5.21.1",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.3",
+    "uuid": "^11.0.5"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^22.13.5",
+    "@types/uuid": "^10.0.0",
+    "prisma": "^5.21.1",
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.7"
+  }
+}

@@ -1,0 +1,350 @@
+{
+  "version": "2.0.0",
+  "lastUpdated": "2026-08-29T21:14:45.142Z",
+  "users": [],
+  "organizations": [
+    {
+      "id": "ORG-MOH-HQ",
+      "organizationName": "Ministry of Health - Central Command",
+      "organizationNameAr": "وزارة الصحة - المقر الرئيسي",
+      "organizationType": "ministry",
+      "region": "Riyadh",
+      "status": "active",
+      "licenseNumber": "MOH-GOV-001",
+      "parentOrganizationId": null,
+      "createdAt": "2026-08-29T21:12:04.751Z"
+    }
+  ],
+  "roles": [
+    {
+      "id": "role-moh-admin",
+      "roleName": "مدير نظام وزارة الصحة",
+      "roleCode": "MOH_ADMIN",
+      "description": "صلاحيات الحوكمة والرقابة الوطنية المركزية، وإدارة المنشآت والسياسات وسجلات التدقيق.",
+      "isSystemRole": true
+    },
+    {
+      "id": "role-hospital-admin",
+      "roleName": "مسؤول المنشأة الصحية",
+      "roleCode": "HOSPITAL_ADMIN",
+      "description": "إدارة السجلات السريرية والمالية والزيارات الخاصة بالمستشفى أو المنشأة الصحية فقط.",
+      "isSystemRole": true
+    },
+    {
+      "id": "role-patient",
+      "roleName": "الفرد / المريض",
+      "roleCode": "PATIENT",
+      "description": "استعراض السجل الصحي الشخصي وإدارة تراخيص وموافقات مشاركة البيانات.",
+      "isSystemRole": true
+    }
+  ],
+  "rolePermissions": [
+    {
+      "roleId": "role-moh-admin",
+      "permissionCode": "org:manage_all",
+      "granted": true,
+      "id": "033849cb-4443-4acf-9447-adec562a9e2e",
+      "createdAt": "2026-08-29T21:12:04.641Z"
+    },
+    {
+      "roleId": "role-moh-admin",
+      "permissionCode": "policy:manage",
+      "granted": true,
+      "id": "a3ca73e6-5a7f-437e-8be4-68ee68a03b27",
+      "createdAt": "2026-08-29T21:12:04.650Z"
+    },
+    {
+      "roleId": "role-moh-admin",
+      "permissionCode": "quality:monitor",
+      "granted": true,
+      "id": "7cbd7f94-d0f2-499b-8d8f-941b5798f395",
+      "createdAt": "2026-08-29T21:12:04.660Z"
+    },
+    {
+      "roleId": "role-moh-admin",
+      "permissionCode": "audit:read_central",
+      "granted": true,
+      "id": "e3bb23b5-5a18-4481-8b3e-2db949009835",
+      "createdAt": "2026-08-29T21:12:04.668Z"
+    },
+    {
+      "roleId": "role-moh-admin",
+      "permissionCode": "analytics:read_national",
+      "granted": true,
+      "id": "4749699c-78b8-4b2e-b0b1-38cdf2473d1d",
+      "createdAt": "2026-08-29T21:12:04.676Z"
+    },
+    {
+      "roleId": "role-hospital-admin",
+      "permissionCode": "patient:manage_org",
+      "granted": true,
+      "id": "a1c2153a-90a6-4663-9c48-ec855a930ef3",
+      "createdAt": "2026-08-29T21:12:04.684Z"
+    },
+    {
+      "roleId": "role-hospital-admin",
+      "permissionCode": "encounter:create_org",
+      "granted": true,
+      "id": "c078c64a-4755-409b-807f-708bc851bbe3",
+      "createdAt": "2026-08-29T21:12:04.693Z"
+    },
+    {
+      "roleId": "role-hospital-admin",
+      "permissionCode": "clinical:write_org",
+      "granted": true,
+      "id": "65df2281-5cd8-4e23-886c-16dba256ebbc",
+      "createdAt": "2026-08-29T21:12:04.701Z"
+    },
+    {
+      "roleId": "role-hospital-admin",
+      "permissionCode": "clinical:read_org",
+      "granted": true,
+      "id": "d3331fbe-364f-4d44-9dfe-1fbecde6549b",
+      "createdAt": "2026-08-29T21:12:04.711Z"
+    },
+    {
+      "roleId": "role-hospital-admin",
+      "permissionCode": "claim:manage_org",
+      "granted": true,
+      "id": "8bc58773-b2fa-4dcb-bd66-c5c5eda390fa",
+      "createdAt": "2026-08-29T21:12:04.718Z"
+    },
+    {
+      "roleId": "role-hospital-admin",
+      "permissionCode": "import:execute_org",
+      "granted": true,
+      "id": "ad14f2c4-c999-44e6-833f-9aacd550865e",
+      "createdAt": "2026-08-29T21:12:04.726Z"
+    },
+    {
+      "roleId": "role-patient",
+      "permissionCode": "patient:read_self",
+      "granted": true,
+      "id": "94f474cd-3a2e-4af9-be2b-82bdba09b1e9",
+      "createdAt": "2026-08-29T21:12:04.733Z"
+    },
+    {
+      "roleId": "role-patient",
+      "permissionCode": "consent:manage_self",
+      "granted": true,
+      "id": "f8b60d81-e8e8-4dc4-b3b3-a353a5665e41",
+      "createdAt": "2026-08-29T21:12:04.741Z"
+    },
+    {
+      "roleId": "role-patient",
+      "permissionCode": "access_history:read_self",
+      "granted": true,
+      "id": "d67db903-82f5-4c17-abd0-f084a1f9ce44",
+      "createdAt": "2026-08-29T21:12:04.742Z"
+    },
+    {
+      "roleId": "role-moh-admin",
+      "permissionCode": "org:manage_all",
+      "granted": true,
+      "id": "1d7db5f3-2853-42a4-86b6-4be3df4abf00",
+      "createdAt": "2026-08-29T21:12:08.991Z"
+    },
+    {
+      "roleId": "role-moh-admin",
+      "permissionCode": "policy:manage",
+      "granted": true,
+      "id": "53d7c5a5-004d-4498-b0b1-6fb2e8eea206",
+      "createdAt": "2026-08-29T21:12:08.993Z"
+    },
+    {
+      "roleId": "role-moh-admin",
+      "permissionCode": "quality:monitor",
+      "granted": true,
+      "id": "370d9e0d-ba24-463e-bf6b-b8b673f3dec4",
+      "createdAt": "2026-08-29T21:12:09.002Z"
+    },
+    {
+      "roleId": "role-moh-admin",
+      "permissionCode": "audit:read_central",
+      "granted": true,
+      "id": "f474c602-f5cb-4a9c-b6d5-c1101838747b",
+      "createdAt": "2026-08-29T21:12:09.009Z"
+    },
+    {
+      "roleId": "role-moh-admin",
+      "permissionCode": "analytics:read_national",
+      "granted": true,
+      "id": "9fe9e773-a062-4e9c-8f46-bd80458e2a89",
+      "createdAt": "2026-08-29T21:12:09.017Z"
+    },
+    {
+      "roleId": "role-hospital-admin",
+      "permissionCode": "patient:manage_org",
+      "granted": true,
+      "id": "748a9ced-f69f-4f3f-a605-25ed841d340f",
+      "createdAt": "2026-08-29T21:12:09.026Z"
+    },
+    {
+      "roleId": "role-hospital-admin",
+      "permissionCode": "encounter:create_org",
+      "granted": true,
+      "id": "8d6ead91-0916-4a3f-9f18-4479b5a37608",
+      "createdAt": "2026-08-29T21:12:09.034Z"
+    },
+    {
+      "roleId": "role-hospital-admin",
+      "permissionCode": "clinical:write_org",
+      "granted": true,
+      "id": "0bec6a42-aa1b-4440-a69e-6e0ae75d631f",
+      "createdAt": "2026-08-29T21:12:09.045Z"
+    },
+    {
+      "roleId": "role-hospital-admin",
+      "permissionCode": "clinical:read_org",
+      "granted": true,
+      "id": "bfca3258-1bf3-4eb1-9e9b-cf0c7a6031e0",
+      "createdAt": "2026-08-29T21:12:09.053Z"
+    },
+    {
+      "roleId": "role-hospital-admin",
+      "permissionCode": "claim:manage_org",
+      "granted": true,
+      "id": "cb5a3691-23f7-48cc-bafb-92ff3c73f792",
+      "createdAt": "2026-08-29T21:12:09.063Z"
+    },
+    {
+      "roleId": "role-hospital-admin",
+      "permissionCode": "import:execute_org",
+      "granted": true,
+      "id": "86a171d6-cb83-4d4f-aa44-c565c3e09b65",
+      "createdAt": "2026-08-29T21:12:09.070Z"
+    },
+    {
+      "roleId": "role-patient",
+      "permissionCode": "patient:read_self",
+      "granted": true,
+      "id": "4936fb6e-00ae-4021-b527-01d981cf45cd",
+      "createdAt": "2026-08-29T21:12:09.077Z"
+    },
+    {
+      "roleId": "role-patient",
+      "permissionCode": "consent:manage_self",
+      "granted": true,
+      "id": "174db04a-e24f-420f-bbaf-7bfa620b3554",
+      "createdAt": "2026-08-29T21:12:09.087Z"
+    },
+    {
+      "roleId": "role-patient",
+      "permissionCode": "access_history:read_self",
+      "granted": true,
+      "id": "f7bbdcf5-1246-4756-a07e-8a29bfaf14e9",
+      "createdAt": "2026-08-29T21:12:09.095Z"
+    },
+    {
+      "roleId": "role-moh-admin",
+      "permissionCode": "org:manage_all",
+      "granted": true,
+      "id": "39d3d2e9-0722-4690-b09b-aaf4ddd2802e",
+      "createdAt": "2026-08-29T21:14:45.027Z"
+    },
+    {
+      "roleId": "role-moh-admin",
+      "permissionCode": "policy:manage",
+      "granted": true,
+      "id": "94a74e54-22eb-4531-985d-294ec6cf8d5b",
+      "createdAt": "2026-08-29T21:14:45.032Z"
+    },
+    {
+      "roleId": "role-moh-admin",
+      "permissionCode": "quality:monitor",
+      "granted": true,
+      "id": "f854d3fa-e96b-47bc-982b-2695b558b434",
+      "createdAt": "2026-08-29T21:14:45.040Z"
+    },
+    {
+      "roleId": "role-moh-admin",
+      "permissionCode": "audit:read_central",
+      "granted": true,
+      "id": "e199f262-adb5-4e13-bac8-6ba200faa049",
+      "createdAt": "2026-08-29T21:14:45.051Z"
+    },
+    {
+      "roleId": "role-moh-admin",
+      "permissionCode": "analytics:read_national",
+      "granted": true,
+      "id": "ade69311-7a29-4818-8fa4-a91609e78462",
+      "createdAt": "2026-08-29T21:14:45.058Z"
+    },
+    {
+      "roleId": "role-hospital-admin",
+      "permissionCode": "patient:manage_org",
+      "granted": true,
+      "id": "876d7cbd-6b2e-437c-a03c-572593eb157c",
+      "createdAt": "2026-08-29T21:14:45.065Z"
+    },
+    {
+      "roleId": "role-hospital-admin",
+      "permissionCode": "encounter:create_org",
+      "granted": true,
+      "id": "698cb197-149b-4a6c-ae29-305edb537968",
+      "createdAt": "2026-08-29T21:14:45.077Z"
+    },
+    {
+      "roleId": "role-hospital-admin",
+      "permissionCode": "clinical:write_org",
+      "granted": true,
+      "id": "a6055e98-06df-4710-8bb1-914ec5993adc",
+      "createdAt": "2026-08-29T21:14:45.084Z"
+    },
+    {
+      "roleId": "role-hospital-admin",
+      "permissionCode": "clinical:read_org",
+      "granted": true,
+      "id": "f0ffb59b-2e46-4d00-a6f3-6475816b1d67",
+      "createdAt": "2026-08-29T21:14:45.094Z"
+    },
+    {
+      "roleId": "role-hospital-admin",
+      "permissionCode": "claim:manage_org",
+      "granted": true,
+      "id": "7968c6c2-d57e-4a23-bf54-f6077d2aa839",
+      "createdAt": "2026-08-29T21:14:45.104Z"
+    },
+    {
+      "roleId": "role-hospital-admin",
+      "permissionCode": "import:execute_org",
+      "granted": true,
+      "id": "aa32c4bb-e089-42af-8942-94b590b3a5eb",
+      "createdAt": "2026-08-29T21:14:45.111Z"
+    },
+    {
+      "roleId": "role-patient",
+      "permissionCode": "patient:read_self",
+      "granted": true,
+      "id": "55363298-58cb-49e5-b7f1-9563d87eeda1",
+      "createdAt": "2026-08-29T21:14:45.121Z"
+    },
+    {
+      "roleId": "role-patient",
+      "permissionCode": "consent:manage_self",
+      "granted": true,
+      "id": "35b26f5a-4fc7-48be-9268-cfb9adfcc593",
+      "createdAt": "2026-08-29T21:14:45.131Z"
+    },
+    {
+      "roleId": "role-patient",
+      "permissionCode": "access_history:read_self",
+      "granted": true,
+      "id": "2345615b-bb0d-4927-b16f-fc36c15d7b31",
+      "createdAt": "2026-08-29T21:14:45.142Z"
+    }
+  ],
+  "userPermissions": [],
+  "patients": [],
+  "patientOrganizations": [],
+  "encounters": [],
+  "conditions": [],
+  "observations": [],
+  "medications": [],
+  "immunizations": [],
+  "coverages": [],
+  "claims": [],
+  "consents": [],
+  "auditLogs": [],
+  "dataImports": []
+}
