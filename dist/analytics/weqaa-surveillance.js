@@ -167,19 +167,7 @@ export class WeqaaSurveillanceEngine {
      * Simulates dispatching the notification to Weqaa Public Health Authority and returns confirmation tracking ID
      */
     async dispatchCaseNotification(caseId) {
-        const cases = await this.detectReportableCases();
-        const targetCase = cases.find(c => c.caseId === caseId);
-        if (!targetCase)
-            throw new Error(`Reportable case [${caseId}] not found.`);
-        const trackingNumber = `WEQAA-SA-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`;
-        const updatedCase = {
-            ...targetCase,
-            notificationStatus: 'DISPATCHED_TO_WEQAA',
-            dispatchedAt: new Date().toISOString(),
-            weqaaTrackingNumber: trackingNumber
-        };
-        this.dispatchedCases.set(targetCase.sourceRecordId, updatedCase);
-        return updatedCase;
+        throw new Error("Weqaa Public Health Authority integration is not yet implemented in this prototype.");
     }
 }
 //# sourceMappingURL=weqaa-surveillance.js.map

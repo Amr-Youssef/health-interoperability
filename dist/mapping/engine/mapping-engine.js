@@ -83,97 +83,114 @@ export class MappingEngine {
         }
         // Post-processing for MedicationRequest
         if (config.targetCanonicalEntity === 'CanonicalMedicationRequest') {
-            const rawMedCode = payload.كود_الدواء || payload.drug_code || 'METFORMIN-500';
+            const rawMedCode = payload.كود_الدواء || payload.drug_code;
+            if (!rawMedCode)
+                throw new Error("Missing required field for MedicationRequest: drug code");
             const resolvedMedCode = await this.terminologyService.resolveCode(rawMedCode, rawRecord.sourceSystemId, 'MEDICATION');
             mappedData.medication = {
                 internalId: rawRecord.sourceRecordId,
                 code: resolvedMedCode,
-                status: 'active',
-                form: 'Tablet',
-                strength: '500 mg',
-                manufacturer: 'SPIMACO'
+                status: payload.status,
+                form: payload.form,
+                strength: payload.strength,
+                manufacturer: payload.manufacturer
             };
-            mappedData.dosageInstruction = [
-                {
-                    text: payload.sig || payload.طريقة_الاستخدام || '1 tab PO BID with meals',
-                    textAr: payload.طريقة_الاستخدام || 'قرص واحد فموياً مرتين يومياً بعد الوجبات',
-                    timing: {
-                        frequency: 2,
-                        period: 1,
-                        periodUnit: 'd'
-                    },
-                    route: 'Oral',
-                    doseQuantity: { value: 1, unit: 'TAB' }
-                }
-            ];
+            const sigText = payload.sig || payload.طريقة_الاستخدام;
+            if (sigText) {
+                mappedData.dosageInstruction = [
+                    {
+                        text: sigText,
+                        textAr: payload.طريقة_الاستخدام,
+                        timing: {
+                            frequency: payload.frequency,
+                            period: payload.period,
+                            periodUnit: payload.periodUnit
+                        },
+                        route: payload.route,
+                        doseQuantity: { value: Number(payload.الكمية || payload.qty), unit: payload.unit }
+                    }
+                ];
+            }
             mappedData.dispenseRequest = {
-                numberOfRepeatsAllowed: Number(payload.التكرار_المسموح || payload.refills || 2),
-                quantity: { value: Number(payload.الكمية || payload.qty || 60), unit: 'TAB' },
-                expectedSupplyDurationDays: 30
+                numberOfRepeatsAllowed: Number(payload.التكرار_المسموح || payload.refills || 0),
+                quantity: { value: Number(payload.الكمية || payload.qty), unit: payload.unit },
+                expectedSupplyDurationDays: payload.supplyDays
             };
-            mappedData.status = 'active';
-            mappedData.intent = 'order';
+            mappedData.status = payload.status;
+            mappedData.intent = payload.intent;
         }
         // Post-processing for Immunization
         if (config.targetCanonicalEntity === 'CanonicalImmunization') {
-            const rawVaxCode = payload.كود_اللقاح || payload.vax_code || 'VAC-FLU-QUAD';
+            const rawVaxCode = payload.كود_اللقاح || payload.vax_code;
+            if (!rawVaxCode)
+                throw new Error("Missing required field for Immunization: vaccine code");
             const resolvedVaxCode = await this.terminologyService.resolveCode(rawVaxCode, rawRecord.sourceSystemId, 'VACCINE');
             mappedData.vaccineCode = resolvedVaxCode;
-            mappedData.lotNumber = payload.رقم_التشغيلة || payload.lot_no || 'LOT-2026-SA';
-            mappedData.expirationDate = mappedData.expirationDate || '2026-12-31';
-            mappedData.occurrenceDateTime = mappedData.occurrenceDateTime || new Date().toISOString();
-            mappedData.status = 'completed';
-            mappedData.site = payload.مكان_الحقن || payload.admin_site || 'Left Deltoid';
-            mappedData.route = 'Intramuscular';
+            mappedData.lotNumber = payload.رقم_التشغيلة || payload.lot_no;
+            mappedData.expirationDate = mappedData.expirationDate;
+            mappedData.occurrenceDateTime = mappedData.occurrenceDateTime || payload.occurrenceDateTime;
+            if (!mappedData.occurrenceDateTime)
+                throw new Error("Missing required field for Immunization: occurrenceDateTime");
+            mappedData.status = payload.status;
+            mappedData.site = payload.مكان_الحقن || payload.admin_site;
+            mappedData.route = payload.route;
         }
         // Post-processing for Allergy
         if (config.targetCanonicalEntity === 'CanonicalAllergyIntolerance') {
-            const rawSubstance = payload.المادة_المسببة || payload.allergen || payload.substance || 'بنسلين';
+            const rawSubstance = payload.المادة_المسببة || payload.allergen || payload.substance;
+            if (!rawSubstance)
+                throw new Error("Missing required field for Allergy: substance");
             const resolvedSubstanceCode = await this.terminologyService.resolveCode(rawSubstance, rawRecord.sourceSystemId, 'ALLERGY');
             mappedData.substanceCode = resolvedSubstanceCode;
-            mappedData.substanceText = payload.allergen || payload.المادة_المسببة || 'Penicillin';
-            mappedData.substanceTextAr = payload.المادة_المسببة || (payload.allergen === 'Sulfonamide' ? 'مركبات السلفا' : 'بنسلين');
-            mappedData.clinicalStatus = 'active';
-            mappedData.verificationStatus = 'confirmed';
-            mappedData.type = 'allergy';
-            mappedData.category = 'medication';
-            mappedData.criticality = (payload.درجة_الخطورة === 'شديدة' || payload.criticality === 'high') ? 'high' : 'low';
-            mappedData.recordedDate = mappedData.recordedDate || new Date().toISOString();
-            const reactionText = payload.التفاعل_التحسسي || payload.reaction_desc || payload.reactionText || 'Severe allergic reaction';
-            mappedData.reactions = [
-                {
-                    manifestationText: reactionText,
-                    manifestationTextAr: reactionText,
-                    manifestationCode: {
-                        snomedCode: reactionText.toLowerCase().includes('rash') ? '271807003' : '39579001',
-                        snomedDisplay: reactionText.toLowerCase().includes('rash') ? 'Skin eruption' : 'Anaphylaxis',
-                        sourceCode: 'REACTION-01',
-                        sourceDisplay: reactionText
-                    },
-                    severity: mappedData.criticality === 'high' ? 'severe' : 'moderate'
-                }
-            ];
+            mappedData.substanceText = payload.allergen || payload.المادة_المسببة;
+            mappedData.substanceTextAr = payload.المادة_المسببة;
+            mappedData.clinicalStatus = payload.clinicalStatus;
+            mappedData.verificationStatus = payload.verificationStatus;
+            mappedData.type = payload.type;
+            mappedData.category = payload.category;
+            mappedData.criticality = payload.criticality || (payload.درجة_الخطورة === 'شديدة' ? 'high' : undefined);
+            mappedData.recordedDate = mappedData.recordedDate || payload.recordedDate;
+            const reactionText = payload.التفاعل_التحسسي || payload.reaction_desc || payload.reactionText;
+            if (reactionText) {
+                mappedData.reactions = [
+                    {
+                        manifestationText: reactionText,
+                        manifestationTextAr: reactionText,
+                        manifestationCode: {
+                            snomedCode: reactionText.toLowerCase().includes('rash') ? '271807003' : '39579001',
+                            snomedDisplay: reactionText.toLowerCase().includes('rash') ? 'Skin eruption' : 'Anaphylaxis',
+                            sourceCode: 'REACTION-01',
+                            sourceDisplay: reactionText
+                        },
+                        severity: mappedData.criticality === 'high' ? 'severe' : 'moderate'
+                    }
+                ];
+            }
         }
         // Special handling for Claim / Bill items
         if (config.targetCanonicalEntity === 'CanonicalClaim') {
             mappedData.sourceRecordId = rawRecord.sourceRecordId;
-            mappedData.serviceProviderId = rawRecord.sourceSystemId === 'hospital-a' ? 'HOSP-AMAL-01' : 'HOSP-NOOR-02';
-            const rawServiceCode = payload.كود_الخدمة || payload.service_code || 'SBS-E11';
-            const serviceName = payload.اسم_الخدمة || payload.service_desc || 'Medical Consultation';
-            const gross = mappedData.totalGrossSAR || 300.0;
-            const copay = mappedData.patientCopaySAR || (gross * 0.2);
-            const net = mappedData.netClaimedSAR || (gross - copay);
+            mappedData.serviceProviderId = rawRecord.sourceSystemId;
+            const rawServiceCode = payload.كود_الخدمة || payload.service_code;
+            if (!rawServiceCode)
+                throw new Error("Missing required field for Claim: service code");
+            const serviceName = payload.اسم_الخدمة || payload.service_desc;
+            const gross = mappedData.totalGrossSAR !== undefined ? mappedData.totalGrossSAR : payload.gross;
+            const copay = mappedData.patientCopaySAR !== undefined ? mappedData.patientCopaySAR : payload.copay;
+            if (gross === undefined || copay === undefined)
+                throw new Error("Missing required fields for Claim: gross and copay amounts");
+            const net = mappedData.netClaimedSAR !== undefined ? mappedData.netClaimedSAR : payload.net !== undefined ? payload.net : (gross - copay);
             mappedData.items = [
                 {
                     sequence: 1,
                     serviceCode: {
                         sourceCode: rawServiceCode,
                         sourceSystem: `urn:${rawRecord.sourceSystemId}:services`,
-                        sbsCode: rawServiceCode.includes('SBS') ? rawServiceCode : (rawServiceCode.includes('كشف') ? 'SBS-E11' : 'SBS-LAB-1020'),
+                        sbsCode: rawServiceCode,
                         sbsDisplay: serviceName
                     },
                     serviceName,
-                    quantity: payload.qty || 1,
+                    quantity: payload.qty,
                     unitPriceSAR: gross,
                     totalGrossSAR: gross,
                     patientCopaySAR: copay,
@@ -245,44 +262,44 @@ export class MappingEngine {
             mappedData.sourceRecordId = fhir.id;
             mappedData.sourcePatientMrn = fhir.beneficiary?.reference?.replace('Patient/', '');
             mappedData.policyNumber = fhir.id;
-            mappedData.memberId = fhir.subscriberId || 'MEM-HC-01';
-            mappedData.payerId = fhir.payor?.[0]?.identifier?.value || 'CHI-INS-101';
-            mappedData.payerName = fhir.payor?.[0]?.display || 'Bupa Arabia';
-            mappedData.networkClass = fhir.class?.[0]?.value || 'Class A';
-            mappedData.copayPercentage = fhir.costToBeneficiary?.[0]?.valueQuantity?.value ?? 20;
+            mappedData.memberId = fhir.subscriberId;
+            mappedData.payerId = fhir.payor?.[0]?.identifier?.value;
+            mappedData.payerName = fhir.payor?.[0]?.display;
+            mappedData.networkClass = fhir.class?.[0]?.value;
+            mappedData.copayPercentage = fhir.costToBeneficiary?.[0]?.valueQuantity?.value;
             mappedData.copayMaxCapSAR = 100;
             mappedData.period = {
-                start: '2026-01-01',
-                end: '2026-12-31'
+                start: fhir.period?.start,
+                end: fhir.period?.end
             };
             mappedData.status = fhir.status || 'active';
         }
         else if (fhir.resourceType === 'Claim') {
             mappedData.sourceRecordId = fhir.id;
             mappedData.sourcePatientMrn = fhir.patient?.reference?.replace('Patient/', '');
-            mappedData.claimType = fhir.type?.coding?.[0]?.code || 'professional';
+            mappedData.claimType = fhir.type?.coding?.[0]?.code;
             mappedData.subType = fhir.subType?.coding?.[0]?.code === 'ip' ? 'inpatient' : 'outpatient';
             mappedData.use = fhir.use || 'claim';
-            mappedData.serviceProviderId = fhir.provider?.identifier?.value || 'HOSP-KFSC-01';
+            mappedData.serviceProviderId = fhir.provider?.identifier?.value;
             mappedData.submissionDate = fhir.created || new Date().toISOString();
             const items = Array.isArray(fhir.item) ? fhir.item : [];
             let totalGross = 0;
             let totalNet = 0;
             mappedData.items = items.map((it, idx) => {
-                const gross = it.unitPrice?.value || 150.0;
-                const net = it.net?.value || (gross * 0.8);
+                const gross = it.unitPrice?.value || 0;
+                const net = it.net?.value || gross;
                 const copay = gross - net;
                 totalGross += gross;
                 totalNet += net;
                 return {
                     sequence: it.sequence || idx + 1,
                     serviceCode: {
-                        sourceCode: it.productOrService?.coding?.[0]?.code || 'SBS-E11',
-                        sbsCode: it.productOrService?.coding?.[0]?.code || 'SBS-E11',
-                        sbsDisplay: it.productOrService?.coding?.[0]?.display || 'Consultation'
+                        sourceCode: it.productOrService?.coding?.[0]?.code,
+                        sbsCode: it.productOrService?.coding?.[0]?.code,
+                        sbsDisplay: it.productOrService?.coding?.[0]?.display
                     },
-                    serviceName: it.productOrService?.coding?.[0]?.display || 'Consultation',
-                    quantity: 1,
+                    serviceName: it.productOrService?.coding?.[0]?.display,
+                    quantity: it.quantity?.value || 1,
                     unitPriceSAR: gross,
                     totalGrossSAR: gross,
                     patientCopaySAR: copay,
@@ -300,31 +317,31 @@ export class MappingEngine {
             mappedData.status = fhir.status || 'active';
             mappedData.intent = fhir.intent || 'order';
             mappedData.authoredOn = fhir.authoredOn || new Date().toISOString();
-            mappedData.requesterPractitionerName = fhir.requester?.display || 'Dr. Tariq Al-Ghamdi';
+            mappedData.requesterPractitionerName = fhir.requester?.display;
             const coding = fhir.medicationCodeableConcept?.coding?.[0];
-            const resolvedMedCode = coding
-                ? await this.terminologyService.resolveCode(coding.code, coding.system || 'sfda', 'MEDICATION')
-                : await this.terminologyService.resolveCode('0628500100101', 'hospital-c', 'MEDICATION');
+            if (!coding?.code)
+                throw new Error("Missing required field for MedicationRequest: code");
+            const resolvedMedCode = await this.terminologyService.resolveCode(coding.code, coding.system || 'sfda', 'MEDICATION');
             mappedData.medication = {
                 internalId: fhir.id,
                 code: resolvedMedCode,
-                status: 'active',
+                status: fhir.status || 'active',
                 form: 'Tablet',
-                strength: '500 mg',
-                manufacturer: 'Merck/SPIMACO'
+                strength: undefined,
+                manufacturer: undefined
             };
             mappedData.dosageInstruction = [
                 {
-                    text: fhir.dosageInstruction?.[0]?.text || '1 tab PO BID',
+                    text: fhir.dosageInstruction?.[0]?.text,
                     timing: { frequency: 2, period: 1, periodUnit: 'd' },
                     route: 'Oral',
                     doseQuantity: { value: 1, unit: 'TAB' }
                 }
             ];
             mappedData.dispenseRequest = {
-                numberOfRepeatsAllowed: fhir.dispenseRequest?.numberOfRepeatsAllowed ?? 2,
-                quantity: { value: fhir.dispenseRequest?.quantity?.value ?? 60, unit: 'TAB' },
-                expectedSupplyDurationDays: 30
+                numberOfRepeatsAllowed: fhir.dispenseRequest?.numberOfRepeatsAllowed ?? 0,
+                quantity: { value: fhir.dispenseRequest?.quantity?.value ?? 1, unit: 'TAB' },
+                expectedSupplyDurationDays: fhir.dispenseRequest?.expectedSupplyDuration?.value ?? 30
             };
         }
         else if (fhir.resourceType === 'Immunization') {
@@ -333,13 +350,13 @@ export class MappingEngine {
             mappedData.sourceVisitId = fhir.encounter?.reference?.replace('Encounter/', '');
             mappedData.status = fhir.status || 'completed';
             mappedData.occurrenceDateTime = fhir.occurrenceDateTime || new Date().toISOString();
-            mappedData.lotNumber = fhir.lotNumber || 'LOT-KFSC-2026';
-            mappedData.expirationDate = fhir.expirationDate || '2026-12-31';
-            mappedData.site = 'Left Deltoid';
+            mappedData.lotNumber = fhir.lotNumber;
+            mappedData.expirationDate = fhir.expirationDate;
+            mappedData.site = fhir.site?.coding?.[0]?.display;
             const coding = fhir.vaccineCode?.coding?.[0];
-            const resolvedVaxCode = coding
-                ? await this.terminologyService.resolveCode(coding.code, coding.system || 'cvx', 'VACCINE')
-                : await this.terminologyService.resolveCode('158', 'hospital-c', 'VACCINE');
+            if (!coding?.code)
+                throw new Error("Missing required field for Immunization: vaccine code");
+            const resolvedVaxCode = await this.terminologyService.resolveCode(coding.code, coding.system || 'cvx', 'VACCINE');
             mappedData.vaccineCode = resolvedVaxCode;
         }
         else if (fhir.resourceType === 'Encounter') {
@@ -363,6 +380,9 @@ export class MappingEngine {
                 const resolved = await this.terminologyService.resolveCode(coding.code, coding.system || 'snomed', 'DIAGNOSIS');
                 mappedData.code = resolved;
             }
+            else {
+                throw new Error("Missing required field for Condition: code");
+            }
             mappedData.note = fhir.code?.text;
         }
         else if (fhir.resourceType === 'Observation') {
@@ -375,6 +395,9 @@ export class MappingEngine {
             if (coding) {
                 const resolved = await this.terminologyService.resolveCode(coding.code, coding.system || 'loinc', 'LAB_TEST');
                 mappedData.code = resolved;
+            }
+            else {
+                throw new Error("Missing required field for Observation: code");
             }
             if (fhir.valueQuantity) {
                 mappedData.valueQuantity = {
@@ -393,16 +416,14 @@ export class MappingEngine {
             mappedData.criticality = fhir.criticality || 'high';
             mappedData.recordedDate = fhir.recordedDate || new Date().toISOString();
             const coding = fhir.code?.coding?.[0];
-            const resolvedSubstance = coding
-                ? await this.terminologyService.resolveCode(coding.code, coding.system || 'snomed', 'ALLERGY')
-                : await this.terminologyService.resolveCode('764146007', 'hospital-c', 'ALLERGY');
+            if (!coding?.code)
+                throw new Error("Missing required field for Allergy: code");
+            const resolvedSubstance = await this.terminologyService.resolveCode(coding.code, coding.system || 'snomed', 'ALLERGY');
             mappedData.substanceCode = resolvedSubstance;
-            mappedData.substanceText = fhir.code?.text || 'Penicillin';
-            mappedData.substanceTextAr = 'بنسلين';
+            mappedData.substanceText = fhir.code?.text;
             mappedData.reactions = [
                 {
-                    manifestationText: fhir.reaction?.[0]?.manifestation?.[0]?.text || 'Anaphylaxis',
-                    manifestationTextAr: 'صدمة تحسسية حادة وضيق تنفس',
+                    manifestationText: fhir.reaction?.[0]?.manifestation?.[0]?.text,
                     severity: fhir.reaction?.[0]?.severity || 'severe'
                 }
             ];
@@ -415,11 +436,10 @@ export class MappingEngine {
             mappedData.category = fhir.category?.[0]?.coding?.[0]?.code || 'LAB';
             mappedData.issued = fhir.issued || new Date().toISOString();
             mappedData.conclusion = fhir.conclusion;
-            mappedData.conclusionAr = 'نتائج الفحص الأيضي والسكري الشامل: ارتفاع طفيف في السكر التراكمي (HbA1c 7.2%).';
             const coding = fhir.code?.coding?.[0];
-            const resolvedCode = coding
-                ? await this.terminologyService.resolveCode(coding.code, coding.system || 'loinc', 'LAB_TEST')
-                : await this.terminologyService.resolveCode('24323-8', 'hospital-c', 'LAB_TEST');
+            if (!coding?.code)
+                throw new Error("Missing required field for DiagnosticReport: code");
+            const resolvedCode = await this.terminologyService.resolveCode(coding.code, coding.system || 'loinc', 'LAB_TEST');
             mappedData.code = resolvedCode;
             mappedData.resultObservationIds = [];
         }

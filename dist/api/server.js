@@ -1,11 +1,13 @@
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { SqliteRawStore } from '../ingestion/raw-store/sqlite-raw-store.js';
-import { CanonicalStore } from '../persistence/canonical-store.js';
-import { MasterPatientIndexService } from '../mpi/mpi-service.js';
-import { TerminologyService } from '../terminology/terminology-service.js';
-import { ProvenanceService } from '../provenance/provenance-service.js';
+import jwt from 'jsonwebtoken';
+import { PrismaClient } from '@prisma/client';
+import { PrismaRawStore } from '../ingestion/raw-store/prisma-raw-store.js';
+import { PrismaCanonicalStore } from '../persistence/prisma-canonical-store.js';
+import { PrismaMpiService } from '../mpi/prisma-mpi-service.js';
+import { PrismaTerminologyService } from '../terminology/prisma-terminology-service.js';
+import { PrismaProvenanceService } from '../provenance/prisma-provenance-service.js';
 import { NormalizationEngine } from '../orchestration/normalization-engine.js';
 import { FhirR4Serializer } from '../fhir/fhir-serializer.js';
 import { startMllpServer } from '../ingestion/hl7v2/mllp-server.js';
@@ -13,18 +15,59 @@ import { authRoutes } from './routes/auth-routes.js';
 import { hospitalRoutes } from './routes/hospital-routes.js';
 import { mohRoutes } from './routes/moh-routes.js';
 import { patientRoutes } from './routes/patient-routes.js';
+import { patientReportedHealthRoutes } from './routes/patient-reported-health-routes.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-national-health-key-2026';
+const prismaInstance = new PrismaClient();
+async function extractAuthUser(req) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer '))
+        return null;
+    const token = authHeader.split(' ')[1];
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        const user = await prismaInstance.user.findUnique({
+            where: { id: decoded.userId },
+            include: { role: true }
+        });
+        return user && user.is_active ? user : null;
+    }
+    catch (err) {
+        return null;
+    }
+}
+async function resolvePatientInternalId(user, canonicalStore) {
+    if (!user)
+        return null;
+    if (user.patient_profile_id) {
+        const p = await canonicalStore.getPatient(user.patient_profile_id);
+        if (p)
+            return p.internalId;
+    }
+    const byNid = await canonicalStore.findPatientByIdentifier(user.username);
+    if (byNid)
+        return byNid.internalId;
+    if (user.username === 'patient') {
+        const demoAhmed = await canonicalStore.findPatientByIdentifier('1088445566');
+        if (demoAhmed)
+            return demoAhmed.internalId;
+        const all = await canonicalStore.getAllPatients();
+        if (all.length > 0)
+            return all[0].internalId;
+    }
+    return user.patient_profile_id || null;
+}
 export function createPlatformApp() {
     const app = express();
     app.use(express.json({ limit: '50mb' }));
     app.use(express.urlencoded({ limit: '50mb', extended: true }));
     // Initialize Core Services
-    const rawStore = new SqliteRawStore();
-    const canonicalStore = new CanonicalStore();
-    const mpi = new MasterPatientIndexService();
-    const terminologyService = new TerminologyService();
-    const provenanceService = new ProvenanceService();
+    const rawStore = new PrismaRawStore();
+    const canonicalStore = new PrismaCanonicalStore();
+    const mpi = new PrismaMpiService();
+    const terminologyService = new PrismaTerminologyService();
+    const provenanceService = new PrismaProvenanceService();
     const engine = new NormalizationEngine(rawStore, canonicalStore, mpi, terminologyService, provenanceService);
     const fhirSerializer = new FhirR4Serializer();
     // Serve static UI from public directory
@@ -35,6 +78,7 @@ export function createPlatformApp() {
     app.use('/api/hospital', hospitalRoutes);
     app.use('/api/moh', mohRoutes);
     app.use('/api/patient', patientRoutes);
+    app.use('/api/patients', patientReportedHealthRoutes);
     // ==========================================
     // 1. SMART ON FHIR OAUTH2 & DISCOVERY
     // ==========================================
@@ -51,23 +95,23 @@ export function createPlatformApp() {
         return '';
     };
     // OAuth2 Token Endpoint
-    app.post('/oauth/token', (req, res) => {
+    app.post('/oauth/token', async (req, res) => {
         const { client_id, grant_type, scope, patient_id } = req.body;
-        const tokenResponse = engine.smartAuth.issueToken({
+        const tokenResponse = await engine.smartAuth.issueToken({
             clientId: client_id || 'sehhaty-patient-portal',
             grantType: grant_type || 'authorization_code',
             scope: scope || 'launch/patient patient/*.read openid profile',
             patientId: patient_id || '1088445566'
         });
-        engine.auditChain.recordEvent('QUERY', client_id || 'sehhaty-app', 'SmartOAuthToken', tokenResponse.access_token.substring(0, 16), `Issued SMART on FHIR access token for patient [${tokenResponse.patient}]`);
+        await engine.auditChain.recordEvent('QUERY', client_id || 'sehhaty-app', 'SmartOAuthToken', tokenResponse.access_token.substring(0, 16), `Issued SMART on FHIR access token for patient [${tokenResponse.patient}]`);
         res.json(tokenResponse);
     });
     // OAuth2 Token Introspection Endpoint
-    app.post('/oauth/introspect', (req, res) => {
+    app.post('/oauth/introspect', async (req, res) => {
         const { token } = req.body;
         if (!token)
             return res.status(400).json({ active: false });
-        const verification = engine.smartAuth.verifyToken(token);
+        const verification = await engine.smartAuth.verifyToken(token);
         res.json({
             active: verification.isValid,
             scope: verification.scope,
@@ -143,7 +187,7 @@ export function createPlatformApp() {
                 anonymize,
                 resourceTypes: types
             });
-            engine.auditChain.recordEvent('BULK_EXPORT', 'FHIR_CLIENT', 'BulkExportResult', `export-${Date.now()}`, `Exported ${result.totalResourcesExported} resources (Anonymized: ${anonymize})`);
+            await engine.auditChain.recordEvent('BULK_EXPORT', 'FHIR_CLIENT', 'BulkExportResult', `export-${Date.now()}`, `Exported ${result.totalResourcesExported} resources (Anonymized: ${anonymize})`);
             res.json(result);
         }
         catch (err) {
@@ -364,7 +408,7 @@ export function createPlatformApp() {
         const patientId = getQueryString(req.query.patient);
         const patients = await canonicalStore.getAllPatients();
         const targetPatients = patientId ? patients.filter(p => p.internalId === patientId) : patients;
-        const consents = targetPatients.map(p => engine.consentManager.getConsent(p.internalId));
+        const consents = await Promise.all(targetPatients.map(p => engine.consentManager.getConsent(p.internalId)));
         res.json({
             resourceType: 'Bundle',
             type: 'searchset',
@@ -422,98 +466,135 @@ export function createPlatformApp() {
     });
     // Medications and Immunizations APIs
     app.get('/api/medications', async (req, res) => {
+        const user = await extractAuthUser(req);
         const list = await canonicalStore.getAllMedicationRequests();
+        if (user && user.role?.role_code === 'PATIENT') {
+            const targetId = await resolvePatientInternalId(user, canonicalStore);
+            if (targetId) {
+                return res.json(list.filter(m => m.patientId === targetId));
+            }
+            return res.json([]);
+        }
         res.json(list);
     });
     app.get('/api/immunizations', async (req, res) => {
+        const user = await extractAuthUser(req);
         const list = await canonicalStore.getAllImmunizations();
+        if (user && user.role?.role_code === 'PATIENT') {
+            const targetId = await resolvePatientInternalId(user, canonicalStore);
+            if (targetId) {
+                return res.json(list.filter(v => v.patientId === targetId));
+            }
+            return res.json([]);
+        }
         res.json(list);
-        // Dynamic Hospital Registry & Onboarding
-        app.get('/api/hospitals', (req, res) => {
-            const hospitals = engine.dynamicRegistry.getAllHospitals();
+    });
+    // Dynamic Hospital Registry & Onboarding
+    app.get('/api/hospitals', async (req, res) => {
+        try {
+            const { PrismaClient } = await import('@prisma/client');
+            const prisma = new PrismaClient();
+            const orgs = await prisma.organization.findMany({
+                where: { organization_type: 'HOSPITAL' }
+            });
+            // Map it to what the frontend expects
+            const hospitals = orgs.map(o => ({
+                hospitalId: o.id,
+                hospitalName: o.organization_name,
+                hospitalNameAr: o.organization_name_ar || o.organization_name,
+                region: o.region || 'غير محدد',
+                status: o.status
+            }));
             res.json(hospitals);
-        });
-        app.post('/api/hospitals/onboard', (req, res) => {
-            try {
-                const def = req.body;
-                if (!def.hospitalId || !def.hospitalName || !def.hospitalNameAr) {
-                    return res.status(400).json({ error: 'Hospital ID and names are required.' });
-                }
-                engine.onboardHospital({
-                    ...def,
-                    createdAt: new Date().toISOString()
-                });
-                res.json({ success: true, message: `Hospital [${def.hospitalNameAr}] onboarded successfully.`, hospital: def });
+        }
+        catch (err) {
+            console.error(err);
+            res.json([]); // fallback
+        }
+    });
+    app.post('/api/hospitals/onboard', (req, res) => {
+        try {
+            const def = req.body;
+            if (!def.hospitalId || !def.hospitalName || !def.hospitalNameAr) {
+                return res.status(400).json({ error: 'Hospital ID and names are required.' });
             }
-            catch (err) {
-                res.status(500).json({ success: false, error: err.message });
+            engine.onboardHospital({
+                ...def,
+                createdAt: new Date().toISOString()
+            });
+            res.json({ success: true, message: `Hospital [${def.hospitalNameAr}] onboarded successfully.`, hospital: def });
+        }
+        catch (err) {
+            res.status(500).json({ success: false, error: err.message });
+        }
+    });
+    app.post('/api/hospitals/:id/ingest', async (req, res) => {
+        try {
+            const { entityType, sourceRecordId, payload } = req.body;
+            const result = await engine.ingestDynamicPayload(req.params.id, entityType, sourceRecordId, payload);
+            res.json({ success: true, result });
+        }
+        catch (err) {
+            res.status(500).json({ success: false, error: err.message });
+        }
+    });
+    // Direct Clinical File Ingestion (HL7 v2, FHIR Bundle, CSV)
+    app.post('/api/ingest/file', async (req, res) => {
+        try {
+            const { fileName, fileContent, sourceSystemId } = req.body;
+            if (!fileName || !fileContent) {
+                return res.status(400).json({ error: 'Both fileName and fileContent are required.' });
             }
-        });
-        app.post('/api/hospitals/:id/ingest', async (req, res) => {
-            try {
-                const { entityType, sourceRecordId, payload } = req.body;
-                const result = await engine.ingestDynamicPayload(req.params.id, entityType, sourceRecordId, payload);
-                res.json({ success: true, result });
-            }
-            catch (err) {
-                res.status(500).json({ success: false, error: err.message });
-            }
-        });
-        // Direct Clinical File Ingestion (HL7 v2, FHIR Bundle, CSV)
-        app.post('/api/ingest/file', async (req, res) => {
-            try {
-                const { fileName, fileContent, sourceSystemId } = req.body;
-                if (!fileName || !fileContent) {
-                    return res.status(400).json({ error: 'Both fileName and fileContent are required.' });
-                }
-                const result = await engine.ingestUploadedFile(fileName, fileContent, sourceSystemId || 'file-dropzone-uploader');
-                res.json({ success: true, result });
-            }
-            catch (err) {
-            }
-        });
-        // Clinical Decision Support (CDS Hooks)
-        app.get('/api/cds/patient/:id/safety-alerts', async (req, res) => {
-            try {
-                const result = await engine.cdsEngine.evaluateMedicationSafety(req.params.id);
-                res.json(result);
-            }
-            catch (err) {
-                res.status(500).json({ success: false, error: err.message });
-            }
-        });
-        app.post('/api/cds/evaluate-draft-prescription', async (req, res) => {
-            try {
-                const draft = req.body;
-                const result = await engine.cdsEngine.evaluateDraftPrescription(draft);
-                res.json(result);
-            }
-            catch (err) {
-                res.status(500).json({ success: false, error: err.message });
-            }
-        });
-        // Patient Privacy & Emergency Break-the-Glass
-        const consent = engine.consentManager.getConsent(req.params.patientId);
+            const result = await engine.ingestUploadedFile(fileName, fileContent, sourceSystemId || 'file-dropzone-uploader');
+            res.json({ success: true, result });
+        }
+        catch (err) {
+            res.status(500).json({ success: false, error: err.message });
+        }
+    });
+    // Clinical Decision Support (CDS Hooks)
+    app.get('/api/cds/patient/:id/safety-alerts', async (req, res) => {
+        try {
+            const result = await engine.cdsEngine.evaluateMedicationSafety(req.params.id);
+            res.json(result);
+        }
+        catch (err) {
+            res.status(500).json({ success: false, error: err.message });
+        }
+    });
+    app.post('/api/cds/evaluate-draft-prescription', async (req, res) => {
+        try {
+            const draft = req.body;
+            const result = await engine.cdsEngine.evaluateDraftPrescription(draft);
+            res.json(result);
+        }
+        catch (err) {
+            res.status(500).json({ success: false, error: err.message });
+        }
+    });
+    // Patient Privacy & Emergency Break-the-Glass
+    app.get('/api/security/consent/:patientId', async (req, res) => {
+        const consent = await engine.consentManager.getConsent(req.params.patientId);
         res.json(consent);
     });
-    app.post('/api/security/break-glass', (req, res) => {
+    app.post('/api/security/break-glass', async (req, res) => {
         const { patientId, practitionerId, requestingOrgId, emergencyReason } = req.body;
         if (!patientId || !practitionerId || !emergencyReason) {
             return res.status(400).json({ error: 'Patient ID, Practitioner ID, and Emergency Reason are mandatory.' });
         }
-        const event = engine.consentManager.executeBreakTheGlass(patientId, practitionerId, requestingOrgId || 'HOSP-EMERGENCY', emergencyReason);
-        engine.auditChain.recordEvent('BREAK_GLASS', practitionerId, 'Patient', patientId, `Break-the-Glass activated: ${emergencyReason}`);
+        const event = await engine.consentManager.executeBreakTheGlass(patientId, practitionerId, requestingOrgId || 'HOSP-EMERGENCY', emergencyReason);
+        await engine.auditChain.recordEvent('BREAK_GLASS', practitionerId, 'Patient', patientId, `Break-the-Glass activated: ${emergencyReason}`);
         res.json({ success: true, event });
     });
-    app.get('/api/security/break-glass/audit', (req, res) => {
-        res.json(engine.consentManager.getAllBreakGlassEvents());
+    app.get('/api/security/break-glass/logs', async (req, res) => {
+        res.json(await engine.consentManager.getAllBreakGlassEvents());
     });
     // Cryptographic Audit Chain (NCA Compliance)
-    app.get('/api/security/audit-chain', (_req, res) => {
-        res.json(engine.auditChain.getRecentEvents(50));
+    app.get('/api/security/audit-chain', async (req, res) => {
+        res.json(await engine.auditChain.getRecentEvents(50));
     });
-    app.get('/api/security/audit-chain/verify', (req, res) => {
-        const result = engine.auditChain.verifyChainIntegrity();
+    app.get('/api/security/audit-chain/verify', async (req, res) => {
+        const result = await engine.auditChain.verifyChainIntegrity();
         res.json(result);
     });
     // Population Health & National Clinical Analytics
@@ -549,7 +630,7 @@ export function createPlatformApp() {
         try {
             const result = await engine.weqaaSurveillance.dispatchCaseNotification(req.params.caseId);
             // Audit in NCA chain
-            engine.auditChain.recordEvent('PUBLIC_HEALTH_NOTIFICATION', 'WEQAA_SURVEILLANCE_ROBOT', 'WeqaaReportableCase', result.caseId, `Dispatched communicable disease notification [${result.diseaseName}] to Weqaa. Tracking: ${result.weqaaTrackingNumber}`);
+            await engine.auditChain.recordEvent('PUBLIC_HEALTH_NOTIFICATION', 'WEQAA_SURVEILLANCE_ROBOT', 'WeqaaReportableCase', result.caseId, `Dispatched communicable disease notification [${result.diseaseName}] to Weqaa. Tracking: ${result.weqaaTrackingNumber}`);
             res.json({
                 success: true,
                 message: `Notification for [${result.diseaseNameAr}] dispatched to Weqaa command center successfully.`,
@@ -600,7 +681,7 @@ export function createPlatformApp() {
             // Reassign all longitudinal clinical and financial records to survivor
             const reassignResult = await canonicalStore.reassignPatientRecords(obsoleteId, survivorId);
             // Audit in NCA chain
-            engine.auditChain.recordEvent('PATIENT_MERGE', adminUser || 'MPI_STEWARD', 'InternalPatientIdentity', survivorId, `Merged patient [${obsoleteId}] into survivor [${survivorId}]. Reassigned records: ${JSON.stringify(reassignResult)}`);
+            await engine.auditChain.recordEvent('PATIENT_MERGE', adminUser || 'MPI_STEWARD', 'InternalPatientIdentity', survivorId, `Merged patient [${obsoleteId}] into survivor [${survivorId}]. Reassigned records: ${JSON.stringify(reassignResult)}`);
             res.json({
                 success: true,
                 message: `Successfully merged patient [${obsoleteId}] into [${survivorId}].`,
@@ -648,13 +729,39 @@ export function createPlatformApp() {
         res.json(records);
     });
     // Canonical Patients List (for global patient context bar)
-    app.get('/api/patients', async (_req, res) => {
+    app.get('/api/patients', async (req, res) => {
+        const user = await extractAuthUser(req);
+        if (user && user.role?.role_code === 'PATIENT') {
+            const targetId = await resolvePatientInternalId(user, canonicalStore);
+            if (targetId) {
+                const p = await canonicalStore.getPatient(targetId) || await canonicalStore.findPatientByIdentifier(targetId);
+                if (p)
+                    return res.json([p]);
+            }
+            return res.json([]);
+        }
         const patients = await canonicalStore.getAllPatients();
         res.json(patients);
     });
     // Canonical Longitudinal Record
     app.get('/api/patients/:id/longitudinal', async (req, res) => {
-        const record = await canonicalStore.getLongitudinalRecord(req.params.id);
+        const user = await extractAuthUser(req);
+        const requestedId = req.params.id;
+        if (user && user.role?.role_code === 'PATIENT') {
+            const targetId = await resolvePatientInternalId(user, canonicalStore);
+            let allowed = false;
+            if (targetId) {
+                const targetPatient = await canonicalStore.getPatient(targetId);
+                if (targetId === requestedId ||
+                    (targetPatient && (targetPatient.internalId === requestedId || targetPatient.identifiers?.some(i => i.value === requestedId)))) {
+                    allowed = true;
+                }
+            }
+            if (!allowed) {
+                return res.status(403).json({ error: 'Access denied: You can only view your own longitudinal health record.' });
+            }
+        }
+        const record = await canonicalStore.getLongitudinalRecord(requestedId);
         if (!record)
             return res.status(404).json({ error: 'Patient not found' });
         res.json(record);
@@ -685,6 +792,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const { app, canonicalStore, engine } = createPlatformApp();
     const PORT = Number(process.env.PORT || 3000);
     const MLLP_PORT = Number(process.env.HL7_MLLP_PORT || 2575);
+    await engine.boot();
     app.listen(PORT, async () => {
         console.log(`\n========================================================================`);
         console.log(`🇸🇦 Saudi National Health Interoperability Platform`);

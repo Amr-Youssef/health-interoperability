@@ -125,8 +125,8 @@ async function runDemo() {
         console.log(`      • Resource Types: ${bundle.entry.map((e) => e.resource.resourceType).join(', ')}`);
     }
     console.log('\n⛓️ STEP 13: NCA Cryptographic Audit Hash Chain & Tamper-Proof Verification (Phase 5)...');
-    const auditStatus = engine.auditChain.verifyChainIntegrity();
-    const recentAudit = engine.auditChain.getRecentEvents(3);
+    const auditStatus = await engine.auditChain.verifyChainIntegrity();
+    const recentAudit = await engine.auditChain.getRecentEvents(3);
     console.log(`   🛡️ Hash Chain Status: ${auditStatus.isValid ? '✅ VALID (100% Tamper-Proof)' : '❌ BROKEN'} (${auditStatus.totalBlocks} blocks linked)`);
     console.log(`   🔗 Latest Audit Block [${recentAudit[0]?.action}] by [${recentAudit[0]?.actor}]:`);
     console.log(`      ➔ Current Hash: ${recentAudit[0]?.currentHash.substring(0, 32)}...`);

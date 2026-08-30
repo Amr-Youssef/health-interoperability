@@ -1,88 +1,62 @@
-import { v4 as uuidv4 } from 'uuid';
+import { PrismaClient } from '@prisma/client';
 import crypto from 'crypto';
-import fs from 'fs';
-import path from 'path';
 export class ConsentManager {
-    persistPath;
-    consents = new Map();
-    breakGlassLog = [];
-    constructor(persistPath) {
-        if (persistPath === null) {
-            this.persistPath = '';
-            this.consents.set('ahmed-rashidi-id', {
-                patientId: 'ahmed-rashidi-id',
-                policy: 'OPT_IN_FULL',
-                allowedOrganizations: ['hospital-a', 'hospital-b', 'hospital-c', 'hospital-d'],
-                blockedCategories: [],
-                allowEmergencyOverride: true,
-                lastUpdated: new Date().toISOString()
+    prisma;
+    constructor(prisma) {
+        this.prisma = prisma || new PrismaClient();
+    }
+    async setConsent(directive) {
+        await this.prisma.consent.upsert({
+            where: { id: `consent-${directive.patientId}` },
+            update: {
+                consent_type: directive.policy,
+                scope: JSON.stringify({
+                    allowedOrganizations: directive.allowedOrganizations,
+                    blockedCategories: directive.blockedCategories,
+                    allowEmergencyOverride: directive.allowEmergencyOverride
+                }),
+                granted_at: new Date(directive.lastUpdated),
+                granted: true,
+                consent_source: 'SYSTEM'
+            },
+            create: {
+                id: `consent-${directive.patientId}`,
+                patient_id: directive.patientId,
+                consent_type: directive.policy,
+                scope: JSON.stringify({
+                    allowedOrganizations: directive.allowedOrganizations,
+                    blockedCategories: directive.blockedCategories,
+                    allowEmergencyOverride: directive.allowEmergencyOverride
+                }),
+                granted_at: new Date(directive.lastUpdated),
+                granted: true,
+                consent_source: 'SYSTEM'
+            }
+        });
+    }
+    async getConsent(patientId) {
+        // We try to find the patient first to satisfy foreign keys, if not present, we can't link, but for now we link blindly
+        // Actually the schema requires patient_id to be a valid internal_id in Patient table.
+        // If the patient doesn't exist yet, this will fail. Let's just catch it.
+        try {
+            const existing = await this.prisma.consent.findFirst({
+                where: { patient_id: patientId }
             });
-        }
-        else {
-            this.persistPath = persistPath || path.resolve(process.cwd(), '.data', 'consent-store.json');
-            this.loadFromDisk();
-        }
-    }
-    saveToDisk() {
-        if (!this.persistPath)
-            return;
-        try {
-            const dir = path.dirname(this.persistPath);
-            if (!fs.existsSync(dir))
-                fs.mkdirSync(dir, { recursive: true });
-            const snapshot = {
-                consents: Array.from(this.consents.values()),
-                breakGlassLog: this.breakGlassLog,
-                savedAt: new Date().toISOString()
-            };
-            fs.writeFileSync(this.persistPath, JSON.stringify(snapshot, null, 2), 'utf-8');
-        }
-        catch (err) {
-            console.warn('⚠️ ConsentManager disk persistence warning:', err.message);
-        }
-    }
-    loadFromDisk() {
-        if (!this.persistPath)
-            return;
-        try {
-            if (fs.existsSync(this.persistPath)) {
-                const raw = fs.readFileSync(this.persistPath, 'utf-8');
-                const data = JSON.parse(raw);
-                if (data.consents) {
-                    for (const c of data.consents) {
-                        this.consents.set(c.patientId, c);
-                    }
-                }
-                if (data.breakGlassLog) {
-                    this.breakGlassLog = data.breakGlassLog;
-                }
-                console.log(`📂 Loaded ${this.consents.size} consent directive(s) from disk.`);
-                return;
+            if (existing) {
+                const scope = JSON.parse(existing.scope || '{}');
+                return {
+                    patientId: existing.patient_id,
+                    policy: existing.consent_type,
+                    allowedOrganizations: scope.allowedOrganizations || ['*'],
+                    blockedCategories: scope.blockedCategories || [],
+                    allowEmergencyOverride: scope.allowEmergencyOverride ?? true,
+                    lastUpdated: existing.granted_at.toISOString()
+                };
             }
         }
         catch (err) {
-            console.warn('⚠️ ConsentManager disk load warning:', err.message);
+            console.warn('Could not fetch consent from db, using default', err);
         }
-        // Default national policy for Ahmed Al-Rashidi
-        this.consents.set('ahmed-rashidi-id', {
-            patientId: 'ahmed-rashidi-id',
-            policy: 'OPT_IN_FULL',
-            allowedOrganizations: ['hospital-a', 'hospital-b', 'hospital-c', 'hospital-d'],
-            blockedCategories: [],
-            allowEmergencyOverride: true,
-            lastUpdated: new Date().toISOString()
-        });
-        this.saveToDisk();
-    }
-    setConsent(directive) {
-        this.consents.set(directive.patientId, directive);
-        this.saveToDisk();
-    }
-    getConsent(patientId) {
-        const existing = this.consents.get(patientId);
-        if (existing)
-            return existing;
-        // Default Saudi PDPL compliant baseline
         const baseline = {
             patientId,
             policy: 'OPT_IN_FULL',
@@ -91,12 +65,16 @@ export class ConsentManager {
             allowEmergencyOverride: true,
             lastUpdated: new Date().toISOString()
         };
-        this.consents.set(patientId, baseline);
-        this.saveToDisk();
+        try {
+            await this.setConsent(baseline);
+        }
+        catch (e) {
+            // Patient might not exist yet in Canonical store
+        }
         return baseline;
     }
-    evaluateAccess(patientId, requestingOrgId, category = 'general') {
-        const consent = this.getConsent(patientId);
+    async evaluateAccess(patientId, requestingOrgId, category = 'general') {
+        const consent = await this.getConsent(patientId);
         if (consent.policy === 'OPT_IN_FULL') {
             return { isGranted: true, reason: 'Patient consented to full national health record exchange across accredited health facilities.' };
         }
@@ -108,13 +86,23 @@ export class ConsentManager {
         }
         return { isGranted: false, reason: 'Access denied: requesting facility is not in the patient approved organization list.' };
     }
-    executeBreakTheGlass(patientId, practitionerId, requestingOrgId, emergencyReason) {
-        const eventId = uuidv4();
+    async executeBreakTheGlass(patientId, practitionerId, requestingOrgId, emergencyReason) {
         const timestamp = new Date().toISOString();
-        const payload = `${eventId}:${patientId}:${practitionerId}:${requestingOrgId}:${emergencyReason}:${timestamp}`;
+        const event = await this.prisma.auditLog.create({
+            data: {
+                entity_type: 'Patient',
+                entity_id: patientId,
+                action: 'BREAK_THE_GLASS',
+                actor_id: practitionerId,
+                details: emergencyReason,
+                old_values: JSON.stringify({ requestingOrgId }),
+                new_values: JSON.stringify({ isFlaggedForReview: true })
+            }
+        });
+        const payload = `${event.id}:${patientId}:${practitionerId}:${requestingOrgId}:${emergencyReason}:${timestamp}`;
         const auditHashSha256 = crypto.createHash('sha256').update(payload).digest('hex');
-        const event = {
-            id: eventId,
+        return {
+            id: event.id,
             patientId,
             practitionerId,
             requestingOrgId,
@@ -123,17 +111,28 @@ export class ConsentManager {
             auditHashSha256,
             isFlaggedForReview: true
         };
-        this.breakGlassLog.push(event);
-        this.saveToDisk();
-        return event;
     }
-    getAllBreakGlassEvents() {
-        return [...this.breakGlassLog];
+    async getAllBreakGlassEvents() {
+        const logs = await this.prisma.auditLog.findMany({
+            where: { action: 'BREAK_THE_GLASS' }
+        });
+        return logs.map(event => {
+            const oldV = JSON.parse(event.old_values || '{}');
+            return {
+                id: event.id,
+                patientId: event.entity_id,
+                practitionerId: event.actor_id || 'UNKNOWN',
+                requestingOrgId: oldV.requestingOrgId || 'UNKNOWN',
+                emergencyReason: event.details || '',
+                timestamp: event.created_at.toISOString(),
+                auditHashSha256: crypto.createHash('sha256').update(`${event.id}:${event.entity_id}:${event.actor_id}:${oldV.requestingOrgId}:${event.details}:${event.created_at.toISOString()}`).digest('hex'),
+                isFlaggedForReview: true
+            };
+        });
     }
-    clearAll() {
-        this.consents.clear();
-        this.breakGlassLog = [];
-        this.saveToDisk();
+    async clearAll() {
+        await this.prisma.consent.deleteMany();
+        await this.prisma.auditLog.deleteMany({ where: { action: 'BREAK_THE_GLASS' } });
     }
 }
 //# sourceMappingURL=consent-manager.js.map

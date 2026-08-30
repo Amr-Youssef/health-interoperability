@@ -71,7 +71,7 @@ async function runBenchmark() {
     // 4. NCA Cryptographic Audit Hash Chain Integrity Verification
     console.log(`⛓️ BENCHMARK TEST 4: Cryptographic Audit Hash Chain Verification`);
     const startAudit = performance.now();
-    const auditResult = engine.auditChain.verifyChainIntegrity();
+    const auditResult = await engine.auditChain.verifyChainIntegrity();
     const endAudit = performance.now();
     console.log(`   • Total Blocks in Chain: ${auditResult.totalBlocks}`);
     console.log(`   • Cryptographic Hash Integrity: ${auditResult.isValid ? '✅ VALID (100% TAMPER-PROOF)' : '❌ BROKEN'}`);

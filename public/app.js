@@ -14,7 +14,7 @@ let cachedPatientCanonical = null; // Full canonical patient data for active pat
 const appAuth = {
   currentRole: localStorage.getItem('shiep_role') || null,
   token: localStorage.getItem('shiep_token') || null,
-  user: null,
+  user: JSON.parse(localStorage.getItem('shiep_user') || 'null'),
 
   init() {
     this.updateUI();
@@ -90,7 +90,11 @@ const appAuth = {
       this.user = data.user;
       localStorage.setItem('shiep_role', this.currentRole);
       localStorage.setItem('shiep_token', this.token);
+      localStorage.setItem('shiep_user', JSON.stringify(this.user));
       this.updateUI();
+      fetchAndCachePatients().then(() => {
+        handleTabSwitch(currentTab);
+      });
     } catch (err) {
       const msg = 'انقطع الاتصال بالخادم';
       if (errorText) errorText.textContent = msg;
@@ -126,7 +130,11 @@ const appAuth = {
       this.user = data.user;
       localStorage.setItem('shiep_role', this.currentRole);
       localStorage.setItem('shiep_token', this.token);
+      localStorage.setItem('shiep_user', JSON.stringify(this.user));
       this.updateUI();
+      fetchAndCachePatients().then(() => {
+        handleTabSwitch(currentTab);
+      });
     } catch (err) {
       const msg = 'انقطع الاتصال بالخادم';
       if (errorText) errorText.textContent = msg;
@@ -139,8 +147,11 @@ const appAuth = {
     this.currentRole = null;
     this.token = null;
     this.user = null;
+    cachedPatients = [];
+    currentPatientId = '';
     localStorage.removeItem('shiep_role');
     localStorage.removeItem('shiep_token');
+    localStorage.removeItem('shiep_user');
     this.updateUI();
   },
 
@@ -162,24 +173,50 @@ const appAuth = {
     
     let defaultTab = 'monitoring';
 
+    // Show/hide run pipeline button (Only for central authorities)
+    const btnRun = document.getElementById('btn-run-pipeline');
+    if (btnRun) {
+      btnRun.style.display = (this.currentRole === 'MOH_ADMIN' || this.currentRole === 'SYS_ADMIN') ? 'inline-flex' : 'none';
+    }
+
     if (this.currentRole === 'MOH_ADMIN' || this.currentRole === 'SYS_ADMIN') {
       ['monitoring', 'onboarding', 'cds', 'nphies', 'medications', 'mpi', 'longitudinal', 'mapping', 'provenance', 'security', 'bulkexport', 'fhir'].forEach(id => {
         const t = document.getElementById(`tab-btn-${id}`);
         if(t) t.style.display = 'flex';
       });
       defaultTab = 'monitoring';
+
+      // Restore dropdowns for Admins
+      const globalSelect = document.getElementById('global-patient-selector');
+      if (globalSelect) globalSelect.style.display = 'block';
+      const patCard = document.querySelector('.patient-selector-card');
+      if (patCard) patCard.style.display = 'block';
+
     } else if (this.currentRole === 'HOSPITAL_ADMIN') {
       ['onboarding', 'bulkexport', 'fhir'].forEach(id => {
         const t = document.getElementById(`tab-btn-${id}`);
         if(t) t.style.display = 'flex';
       });
       defaultTab = 'onboarding';
+
+      const globalSelect = document.getElementById('global-patient-selector');
+      if (globalSelect) globalSelect.style.display = 'block';
+      const patCard = document.querySelector('.patient-selector-card');
+      if (patCard) patCard.style.display = 'block';
+
     } else if (this.currentRole === 'PATIENT') {
       ['longitudinal', 'medications'].forEach(id => {
         const t = document.getElementById(`tab-btn-${id}`);
         if(t) t.style.display = 'flex';
       });
       defaultTab = 'longitudinal';
+
+      // STRICT PATIENT SECURITY: Hide all cross-patient selectors
+      const globalSelect = document.getElementById('global-patient-selector');
+      if (globalSelect) globalSelect.style.display = 'none';
+
+      const patCard = document.querySelector('.patient-selector-card');
+      if (patCard) patCard.style.display = 'none';
     }
 
     // click the default tab
@@ -188,6 +225,28 @@ const appAuth = {
   }
 };
 
+// === FETCH INTERCEPTOR FOR JWT AUTHENTICATION ===
+const originalFetch = window.fetch;
+window.fetch = function(url, options = {}) {
+  options = options || {};
+  if (appAuth.token && typeof url === 'string' && (url.startsWith('/api') || url.startsWith('/fhir'))) {
+    if (!options.headers) {
+      options.headers = {};
+    }
+    if (options.headers instanceof Headers) {
+      if (!options.headers.has('Authorization')) {
+        options.headers.set('Authorization', `Bearer ${appAuth.token}`);
+      }
+    } else if (Array.isArray(options.headers)) {
+      options.headers.push(['Authorization', `Bearer ${appAuth.token}`]);
+    } else {
+      if (!options.headers['Authorization']) {
+        options.headers['Authorization'] = `Bearer ${appAuth.token}`;
+      }
+    }
+  }
+  return originalFetch(url, options);
+};
 
 // === GLOBAL PATIENT CONTEXT ===
 function getPatientDisplayName(p) {
@@ -203,15 +262,38 @@ function updateGlobalPatientBar() {
   const metaEl = document.getElementById('active-patient-meta');
   const globalSelect = document.getElementById('global-patient-selector');
 
-  if (cachedPatients.length === 0) {
+  if (!appAuth.currentRole) {
     if (bar) bar.style.display = 'none';
     return;
   }
 
   if (bar) bar.style.display = 'flex';
 
-  // Populate global selector
+  // For Patient Role: Display ONLY logged-in patient details and completely hide selector dropdown
+  if (appAuth.currentRole === 'PATIENT') {
+    if (globalSelect) globalSelect.style.display = 'none';
+    const activePatient = cachedPatients[0] || {
+      nameAr: appAuth.user?.fullName,
+      name: appAuth.user?.fullName,
+      nid: appAuth.user?.username
+    };
+    if (nameEl) {
+      nameEl.textContent = activePatient.nameAr || activePatient.name || appAuth.user?.fullName || 'ملفي الصحي الشخصي';
+    }
+    if (metaEl) {
+      metaEl.textContent = `| الهوية: ${activePatient.nid || appAuth.user?.username || '—'} | حساب فردي مصرح • خصوصية تامة`;
+    }
+    return;
+  }
+
+  if (cachedPatients.length === 0) {
+    if (bar) bar.style.display = 'none';
+    return;
+  }
+
+  // Populate global selector for Admin/Hospital
   if (globalSelect) {
+    globalSelect.style.display = 'block';
     globalSelect.innerHTML = cachedPatients.map(p =>
       `<option value="${p.id}">${p.nameAr || p.name} (${p.nid || p.id.substring(0,8)})</option>`
     ).join('');
@@ -228,7 +310,7 @@ function updateGlobalPatientBar() {
 }
 
 async function switchActivePatient(patientId) {
-  if (!patientId) return;
+  if (!patientId || appAuth.currentRole === 'PATIENT') return;
   currentPatientId = patientId;
   updateGlobalPatientBar();
 
@@ -249,6 +331,23 @@ async function fetchAndCachePatients() {
       canonicalPatients = await canRes.json();
     } catch(e) { /* fallback to FHIR */ }
 
+    if (appAuth.currentRole === 'PATIENT') {
+      cachedPatients = canonicalPatients.map(cp => ({
+        id: cp.internalId,
+        name: `${cp.givenName || ''} ${cp.familyName || ''}`.trim() || cp.internalId,
+        nameAr: `${cp.givenNameAr || ''} ${cp.familyNameAr || ''}`.trim() || `${cp.givenName || ''} ${cp.familyName || ''}`.trim(),
+        nid: cp.identifiers?.find(i => i.type === 'NID' || i.type === 'IQAMA')?.value || '',
+        birthDate: cp.birthDate ? String(cp.birthDate).substring(0, 10) : '',
+        gender: cp.gender || ''
+      }));
+
+      if (cachedPatients.length > 0) {
+        currentPatientId = cachedPatients[0].id;
+      }
+      updateGlobalPatientBar();
+      return;
+    }
+
     const res = await fetch('/fhir/Patient');
     const bundle = await res.json();
     const patients = bundle.entry?.map(e => e.resource) || [];
@@ -258,17 +357,15 @@ async function fetchAndCachePatients() {
       const nid = p.identifier?.find(i => i.system?.includes('nid'))?.value || '';
       // Try to find canonical patient for Arabic name
       const canonical = canonicalPatients.find(cp =>
-        cp.internalId === p.id ||
-        cp.identifiers?.some(id => id.value === nid)
+        cp.identifiers?.some(i => i.value === nid) || cp.internalId === p.id
       );
-      const arName = canonical
-        ? `${canonical.givenNameAr || ''} ${canonical.familyNameAr || ''}`.trim()
-        : (nameObj.text || '');
+      const nameAr = canonical ? `${canonical.givenNameAr || ''} ${canonical.familyNameAr || ''}`.trim() : '';
+
       return {
         id: p.id,
-        name: `${nameObj.given?.join(' ') || ''} ${nameObj.family || ''}`.trim(),
-        nameAr: arName,
-        nid,
+        name: `${nameObj.given?.join(' ') || ''} ${nameObj.family || ''}`.trim() || p.id,
+        nameAr: nameAr || `${nameObj.given?.join(' ') || ''} ${nameObj.family || ''}`.trim(),
+        nid: nid,
         birthDate: p.birthDate || '',
         gender: p.gender || ''
       };
@@ -277,9 +374,10 @@ async function fetchAndCachePatients() {
     if (!currentPatientId && cachedPatients.length > 0) {
       currentPatientId = cachedPatients[0].id;
     }
+
     updateGlobalPatientBar();
   } catch (err) {
-    console.error('Failed to fetch patients:', err);
+    console.error('Failed to fetch and cache patients', err);
   }
 }
 
@@ -1489,7 +1587,11 @@ async function loadNphiesTab() {
 async function loadMedicationsTab() {
   try {
     const resMeds = await fetch('/api/medications');
-    const meds = await resMeds.json();
+    let meds = await resMeds.json();
+    if (!Array.isArray(meds)) meds = [];
+    if (appAuth.currentRole === 'PATIENT' && currentPatientId) {
+      meds = meds.filter(m => m.patientId === currentPatientId);
+    }
     const medTbody = document.getElementById('medications-tbody');
 
     if (medTbody && meds) {
@@ -1510,11 +1612,15 @@ async function loadMedicationsTab() {
           <td><strong>${m.dispenseRequest?.quantity?.value || 60} ${m.dispenseRequest?.quantity?.unit || 'TAB'}</strong> (${m.dispenseRequest?.numberOfRepeatsAllowed || 2} مرات تكرار)</td>
           <td><code>${new Date(m.authoredOn).toLocaleDateString('ar-SA')}</code></td>
         </tr>`;
-      }).join('') || '<tr><td colspan="8" class="text-center py-4">لا توجد وصفات طبية</td></tr>';
+      }).join('') || '<tr><td colspan="8" class="text-center py-4">لا توجد وصفات طبية خاصة بك مسجلة حالياً</td></tr>';
     }
 
     const resVax = await fetch('/api/immunizations');
-    const vaxList = await resVax.json();
+    let vaxList = await resVax.json();
+    if (!Array.isArray(vaxList)) vaxList = [];
+    if (appAuth.currentRole === 'PATIENT' && currentPatientId) {
+      vaxList = vaxList.filter(v => v.patientId === currentPatientId);
+    }
     const vaxTbody = document.getElementById('immunizations-tbody');
 
     if (vaxTbody && vaxList) {
@@ -1536,7 +1642,7 @@ async function loadMedicationsTab() {
           <td><code>${new Date(v.occurrenceDateTime).toLocaleDateString('ar-SA')}</code></td>
           <td>${v.site || 'العضلة الدالية اليسرى'}</td>
         </tr>`;
-      }).join('') || '<tr><td colspan="9" class="text-center py-4">لا توجد تطعيمات</td></tr>';
+      }).join('') || '<tr><td colspan="9" class="text-center py-4">لا توجد تطعيمات خاصة بك مسجلة حالياً</td></tr>';
     }
   } catch (err) {
     console.error('Failed to load medications and immunizations', err);
@@ -1665,6 +1771,23 @@ async function unmergeMpiIdentity(survivorId, obsoleteId) {
 // 7. LONGITUDINAL RECORD
 async function loadPatientsDropdown() {
   const select = document.getElementById('select-longitudinal-patient');
+  const patCard = document.querySelector('.patient-selector-card');
+
+  if (appAuth.currentRole === 'PATIENT') {
+    if (patCard) patCard.style.display = 'none';
+    if (cachedPatients.length === 0) {
+      await fetchAndCachePatients();
+    }
+    if (cachedPatients.length > 0) {
+      currentPatientId = cachedPatients[0].id;
+    }
+    if (currentPatientId) {
+      loadLongitudinalRecord(currentPatientId);
+    }
+    return;
+  }
+
+  if (patCard) patCard.style.display = 'block';
   if (!select) return;
 
   try {

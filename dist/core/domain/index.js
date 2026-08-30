@@ -16,4 +16,5 @@ export * from './medication.js';
 export * from './immunization.js';
 export * from './allergy-intolerance.js';
 export * from './diagnostic-report.js';
+export * from './patient-reported-health.js';
 //# sourceMappingURL=index.js.map

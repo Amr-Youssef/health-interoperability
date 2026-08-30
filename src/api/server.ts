@@ -2,6 +2,8 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import jwt from 'jsonwebtoken';
+import { PrismaClient } from '@prisma/client';
 
 import { PrismaRawStore } from '../ingestion/raw-store/prisma-raw-store.js';
 import { PrismaCanonicalStore } from '../persistence/prisma-canonical-store.js';
@@ -15,9 +17,45 @@ import { authRoutes } from './routes/auth-routes.js';
 import { hospitalRoutes } from './routes/hospital-routes.js';
 import { mohRoutes } from './routes/moh-routes.js';
 import { patientRoutes } from './routes/patient-routes.js';
+import { patientReportedHealthRoutes } from './routes/patient-reported-health-routes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-national-health-key-2026';
+const prismaInstance = new PrismaClient();
+
+async function extractAuthUser(req: Request) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded: any = jwt.verify(token, JWT_SECRET);
+    const user = await prismaInstance.user.findUnique({
+      where: { id: decoded.userId },
+      include: { role: true }
+    });
+    return user && user.is_active ? user : null;
+  } catch (err) {
+    return null;
+  }
+}
+
+async function resolvePatientInternalId(user: any, canonicalStore: any): Promise<string | null> {
+  if (!user) return null;
+  if (user.patient_profile_id) {
+    const p = await canonicalStore.getPatient(user.patient_profile_id);
+    if (p) return p.internalId;
+  }
+  const byNid = await canonicalStore.findPatientByIdentifier(user.username);
+  if (byNid) return byNid.internalId;
+  if (user.username === 'patient') {
+    const demoAhmed = await canonicalStore.findPatientByIdentifier('1088445566');
+    if (demoAhmed) return demoAhmed.internalId;
+    const all = await canonicalStore.getAllPatients();
+    if (all.length > 0) return all[0].internalId;
+  }
+  return user.patient_profile_id || null;
+}
 
 export function createPlatformApp() {
   const app = express();
@@ -33,10 +71,10 @@ export function createPlatformApp() {
 
   const engine = new NormalizationEngine(
     rawStore,
-    canonicalStore,
-    mpi,
-    terminologyService,
-    provenanceService
+    canonicalStore as any,
+    mpi as any,
+    terminologyService as any,
+    provenanceService as any
   );
 
   const fhirSerializer = new FhirR4Serializer();
@@ -50,6 +88,7 @@ export function createPlatformApp() {
   app.use('/api/hospital', hospitalRoutes);
   app.use('/api/moh', mohRoutes);
   app.use('/api/patient', patientRoutes);
+  app.use('/api/patients', patientReportedHealthRoutes);
 
   // ==========================================
   // 1. SMART ON FHIR OAUTH2 & DISCOVERY
@@ -470,12 +509,28 @@ export function createPlatformApp() {
 
   // Medications and Immunizations APIs
   app.get('/api/medications', async (req: Request, res: Response) => {
+    const user = await extractAuthUser(req);
     const list = await canonicalStore.getAllMedicationRequests();
+    if (user && user.role?.role_code === 'PATIENT') {
+      const targetId = await resolvePatientInternalId(user, canonicalStore);
+      if (targetId) {
+        return res.json(list.filter(m => m.patientId === targetId));
+      }
+      return res.json([]);
+    }
     res.json(list);
   });
 
   app.get('/api/immunizations', async (req: Request, res: Response) => {
+    const user = await extractAuthUser(req);
     const list = await canonicalStore.getAllImmunizations();
+    if (user && user.role?.role_code === 'PATIENT') {
+      const targetId = await resolvePatientInternalId(user, canonicalStore);
+      if (targetId) {
+        return res.json(list.filter(v => v.patientId === targetId));
+      }
+      return res.json([]);
+    }
     res.json(list);
   });
 
@@ -755,14 +810,39 @@ export function createPlatformApp() {
   });
 
   // Canonical Patients List (for global patient context bar)
-  app.get('/api/patients', async (_req: Request, res: Response) => {
+  app.get('/api/patients', async (req: Request, res: Response) => {
+    const user = await extractAuthUser(req);
+    if (user && user.role?.role_code === 'PATIENT') {
+      const targetId = await resolvePatientInternalId(user, canonicalStore);
+      if (targetId) {
+        const p = await canonicalStore.getPatient(targetId) || await canonicalStore.findPatientByIdentifier(targetId);
+        if (p) return res.json([p]);
+      }
+      return res.json([]);
+    }
     const patients = await canonicalStore.getAllPatients();
     res.json(patients);
   });
 
   // Canonical Longitudinal Record
   app.get('/api/patients/:id/longitudinal', async (req: Request, res: Response) => {
-    const record = await canonicalStore.getLongitudinalRecord(req.params.id as string);
+    const user = await extractAuthUser(req);
+    const requestedId = req.params.id as string;
+    if (user && user.role?.role_code === 'PATIENT') {
+      const targetId = await resolvePatientInternalId(user, canonicalStore);
+      let allowed = false;
+      if (targetId) {
+        const targetPatient = await canonicalStore.getPatient(targetId);
+        if (targetId === requestedId || 
+            (targetPatient && (targetPatient.internalId === requestedId || targetPatient.identifiers?.some(i => i.value === requestedId)))) {
+          allowed = true;
+        }
+      }
+      if (!allowed) {
+        return res.status(403).json({ error: 'Access denied: You can only view your own longitudinal health record.' });
+      }
+    }
+    const record = await canonicalStore.getLongitudinalRecord(requestedId);
     if (!record) return res.status(404).json({ error: 'Patient not found' });
     res.json(record);
   });

@@ -8,7 +8,6 @@ import { MasterPatientIndexService } from '../mpi/mpi-service.js';
 import { CanonicalStore } from '../persistence/canonical-store.js';
 import { ProvenanceService } from '../provenance/provenance-service.js';
 import { FhirR4Serializer } from '../fhir/fhir-serializer.js';
-import { NphiesSandboxSimulator } from '../integration/nphies/nphies-sandbox.js';
 import { CdsHooksEngine } from '../cds/cds-engine.js';
 import { ConsentManager } from '../security/consent-manager.js';
 import { PopulationHealthService } from '../analytics/population-health.js';
@@ -67,7 +66,6 @@ export declare class NormalizationEngine {
     readonly canonicalStore: CanonicalStore;
     readonly provenanceService: ProvenanceService;
     readonly fhirSerializer: FhirR4Serializer;
-    readonly nphiesSimulator: NphiesSandboxSimulator;
     readonly dynamicRegistry: DynamicHospitalRegistry;
     readonly cdsEngine: CdsHooksEngine;
     readonly consentManager: ConsentManager;
@@ -81,6 +79,8 @@ export declare class NormalizationEngine {
     private mrnToInternalPatientId;
     private visitToInternalEncounterId;
     constructor(rawStore: RawStore, canonicalStore: CanonicalStore, mpi: MasterPatientIndexService, terminologyService: TerminologyService, provenanceService: ProvenanceService, consentManager?: ConsentManager, auditChain?: CryptographicAuditChain, dynamicRegistry?: DynamicHospitalRegistry);
+    onboardHospital(definition: DynamicHospitalDefinition): Promise<void>;
+    boot(): Promise<void>;
     /**
      * Ingest and normalize a raw HL7 v2 pipe-delimited message
      */
@@ -88,7 +88,7 @@ export declare class NormalizationEngine {
     /**
      * Onboard a new Healthcare Facility / Hospital dynamically
      */
-    onboardHospital(definition: DynamicHospitalDefinition): void;
+    onboardDynamicHospital(definition: DynamicHospitalDefinition): Promise<void>;
     /**
      * Ingest and normalize a custom payload for a dynamic hospital
      */

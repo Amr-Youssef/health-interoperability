@@ -1,3 +1,4 @@
+import { PrismaClient } from '@prisma/client';
 export interface SmartTokenResponse {
     access_token: string;
     token_type: 'Bearer';
@@ -19,20 +20,20 @@ export interface SmartConfiguration {
     code_challenge_methods_supported: string[];
 }
 export declare class SmartOnFhirAuthService {
-    private validTokens;
+    private prisma;
     private baseUrl;
-    constructor(baseUrl?: string);
+    constructor(prisma?: PrismaClient, baseUrl?: string);
     getSmartConfiguration(): SmartConfiguration;
     issueToken(params: {
         clientId: string;
         grantType: string;
         scope?: string;
         patientId?: string;
-    }): SmartTokenResponse;
-    verifyToken(token: string): {
+    }): Promise<SmartTokenResponse>;
+    verifyToken(token: string): Promise<{
         isValid: boolean;
         patientId?: string;
         scope?: string;
         clientId?: string;
-    };
+    }>;
 }

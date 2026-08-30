@@ -102,7 +102,8 @@ router.post('/register', async (req: Request, res: Response) => {
         fullName: user.full_name,
         role: user.role.role_code,
         organization: user.organization?.organization_name,
-        orgId: user.organization_id
+        orgId: user.organization_id,
+        patientProfileId: user.patient_profile_id
       }
     });
 
@@ -148,7 +149,8 @@ router.post('/login', async (req: Request, res: Response) => {
         fullName: user.full_name,
         role: user.role.role_code,
         organization: user.organization?.organization_name,
-        orgId: user.organization_id
+        orgId: user.organization_id,
+        patientProfileId: user.patient_profile_id
       }
     });
   } catch (error) {
@@ -166,7 +168,8 @@ router.get('/me', verifyToken, (req: Request, res: Response) => {
     fullName: user.full_name,
     role: user.role?.role_code || 'UNKNOWN',
     organization: user.organization?.organization_name,
-    orgId: user.organization_id
+    orgId: user.organization_id,
+    patientProfileId: user.patient_profile_id
   });
 });
 

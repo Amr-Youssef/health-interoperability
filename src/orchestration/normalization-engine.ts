@@ -169,6 +169,17 @@ export class NormalizationEngine {
     });
   }
 
+  async onboardHospital(definition: DynamicHospitalDefinition): Promise<void> {
+    await this.dynamicRegistry.registerHospital(definition);
+    const adapter = await this.dynamicRegistry.getAdapter(definition.hospitalId);
+    if (adapter) {
+      this.adapters.set(adapter.sourceSystemId, adapter);
+      for (const config of definition.defaultMappingConfigs) {
+        this.mappingEngine.registerConfiguration(config);
+      }
+    }
+  }
+
   async boot(): Promise<void> {
     // Register Dynamic Adapters from Registry
     const adapters = await this.dynamicRegistry.getAllAdapters();
@@ -1089,6 +1100,7 @@ export class NormalizationEngine {
         ingestedAt: raw.ingestedAt,
         transformedAt: timestamp,
         persistedAt: timestamp,
+        validationScore: validation.score,
         validationDecision: validation.decision,
         activityDescription: `Normalized eClaim`
       });

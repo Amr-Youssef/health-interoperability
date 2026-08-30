@@ -119,6 +119,17 @@ model Patient {
   consents              Consent[]
   allergies             AllergyIntolerance[]
   diagnostic_reports    DiagnosticReport[]
+  
+  // Patient-reported health data
+  patient_profile       PatientProfile?
+  reported_allergies    PatientReportedAllergy[]
+  reported_medications  PatientReportedMedication[]
+  reported_conditions   PatientReportedCondition[]
+  reported_procedures   PatientReportedProcedure[]
+  family_members        FamilyMember[]
+  social_history        PatientReportedSocialHistory?
+  vital_observations    PatientReportedVitalObservation[]
+  uploaded_documents    PatientUploadedDocument[]
 }
 
 // Patient Identifiers (NID, Iqama, MRN)
@@ -588,6 +599,322 @@ model TerminologyMapping {
   equivalence          String
   confidence           Float
   rule_version         String
+}
+
+// -------------------------------------------------------------------
+// PATIENT-REPORTED HEALTH DATA (Patient Self-Service Module)
+// -------------------------------------------------------------------
+
+// PatientProfile: Patient-provided profile information and emergency contact
+model PatientProfile {
+  id                    String    @id @default(uuid())
+  patient_id            String    @unique
+  patient               Patient   @relation(fields: [patient_id], references: [id], onDelete: Cascade)
+  
+  // Preferred names and language
+  preferred_first_name  String?
+  preferred_last_name   String?
+  preferred_language    String?   // ISO 639-1: en, ar
+  
+  // Emergency contact
+  emergency_contact_name String?
+  emergency_contact_phone String?
+  emergency_contact_relationship String?
+  
+  // Patient-provided address (supplementary)
+  address_line          String?
+  address_city          String?
+  address_district      String?
+  address_postal_code   String?
+  
+  // Metadata
+  source                String    @default("PATIENT")
+  verification_status   String    @default("SELF_REPORTED") // SELF_REPORTED, VERIFIED
+  recorded_at           DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+  notes                 String?
+  
+  created_at            DateTime  @default(now())
+}
+
+// PatientReportedAllergy: Patient-entered allergy information
+model PatientReportedAllergy {
+  id                    String    @id @default(uuid())
+  patient_id            String
+  patient               Patient   @relation(fields: [patient_id], references: [id], onDelete: Cascade)
+  
+  // Allergen details
+  allergen_name         String    // Original patient-entered text
+  allergen_code         String?   // Resolved terminology code if available
+  allergen_system       String?   // Terminology system (SNOMED, ICD10, etc)
+  allergen_display      String?   // Resolved display text
+  
+  // Reaction details
+  reaction_text         String?
+  reaction_severity     String?   // MILD, MODERATE, SEVERE
+  
+  // Clinical information
+  onset_date            DateTime? // Approximate date
+  is_medically_diagnosed Boolean?
+  notes                 String?
+  
+  // Metadata
+  source                String    @default("PATIENT")
+  verification_status   String    @default("UNVERIFIED") // UNVERIFIED, VERIFIED, REFUTED
+  recorded_at           DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+  
+  created_at            DateTime  @default(now())
+  
+  @@index([patient_id])
+}
+
+// PatientReportedMedication: Patient-entered medication information
+model PatientReportedMedication {
+  id                    String    @id @default(uuid())
+  patient_id            String
+  patient               Patient   @relation(fields: [patient_id], references: [id], onDelete: Cascade)
+  
+  // Medication details
+  medication_name       String    // Original patient-entered text
+  medication_code       String?   // Resolved terminology code if available
+  medication_system     String?   // Terminology system
+  medication_display    String?   // Resolved display text
+  
+  // Dosage information
+  strength              String?
+  dose                  String?
+  frequency             String?
+  route                 String?
+  
+  // Clinical information
+  reason_for_use        String?
+  start_date            DateTime?
+  end_date              DateTime?
+  currently_taking      Boolean?  @default(true)
+  notes                 String?
+  
+  // Metadata
+  source                String    @default("PATIENT")
+  verification_status   String    @default("UNVERIFIED") // UNVERIFIED, VERIFIED, REFUTED
+  recorded_at           DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+  
+  created_at            DateTime  @default(now())
+  
+  @@index([patient_id])
+}
+
+// PatientReportedCondition: Patient-reported medical conditions/diagnoses
+model PatientReportedCondition {
+  id                    String    @id @default(uuid())
+  patient_id            String
+  patient               Patient   @relation(fields: [patient_id], references: [id], onDelete: Cascade)
+  
+  // Condition details
+  condition_name        String    // Original patient-entered text
+  condition_code        String?   // Resolved terminology code if available
+  condition_system      String?   // Terminology system
+  condition_display     String?   // Resolved display text
+  
+  // Clinical timeline
+  diagnosis_date        DateTime? // Approximate date
+  status                String?   // ACTIVE, RESOLVED, RECURRENT
+  
+  // Additional information
+  treating_facility     String?
+  notes                 String?
+  
+  // Metadata
+  source                String    @default("PATIENT")
+  verification_status   String    @default("UNVERIFIED") // UNVERIFIED, VERIFIED, REFUTED
+  recorded_at           DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+  
+  created_at            DateTime  @default(now())
+  
+  @@index([patient_id])
+}
+
+// PatientReportedProcedure: Patient-reported surgeries and procedures
+model PatientReportedProcedure {
+  id                    String    @id @default(uuid())
+  patient_id            String
+  patient               Patient   @relation(fields: [patient_id], references: [id], onDelete: Cascade)
+  
+  // Procedure details
+  procedure_name        String    // Original patient-entered text
+  procedure_code        String?   // Resolved terminology code if available
+  procedure_system      String?   // Terminology system
+  procedure_display     String?   // Resolved display text
+  
+  // Clinical timeline
+  procedure_date        DateTime? // Approximate date
+  facility_name         String?
+  
+  // Additional information
+  notes                 String?
+  
+  // Metadata
+  source                String    @default("PATIENT")
+  verification_status   String    @default("UNVERIFIED") // UNVERIFIED, VERIFIED, REFUTED
+  recorded_at           DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+  
+  created_at            DateTime  @default(now())
+  
+  @@index([patient_id])
+}
+
+// FamilyMember: Family health history
+model FamilyMember {
+  id                    String    @id @default(uuid())
+  patient_id            String
+  patient               Patient   @relation(fields: [patient_id], references: [id], onDelete: Cascade)
+  
+  // Family relationship
+  relative_name         String?
+  relationship          String    // MOTHER, FATHER, SIBLING, CHILD, GRANDPARENT, AUNT, UNCLE, COUSIN
+  
+  // Health information
+  condition_name        String?   // Condition affecting this relative
+  condition_code        String?   // Resolved terminology code if available
+  condition_system      String?   // Terminology system
+  condition_display     String?   // Resolved display text
+  
+  // Timeline
+  onset_date            DateTime? // When the relative developed the condition
+  
+  // Additional information
+  notes                 String?
+  
+  // Metadata
+  source                String    @default("PATIENT")
+  verification_status   String    @default("UNVERIFIED")
+  recorded_at           DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+  
+  created_at            DateTime  @default(now())
+  
+  @@index([patient_id])
+}
+
+// PatientReportedSocialHistory: Lifestyle and social information
+model PatientReportedSocialHistory {
+  id                    String    @id @default(uuid())
+  patient_id            String    @unique
+  patient               Patient   @relation(fields: [patient_id], references: [id], onDelete: Cascade)
+  
+  // Smoking status
+  smoking_status        String?   // NEVER, FORMER, CURRENT
+  smoking_frequency     String?   // DAILY, WEEKLY, OCCASIONAL
+  
+  // Tobacco use
+  tobacco_use           String?   // NONE, CHEWING, SNUFF, PIPE, OTHER
+  tobacco_frequency     String?
+  
+  // Physical activity
+  physical_activity     String?   // SEDENTARY, LIGHT, MODERATE, VIGOROUS
+  activity_notes        String?
+  
+  // Occupation
+  occupation            String?
+  
+  // Sleep information
+  sleep_hours           Int?      // Average hours per night
+  sleep_quality         String?   // POOR, FAIR, GOOD, EXCELLENT
+  
+  // Additional risk factors
+  other_risk_factors    String?   // Free text for other relevant information
+  
+  // Metadata
+  source                String    @default("PATIENT")
+  verification_status   String    @default("UNVERIFIED")
+  recorded_at           DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+  
+  created_at            DateTime  @default(now())
+}
+
+// PatientReportedVitalObservation: Patient-entered home measurements
+model PatientReportedVitalObservation {
+  id                    String    @id @default(uuid())
+  patient_id            String
+  patient               Patient   @relation(fields: [patient_id], references: [id], onDelete: Cascade)
+  
+  // Observation type
+  observation_type      String    // BLOOD_PRESSURE, HEART_RATE, TEMPERATURE, WEIGHT, HEIGHT, SPO2, BLOOD_GLUCOSE
+  observation_code      String?   // LOINC code if available
+  observation_system    String?   // Terminology system
+  observation_display   String?   // Display text
+  
+  // Measurement values
+  value_quantity        Float?    // Numeric value
+  value_unit            String?   // Unit (mmHg, bpm, C, kg, cm, %, mg/dL, etc)
+  value_text            String?   // Free text if numeric not applicable
+  
+  // For blood pressure specifically
+  systolic              Float?
+  diastolic             Float?
+  
+  // Device information (if from device)
+  device_name           String?
+  device_manufacturer   String?
+  device_model          String?
+  device_identifier     String?
+  
+  // Measurement details
+  measurement_method    String    // MANUAL_ENTRY, DEVICE, CALCULATED
+  recorded_at           DateTime
+  measurement_notes     String?
+  
+  // Metadata
+  source                String    @default("PATIENT")
+  verification_status   String    @default("UNVERIFIED")
+  updated_at            DateTime  @updatedAt
+  
+  created_at            DateTime  @default(now())
+  
+  @@index([patient_id])
+}
+
+// PatientUploadedDocument: Patient-uploaded medical documents
+model PatientUploadedDocument {
+  id                    String    @id @default(uuid())
+  patient_id            String
+  patient               Patient   @relation(fields: [patient_id], references: [id], onDelete: Cascade)
+  
+  // Document metadata
+  filename              String
+  file_mimetype         String
+  file_size_bytes       Int
+  
+  // Document classification
+  document_category     String    // MEDICAL_REPORT, LAB_REPORT, RADIOLOGY_REPORT, PRESCRIPTION, DISCHARGE_SUMMARY, VACCINATION_CERT, OPERATIVE_REPORT, OTHER
+  document_description  String?
+  
+  // Storage information
+  storage_reference     String    // Storage path/reference (not exposed in API)
+  
+  // Document processing state
+  processing_status     String    @default("UPLOADED") // UPLOADED, PROCESSING, EXTRACTED, VERIFICATION_REQUIRED, VERIFIED
+  
+  // Extracted data (if processing occurred)
+  extracted_data        String?   // JSON string with extracted information
+  extraction_error      String?   // If extraction failed
+  
+  // Verification
+  verification_status   String    @default("UNVERIFIED") // UNVERIFIED, VERIFIED, REJECTED
+  verification_notes    String?
+  
+  // Metadata
+  source                String    @default("PATIENT")
+  upload_timestamp      DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+  
+  created_at            DateTime  @default(now())
+  
+  @@index([patient_id])
 }
 
 // -------------------------------------------------------------------

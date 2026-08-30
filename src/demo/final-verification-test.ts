@@ -17,10 +17,10 @@ async function runFinalVerification() {
 
   const engine = new NormalizationEngine(
     rawStore,
-    canonicalStore,
-    mpi,
-    terminologyService,
-    provenanceService
+    canonicalStore as any,
+    mpi as any,
+    terminologyService as any,
+    provenanceService as any
   );
   await engine.boot();
 
@@ -42,6 +42,8 @@ async function runFinalVerification() {
       effectiveDate: '2026-01-01',
       status: 'ACTIVE',
       author: 'Test',
+      description: 'Test',
+      validationState: 'VALIDATED',
       fieldMappings: []
     }, {
       id: 'map-fhir-imm',
@@ -52,8 +54,11 @@ async function runFinalVerification() {
       effectiveDate: '2026-01-01',
       status: 'ACTIVE',
       author: 'Test',
+      description: 'Test',
+      validationState: 'VALIDATED',
       fieldMappings: []
-    }]
+    }],
+    createdAt: new Date().toISOString()
   });
 
   // ==========================================

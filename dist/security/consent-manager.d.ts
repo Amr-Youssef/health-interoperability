@@ -1,3 +1,4 @@
+import { PrismaClient } from '@prisma/client';
 export type ConsentPolicyType = 'OPT_IN_FULL' | 'RESTRICT_SENSITIVE' | 'CLUSTER_ONLY' | 'EXPLICIT_PER_ENCOUNTER';
 export interface PatientConsentDirective {
     patientId: string;
@@ -18,19 +19,15 @@ export interface BreakTheGlassEvent {
     isFlaggedForReview: boolean;
 }
 export declare class ConsentManager {
-    private persistPath;
-    private consents;
-    private breakGlassLog;
-    constructor(persistPath?: string | null);
-    private saveToDisk;
-    private loadFromDisk;
-    setConsent(directive: PatientConsentDirective): void;
-    getConsent(patientId: string): PatientConsentDirective;
-    evaluateAccess(patientId: string, requestingOrgId: string, category?: string): {
+    private prisma;
+    constructor(prisma?: PrismaClient);
+    setConsent(directive: PatientConsentDirective): Promise<void>;
+    getConsent(patientId: string): Promise<PatientConsentDirective>;
+    evaluateAccess(patientId: string, requestingOrgId: string, category?: string): Promise<{
         isGranted: boolean;
         reason: string;
-    };
-    executeBreakTheGlass(patientId: string, practitionerId: string, requestingOrgId: string, emergencyReason: string): BreakTheGlassEvent;
-    getAllBreakGlassEvents(): BreakTheGlassEvent[];
-    clearAll(): void;
+    }>;
+    executeBreakTheGlass(patientId: string, practitionerId: string, requestingOrgId: string, emergencyReason: string): Promise<BreakTheGlassEvent>;
+    getAllBreakGlassEvents(): Promise<BreakTheGlassEvent[]>;
+    clearAll(): Promise<void>;
 }

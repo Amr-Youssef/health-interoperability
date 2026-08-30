@@ -1,8 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
-import fs from 'fs';
-import path from 'path';
-import { DatabaseSync } from 'node:sqlite';
+import { PrismaClient } from '@prisma/client';
 export class GenericConfigurableAdapter {
     sourceSystemId;
     sourceSystemName;
@@ -57,7 +55,6 @@ export class GenericConfigurableAdapter {
     }
     describeSchema() {
         const schema = this.definition.sourceSchema;
-        // Ensure it has the required properties
         return {
             systemId: schema.systemId || this.sourceSystemId,
             systemName: schema.systemName || this.sourceSystemName,
@@ -68,121 +65,85 @@ export class GenericConfigurableAdapter {
     }
 }
 export class DynamicHospitalRegistry {
-    hospitals = new Map();
-    dynamicAdapters = new Map();
-    persistPath;
-    db;
+    prisma;
+    constructor(prisma) {
+        this.prisma = prisma || new PrismaClient();
+    }
     static isDemoHospital(definition) {
         if (!definition)
             return true;
         const haystack = `${definition.hospitalId || ''} ${definition.hospitalName || ''} ${definition.hospitalNameAr || ''}`.toLowerCase();
         return /(demo|test|mock|fake|sample|example)/.test(haystack);
     }
-    constructor(dbPath) {
-        const fallbackPath = path.resolve(process.cwd(), '.data', 'hospitals-registry.db');
-        this.persistPath = dbPath || fallbackPath;
-        const dir = path.dirname(this.persistPath);
-        if (!fs.existsSync(dir))
-            fs.mkdirSync(dir, { recursive: true });
-        this.db = new DatabaseSync(this.persistPath);
-        this.db.exec(`
-      PRAGMA journal_mode = WAL;
-      CREATE TABLE IF NOT EXISTS dynamic_hospitals (
-        hospitalId TEXT PRIMARY KEY,
-        hospitalName TEXT NOT NULL,
-        hospitalNameAr TEXT NOT NULL,
-        facilityType TEXT NOT NULL,
-        region TEXT NOT NULL,
-        adapterVersion TEXT NOT NULL,
-        sourceSchema TEXT NOT NULL,
-        defaultMappingConfigs TEXT NOT NULL,
-        createdAt TEXT NOT NULL
-      );
-    `);
-        this.loadFromDisk();
-    }
-    registerHospital(definition) {
-        this.hospitals.set(definition.hospitalId, definition);
-        const adapter = new GenericConfigurableAdapter(definition);
-        this.dynamicAdapters.set(definition.hospitalId, adapter);
-        this.saveToDisk();
-        return adapter;
-    }
-    getHospital(hospitalId) {
-        return this.hospitals.get(hospitalId);
-    }
-    getAllHospitals() {
-        return Array.from(this.hospitals.values());
-    }
-    getAdapter(hospitalId) {
-        return this.dynamicAdapters.get(hospitalId);
-    }
-    getAllAdapters() {
-        return Array.from(this.dynamicAdapters.values());
-    }
-    saveToDisk() {
-        try {
-            const stmt = this.db.prepare(`
-        INSERT INTO dynamic_hospitals (
-          hospitalId, hospitalName, hospitalNameAr, facilityType, region,
-          adapterVersion, sourceSchema, defaultMappingConfigs, createdAt
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(hospitalId) DO UPDATE SET
-          hospitalName = excluded.hospitalName,
-          hospitalNameAr = excluded.hospitalNameAr,
-          facilityType = excluded.facilityType,
-          region = excluded.region,
-          adapterVersion = excluded.adapterVersion,
-          sourceSchema = excluded.sourceSchema,
-          defaultMappingConfigs = excluded.defaultMappingConfigs,
-          createdAt = excluded.createdAt
-      `);
-            for (const hospital of this.hospitals.values()) {
-                stmt.run(hospital.hospitalId, hospital.hospitalName, hospital.hospitalNameAr, hospital.facilityType, hospital.region, hospital.adapterVersion, JSON.stringify(hospital.sourceSchema), JSON.stringify(hospital.defaultMappingConfigs), hospital.createdAt);
+    async registerHospital(definition) {
+        await this.prisma.dynamicHospital.upsert({
+            where: { hospitalId: definition.hospitalId },
+            update: {
+                hospitalName: definition.hospitalName,
+                hospitalNameAr: definition.hospitalNameAr,
+                facilityType: definition.facilityType,
+                region: definition.region,
+                adapterVersion: definition.adapterVersion,
+                sourceSchema: JSON.stringify(definition.sourceSchema),
+                defaultMappingConfigs: JSON.stringify(definition.defaultMappingConfigs),
+                createdAt: new Date().toISOString()
+            },
+            create: {
+                hospitalId: definition.hospitalId,
+                hospitalName: definition.hospitalName,
+                hospitalNameAr: definition.hospitalNameAr,
+                facilityType: definition.facilityType,
+                region: definition.region,
+                adapterVersion: definition.adapterVersion,
+                sourceSchema: JSON.stringify(definition.sourceSchema),
+                defaultMappingConfigs: JSON.stringify(definition.defaultMappingConfigs),
+                createdAt: new Date().toISOString()
             }
-        }
-        catch (e) {
-            console.warn('⚠️ Could not persist hospital registry:', e.message);
-        }
+        });
+        return new GenericConfigurableAdapter(definition);
     }
-    loadFromDisk() {
-        try {
-            const rows = this.db.prepare('SELECT * FROM dynamic_hospitals ORDER BY hospitalId ASC').all();
-            let loaded = 0;
-            for (const row of rows) {
-                const def = {
-                    hospitalId: row.hospitalId,
-                    hospitalName: row.hospitalName,
-                    hospitalNameAr: row.hospitalNameAr,
-                    facilityType: row.facilityType,
-                    region: row.region,
-                    adapterVersion: row.adapterVersion,
-                    sourceSchema: JSON.parse(row.sourceSchema || '{}'),
-                    defaultMappingConfigs: JSON.parse(row.defaultMappingConfigs || '[]'),
-                    createdAt: row.createdAt
-                };
-                if (DynamicHospitalRegistry.isDemoHospital(def)) {
-                    this.db.exec(`DELETE FROM dynamic_hospitals WHERE hospitalId = '${row.hospitalId.replace(/'/g, "''")}'`);
-                    continue;
-                }
-                this.hospitals.set(def.hospitalId, def);
-                const adapter = new GenericConfigurableAdapter(def);
-                this.dynamicAdapters.set(def.hospitalId, adapter);
-                loaded++;
-            }
-            console.log(`📂 Loaded ${loaded} persisted hospital(s) from disk.`);
-        }
-        catch (e) {
-            console.warn('⚠️ Could not load hospital registry:', e.message);
-        }
+    async getHospital(hospitalId) {
+        const dbHospital = await this.prisma.dynamicHospital.findUnique({ where: { hospitalId } });
+        if (!dbHospital)
+            return undefined;
+        return {
+            hospitalId: dbHospital.hospitalId,
+            hospitalName: dbHospital.hospitalName,
+            hospitalNameAr: dbHospital.hospitalNameAr,
+            facilityType: dbHospital.facilityType,
+            region: dbHospital.region,
+            adapterVersion: dbHospital.adapterVersion,
+            sourceSchema: JSON.parse(dbHospital.sourceSchema),
+            defaultMappingConfigs: JSON.parse(dbHospital.defaultMappingConfigs),
+            createdAt: dbHospital.createdAt
+        };
     }
-    clearAll() {
-        this.hospitals.clear();
-        this.dynamicAdapters.clear();
-        this.db.exec('DELETE FROM dynamic_hospitals');
+    async getAllHospitals() {
+        const dbHospitals = await this.prisma.dynamicHospital.findMany();
+        return dbHospitals.map(dbHospital => ({
+            hospitalId: dbHospital.hospitalId,
+            hospitalName: dbHospital.hospitalName,
+            hospitalNameAr: dbHospital.hospitalNameAr,
+            facilityType: dbHospital.facilityType,
+            region: dbHospital.region,
+            adapterVersion: dbHospital.adapterVersion,
+            sourceSchema: JSON.parse(dbHospital.sourceSchema),
+            defaultMappingConfigs: JSON.parse(dbHospital.defaultMappingConfigs),
+            createdAt: dbHospital.createdAt
+        }));
     }
-    close() {
-        this.db.close();
+    async getAdapter(hospitalId) {
+        const hospital = await this.getHospital(hospitalId);
+        if (!hospital)
+            return undefined;
+        return new GenericConfigurableAdapter(hospital);
+    }
+    async getAllAdapters() {
+        const hospitals = await this.getAllHospitals();
+        return hospitals.map(h => new GenericConfigurableAdapter(h));
+    }
+    async clearAll() {
+        await this.prisma.dynamicHospital.deleteMany();
     }
 }
 //# sourceMappingURL=dynamic-adapter.js.map

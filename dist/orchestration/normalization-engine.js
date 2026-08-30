@@ -3,7 +3,6 @@ import { DynamicHospitalRegistry } from '../ingestion/dynamic/dynamic-adapter.js
 import { MappingEngine } from '../mapping/engine/mapping-engine.js';
 import { DataQualityEngine } from '../validation/validation-engine.js';
 import { FhirR4Serializer } from '../fhir/fhir-serializer.js';
-import { NphiesSandboxSimulator } from '../integration/nphies/nphies-sandbox.js';
 import { CdsHooksEngine } from '../cds/cds-engine.js';
 import { ConsentManager } from '../security/consent-manager.js';
 import { PopulationHealthService } from '../analytics/population-health.js';
@@ -41,7 +40,6 @@ export class NormalizationEngine {
     canonicalStore;
     provenanceService;
     fhirSerializer;
-    nphiesSimulator;
     dynamicRegistry;
     cdsEngine;
     consentManager;
@@ -64,7 +62,6 @@ export class NormalizationEngine {
         this.mappingEngine = new MappingEngine(this.terminologyService);
         this.qualityEngine = new DataQualityEngine();
         this.fhirSerializer = new FhirR4Serializer();
-        this.nphiesSimulator = new NphiesSandboxSimulator();
         this.dynamicRegistry = dynamicRegistry || new DynamicHospitalRegistry();
         this.cdsEngine = new CdsHooksEngine(this.canonicalStore);
         this.consentManager = consentManager || new ConsentManager();
@@ -100,8 +97,21 @@ export class NormalizationEngine {
                 { sourceField: 'patient.phone', targetField: 'phone', required: false }
             ]
         });
+    }
+    async onboardHospital(definition) {
+        await this.dynamicRegistry.registerHospital(definition);
+        const adapter = await this.dynamicRegistry.getAdapter(definition.hospitalId);
+        if (adapter) {
+            this.adapters.set(adapter.sourceSystemId, adapter);
+            for (const config of definition.defaultMappingConfigs) {
+                this.mappingEngine.registerConfiguration(config);
+            }
+        }
+    }
+    async boot() {
         // Register Dynamic Adapters from Registry
-        for (const dynAdapter of this.dynamicRegistry.getAllAdapters()) {
+        const adapters = await this.dynamicRegistry.getAllAdapters();
+        for (const dynAdapter of adapters) {
             this.adapters.set(dynAdapter.sourceSystemId, dynAdapter);
             for (const config of dynAdapter.definition.defaultMappingConfigs) {
                 this.mappingEngine.registerConfiguration(config);
@@ -188,7 +198,7 @@ export class NormalizationEngine {
                 const savedEncounterId = await this.canonicalStore.saveEncounter(canonicalEncounter);
                 this.visitToInternalEncounterId.set(`${rawRecord.sourceSystemId}:${enc.visitNo}`, savedEncounterId);
             }
-            this.auditChain.recordEvent('INGEST', 'HL7_MLLP_FEED', 'HL7v2Message', rawRecord.sourceRecordId, `Normalized HL7 v2 [${parsed.messageType}^${parsed.triggerEvent}] from ${parsed.sendingFacility}`);
+            await this.auditChain.recordEvent('INGEST', 'HL7_MLLP_FEED', 'HL7v2Message', rawRecord.sourceRecordId, `Normalized HL7 v2 [${parsed.messageType}^${parsed.triggerEvent}] from ${parsed.sendingFacility}`);
         }
         else {
             await this.rawStore.updateStatus(rawRecord.id, 'FAILED', validation.issues.map(i => i.message).join('; '));
@@ -203,19 +213,19 @@ export class NormalizationEngine {
     /**
      * Onboard a new Healthcare Facility / Hospital dynamically
      */
-    onboardHospital(definition) {
-        const adapter = this.dynamicRegistry.registerHospital(definition);
+    async onboardDynamicHospital(definition) {
+        const adapter = await this.dynamicRegistry.registerHospital(definition);
         this.adapters.set(adapter.sourceSystemId, adapter);
         for (const config of definition.defaultMappingConfigs) {
             this.mappingEngine.registerConfiguration(config);
         }
-        this.auditChain.recordEvent('INGEST', 'ONBOARDING_WIZARD', 'DynamicHospitalDefinition', definition.hospitalId, `Onboarded new facility [${definition.hospitalNameAr}]`);
+        await this.auditChain.recordEvent('INGEST', 'ONBOARDING_WIZARD', 'DynamicHospitalDefinition', definition.hospitalId, `Onboarded new facility [${definition.hospitalNameAr}]`);
     }
     /**
      * Ingest and normalize a custom payload for a dynamic hospital
      */
     async ingestDynamicPayload(hospitalId, entityType, sourceRecordId, payload) {
-        const adapter = this.dynamicRegistry.getAdapter(hospitalId);
+        const adapter = await this.dynamicRegistry.getAdapter(hospitalId);
         if (!adapter)
             throw new Error(`Hospital [${hospitalId}] is not registered in the dynamic registry.`);
         const rawRecord = adapter.queueRawRecord(entityType, sourceRecordId, payload);
@@ -226,7 +236,7 @@ export class NormalizationEngine {
             try {
                 await this.persistToCanonical(mapped, rawRecord, validation);
                 await this.rawStore.updateStatus(rawRecord.id, 'PERSISTED');
-                this.auditChain.recordEvent('TRANSFORM', 'NORMALIZATION_PIPELINE', mapped.targetCanonicalEntity, rawRecord.id, `Normalized dynamic payload with score ${validation.score}/100`);
+                await this.auditChain.recordEvent('TRANSFORM', 'NORMALIZATION_PIPELINE', mapped.targetCanonicalEntity, rawRecord.id, `Normalized dynamic payload with score ${validation.score}/100`);
             }
             catch (err) {
                 // Referential integrity gate: unable to link to a real patient/encounter
@@ -286,10 +296,10 @@ export class NormalizationEngine {
                         if (!resource)
                             continue;
                         if (resource.resourceType === 'Patient') {
-                            const nid = resource.identifier?.find((i) => i.system?.includes('nid') || i.type?.coding?.[0]?.code === 'NNKSA')?.value || '1088445566';
+                            const nid = resource.identifier?.find((i) => i.system?.includes('nid') || i.type?.coding?.[0]?.code === 'NNKSA')?.value;
                             const nameObj = resource.name?.[0] || {};
-                            const given = nameObj.given?.join(' ') || 'Mohammed';
-                            const family = nameObj.family || 'Al-Harbi';
+                            const given = nameObj.given?.join(' ') || undefined;
+                            const family = nameObj.family || undefined;
                             const rawRecord = {
                                 id: uuidv4(),
                                 sourceSystemId,
@@ -314,14 +324,11 @@ export class NormalizationEngine {
                                 givenNameAr: nameObj.text || given,
                                 familyNameAr: family,
                                 gender: resource.gender === 'female' ? 'female' : 'male',
-                                birthDate: resource.birthDate || '1985-05-15',
-                                nationality: 'SAU',
-                                phone: resource.telecom?.[0]?.value || '+966500000000',
-                                address: {
-                                    city: 'Riyadh',
-                                    country: 'SAU'
-                                },
-                                maritalStatus: 'M',
+                                birthDate: resource.birthDate,
+                                nationality: undefined,
+                                phone: resource.telecom?.[0]?.value,
+                                address: undefined,
+                                maritalStatus: undefined,
                                 provenance: {
                                     sourceSystemId,
                                     sourceRecordId: resource.id || 'REC-FHIR',
@@ -346,9 +353,9 @@ export class NormalizationEngine {
                                 familyName: family,
                                 givenNameAr: nameObj.text || given,
                                 familyNameAr: family,
-                                birthDate: resource.birthDate || '1985-05-15',
+                                birthDate: resource.birthDate,
                                 gender: resource.gender === 'female' ? 'female' : 'male',
-                                phone: resource.telecom?.[0]?.value || '+966500000000'
+                                phone: resource.telecom?.[0]?.value
                             });
                             canonicalPatient.internalId = identity.internalPatientId;
                             await this.canonicalStore.savePatient(canonicalPatient);
@@ -357,7 +364,7 @@ export class NormalizationEngine {
                             entryResults.push({ type: 'Patient', id: canonicalPatient.internalId, mpiId: identity.internalPatientId });
                         }
                     }
-                    this.auditChain.recordEvent('INGEST', 'FILE_UPLOAD_DROPZONE', 'FHIRBundle', fileName, `Ingested FHIR R4 Bundle with ${processedEntries} resource(s)`);
+                    await this.auditChain.recordEvent('INGEST', 'FILE_UPLOAD_DROPZONE', 'FHIRBundle', fileName, `Ingested FHIR R4 Bundle with ${processedEntries} resource(s)`);
                     return {
                         format: 'fhir-bundle',
                         fileName,
@@ -369,10 +376,16 @@ export class NormalizationEngine {
                 // Subcase B: Array of records or single record
                 const records = Array.isArray(parsedJson) ? parsedJson : [parsedJson];
                 let ingestedCount = 0;
+                const validationIssues = [];
                 for (const item of records) {
-                    const res = await this.ingestDynamicPayload('hospital-d', item.entityType || 'client_registry', item.id || `REC-${Date.now()}`, item);
-                    if (res.validation?.decision !== 'REJECTED')
+                    const res = await this.ingestDynamicPayload(sourceSystemId || 'hospital-d', item.entityType || 'client_registry', item.id || `REC-${Date.now()}`, item);
+                    if (res.validation?.decision !== 'REJECTED') {
                         ingestedCount++;
+                    }
+                    else {
+                        validationIssues.push(res.validation.issues);
+                        console.error('Validation Rejected:', JSON.stringify(res.validation.issues, null, 2));
+                    }
                 }
                 return {
                     format: 'json',
@@ -409,7 +422,7 @@ export class NormalizationEngine {
                 if (res.validation?.decision !== 'REJECTED')
                     csvIngestedCount++;
             }
-            this.auditChain.recordEvent('INGEST', 'FILE_UPLOAD_DROPZONE', 'CSV_Registry', fileName, `Ingested and normalized ${csvIngestedCount} records from CSV file`);
+            await this.auditChain.recordEvent('INGEST', 'FILE_UPLOAD_DROPZONE', 'CSV_Registry', fileName, `Ingested and normalized ${csvIngestedCount} records from CSV file`);
             return {
                 format: 'csv',
                 fileName,
@@ -436,7 +449,7 @@ export class NormalizationEngine {
             sourceCounts[adapter.sourceSystemId] = records.length;
             totalIngested += records.length;
         }
-        this.auditChain.recordEvent('INGEST', 'ADAPTER_EXTRACTOR', 'RawBatch', batchId, `Ingested ${totalIngested} raw records across all source systems`);
+        await this.auditChain.recordEvent('INGEST', 'ADAPTER_EXTRACTOR', 'RawBatch', batchId, `Ingested ${totalIngested} raw records across all source systems`);
         // 2. Normalization Phase: Process in logical dependency order
         const pendingRecords = await this.rawStore.findPending();
         const sorted = pendingRecords.sort((a, b) => {
@@ -626,10 +639,10 @@ export class NormalizationEngine {
                 familyNameAr: data.familyNameAr || existingPatient?.familyNameAr || data.familyName || '',
                 gender: data.gender || existingPatient?.gender || 'unknown',
                 birthDate: data.birthDate || existingPatient?.birthDate || '',
-                nationality: data.nationality || existingPatient?.nationality || (data.iqamaNo ? 'مقيم' : 'سعودي'),
-                nationalityCode: data.nationalityCode || existingPatient?.nationalityCode || (data.iqamaNo ? 'YEM' : 'SAU'),
-                phone: data.phone || existingPatient?.phone || '+966501234567',
-                religion: 'Islam',
+                nationality: data.nationality || existingPatient?.nationality || undefined,
+                nationalityCode: data.nationalityCode || existingPatient?.nationalityCode || undefined,
+                phone: data.phone || existingPatient?.phone || undefined,
+                religion: data.religion || existingPatient?.religion || undefined,
                 identifiers: mpiIdentity?.linkedIdentifiers || existingPatient?.identifiers || [],
                 provenance,
                 createdAt: existingPatient?.createdAt || timestamp,
@@ -927,18 +940,13 @@ export class NormalizationEngine {
                 items: data.items || [],
                 totalGrossSAR: data.totalGrossSAR || 300.0,
                 totalPatientCopaySAR: data.totalPatientCopaySAR || 60.0,
-                totalInsurerClaimedSAR: data.totalInsurerClaimedSAR || 240.0,
-                batchNumber: `BATCH-KSA-2026-${Math.floor(100 + Math.random() * 900)}`,
-                submissionDate: data.submissionDate || timestamp,
+                totalInsurerClaimedSAR: data.totalInsurerClaimedSAR,
+                batchNumber: data.batchNumber,
+                submissionDate: data.submissionDate,
                 provenance,
                 createdAt: timestamp
             };
             const savedClaimId = await this.canonicalStore.saveClaim(canonicalClaim);
-            // Real-time NPHIES Sandbox Adjudication.
-            // The response is re-keyed to the surviving canonical claim id so that
-            // idempotent re-runs update the same response instead of accumulating.
-            const adjudicationResponse = await this.nphiesSimulator.adjudicateClaim(canonicalClaim, coverage);
-            await this.canonicalStore.saveClaimResponse({ ...adjudicationResponse, claimId: savedClaimId, patientId, coverageId });
             await this.provenanceService.recordProvenance({
                 id: uuidv4(),
                 targetEntityType: 'CanonicalClaim',
@@ -954,7 +962,7 @@ export class NormalizationEngine {
                 persistedAt: timestamp,
                 validationScore: validation.score,
                 validationDecision: validation.decision,
-                activityDescription: `Normalized eClaim & Adjudicated via NPHIES Sandbox [Tx: ${adjudicationResponse.nphiesTransactionId}] (Approved: ${adjudicationResponse.totalApprovedSAR} SAR, Patient Copay: ${adjudicationResponse.totalPatientCopaySAR} SAR)`
+                activityDescription: `Normalized eClaim`
             });
             return { entityType: 'CanonicalClaim', internalId: savedClaimId, patientId, encounterId: subject.encounterId };
         }
@@ -1056,9 +1064,9 @@ export class NormalizationEngine {
     }
     async checkPatientEligibility(patientId) {
         const coverages = await this.canonicalStore.getCoveragesByPatient(patientId);
-        if (!coverages || coverages.length === 0)
-            return null;
-        return this.nphiesSimulator.checkEligibility(coverages[0]);
+        // NPHIES Eligibility check not implemented. Returning null or throwing error if required.
+        // We will return a Not Implemented state or null.
+        return null;
     }
     async reprocessRecord(rawRecordId, customConfig) {
         const raw = await this.rawStore.getById(rawRecordId);
@@ -1112,7 +1120,7 @@ export class NormalizationEngine {
         const diagnosticReports = await this.canonicalStore.getAllDiagnosticReports();
         const provenanceList = await this.provenanceService.getAllProvenance();
         const recentAudit = await this.provenanceService.getAuditLog(15);
-        const dynamicHospitals = this.dynamicRegistry.getAllHospitals().filter(h => !/(demo|test|mock|fake|sample|example)/i.test(`${h.hospitalId} ${h.hospitalName} ${h.hospitalNameAr}`));
+        const dynamicHospitals = (await this.dynamicRegistry.getAllHospitals()).filter(h => !/(demo|test|mock|fake|sample|example)/i.test(`${h.hospitalId} ${h.hospitalName} ${h.hospitalNameAr}`));
         const adapterStatuses = [];
         for (const adapter of this.adapters.values()) {
             const status = await adapter.healthCheck();

@@ -1,3 +1,4 @@
+import { PrismaClient } from '@prisma/client';
 export interface AuditBlock {
     index: number;
     blockId: string;
@@ -11,20 +12,17 @@ export interface AuditBlock {
     currentHash: string;
 }
 export declare class CryptographicAuditChain {
-    private persistPath;
-    private chain;
+    private prisma;
     private genesisHash;
-    constructor(persistPath?: string | null);
-    private saveToDisk;
-    private loadFromDisk;
-    private createGenesisBlock;
-    recordEvent(action: 'INGEST' | 'TRANSFORM' | 'QUERY' | 'CONSENT_CHANGE' | 'BREAK_GLASS' | 'BULK_EXPORT', actor: string, entityType: string, entityId: string, details: string): AuditBlock;
-    getChain(): AuditBlock[];
-    getRecentEvents(limit?: number): AuditBlock[];
-    verifyChainIntegrity(): {
+    constructor(prisma?: PrismaClient);
+    private getChainLength;
+    private getLastBlock;
+    recordEvent(action: 'INGEST' | 'TRANSFORM' | 'QUERY' | 'CONSENT_CHANGE' | 'BREAK_GLASS' | 'BULK_EXPORT', actor: string, entityType: string, entityId: string, details: string): Promise<AuditBlock>;
+    getRecentEvents(limit?: number): Promise<AuditBlock[]>;
+    verifyChainIntegrity(): Promise<{
         isValid: boolean;
         brokenAtIndex?: number;
         totalBlocks: number;
-    };
-    clearAll(): void;
+    }>;
+    clearAll(): Promise<void>;
 }

@@ -1,8 +1,10 @@
+import { PrismaClient } from '@prisma/client';
 import crypto from 'crypto';
 export class SmartOnFhirAuthService {
-    validTokens = new Map();
+    prisma;
     baseUrl;
-    constructor(baseUrl = 'http://localhost:3000') {
+    constructor(prisma, baseUrl = 'http://localhost:3000') {
+        this.prisma = prisma || new PrismaClient();
         this.baseUrl = baseUrl;
     }
     getSmartConfiguration() {
@@ -42,16 +44,19 @@ export class SmartOnFhirAuthService {
             code_challenge_methods_supported: ['S256']
         };
     }
-    issueToken(params) {
+    async issueToken(params) {
         const accessToken = `smart_tok_${crypto.randomBytes(24).toString('hex')}`;
         const expiresIn = 3600; // 1 hour
         const scope = params.scope || 'launch/patient patient/*.read openid profile';
         const patient = params.patientId || '1088445566';
-        this.validTokens.set(accessToken, {
-            patientId: patient,
-            scope,
-            expiresAt: Date.now() + (expiresIn * 1000),
-            clientId: params.clientId
+        await this.prisma.smartToken.create({
+            data: {
+                token: accessToken,
+                client_id: params.clientId,
+                patient_id: patient,
+                scope,
+                expires_at: new Date(Date.now() + (expiresIn * 1000))
+            }
         });
         return {
             access_token: accessToken,
@@ -62,21 +67,23 @@ export class SmartOnFhirAuthService {
             need_patient_banner: true
         };
     }
-    verifyToken(token) {
+    async verifyToken(token) {
         const cleanToken = token.replace(/^Bearer\s+/i, '').trim();
-        const tokenInfo = this.validTokens.get(cleanToken);
+        const tokenInfo = await this.prisma.smartToken.findUnique({
+            where: { token: cleanToken }
+        });
         if (!tokenInfo) {
             return { isValid: false };
         }
-        if (Date.now() > tokenInfo.expiresAt) {
-            this.validTokens.delete(cleanToken);
+        if (new Date() > tokenInfo.expires_at) {
+            await this.prisma.smartToken.delete({ where: { token: cleanToken } });
             return { isValid: false };
         }
         return {
             isValid: true,
-            patientId: tokenInfo.patientId,
+            patientId: tokenInfo.patient_id || undefined,
             scope: tokenInfo.scope,
-            clientId: tokenInfo.clientId
+            clientId: tokenInfo.client_id
         };
     }
 }

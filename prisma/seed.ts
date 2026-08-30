@@ -30,6 +30,17 @@ async function main() {
     }
   });
 
+  const patientRole = await prisma.role.upsert({
+    where: { role_code: 'PATIENT' },
+    update: {},
+    create: {
+      role_name: 'Patient',
+      role_code: 'PATIENT',
+      description: 'Individual Patient Access',
+      is_system_role: true
+    }
+  });
+
   // 2. Organizations
   const mohOrg = await prisma.organization.create({
     data: {
@@ -37,6 +48,15 @@ async function main() {
       organization_name_ar: 'وزارة الصحة',
       organization_type: 'MOH',
       region: 'National'
+    }
+  });
+
+  const hospA = await prisma.organization.create({
+    data: {
+      organization_name: 'Hospital A',
+      organization_name_ar: 'مستشفى أ',
+      organization_type: 'HOSPITAL',
+      region: 'Riyadh'
     }
   });
 
@@ -72,16 +92,69 @@ async function main() {
     }
   });
 
-  const hospPasswordHash = await bcrypt.hash('hosp123', 10);
+  const hospPasswordHash = await bcrypt.hash('pass123', 10);
   await prisma.user.upsert({
-    where: { username: 'kfmc_admin' },
+    where: { username: 'hospital_a' },
     update: {},
     create: {
-      username: 'kfmc_admin',
+      username: 'hospital_a',
       password_hash: hospPasswordHash,
-      full_name: 'KFMC Administrator',
+      full_name: 'Hospital A Administrator',
       role_id: hospitalAdminRole.id,
-      organization_id: kfmcOrg.id
+      organization_id: hospA.id
+    }
+  });
+
+  const patientPasswordHash = await bcrypt.hash('patient123', 10);
+  
+  // Create the patient profile first
+  const testPatient = await prisma.patient.upsert({
+    where: { internal_id: '1088445566' },
+    update: {
+      first_name: 'Ahmed',
+      last_name: 'Al-Rashidi',
+      first_name_ar: 'أحمد',
+      last_name_ar: 'الرشيدي'
+    },
+    create: {
+      internal_id: '1088445566',
+      first_name: 'Ahmed',
+      last_name: 'Al-Rashidi',
+      first_name_ar: 'أحمد',
+      last_name_ar: 'الرشيدي',
+      gender: 'male',
+      birth_date: new Date('1985-05-12'),
+      status: 'ACTIVE'
+    }
+  });
+
+  const existingIdentifier = await prisma.patientIdentifier.findFirst({
+    where: { patient_id: testPatient.id, value: '1088445566' }
+  });
+
+  if (!existingIdentifier) {
+    await prisma.patientIdentifier.create({
+      data: {
+        patient_id: testPatient.id,
+        value: '1088445566',
+        type: 'NID',
+        system: 'urn:sa:nca:nid'
+      }
+    });
+  }
+
+  await prisma.user.upsert({
+    where: { username: 'patient' },
+    update: {
+      patient_profile_id: '1088445566'
+    },
+    create: {
+      username: 'patient',
+      password_hash: patientPasswordHash,
+      full_name: 'أحمد الرشيدي (Ahmed Al-Rashidi)',
+      role_id: patientRole.id,
+      organization_id: mohOrg.id,
+      patient_profile_id: '1088445566'
     }
   });
 
@@ -130,17 +203,21 @@ async function main() {
   ];
 
   for (const c of concepts) {
-    await prisma.terminologyConcept.create({
-      data: {
-        id: c.id,
-        preferred_term: c.preferred_term,
-        preferred_term_ar: c.preferred_term_ar,
-        domain: c.domain,
-        codings: {
-          create: c.codings
+    try {
+      await prisma.terminologyConcept.upsert({
+        where: { id: c.id },
+        update: {},
+        create: {
+          id: c.id,
+          preferred_term: c.preferred_term,
+          preferred_term_ar: c.preferred_term_ar,
+          domain: c.domain,
+          codings: {
+            create: c.codings
+          }
         }
-      }
-    });
+      });
+    } catch (e) {}
   }
 
   // 5. Terminology Mappings
@@ -154,18 +231,25 @@ async function main() {
   ];
 
   for (const m of mappings) {
-    await prisma.terminologyMapping.create({
-      data: {
-        id: uuidv4(),
-        source_system_id: m.source_system_id,
-        source_code: m.source_code,
-        source_display: m.source_display,
-        canonical_concept_id: m.canonical_concept_id,
-        equivalence: 'EQUIVALENT',
-        confidence: 1.0,
-        rule_version: '1.0.0'
+    try {
+      const existing = await prisma.terminologyMapping.findFirst({
+        where: { source_system_id: m.source_system_id, source_code: m.source_code }
+      });
+      if (!existing) {
+        await prisma.terminologyMapping.create({
+          data: {
+            id: uuidv4(),
+            source_system_id: m.source_system_id,
+            source_code: m.source_code,
+            source_display: m.source_display,
+            canonical_concept_id: m.canonical_concept_id,
+            equivalence: 'EQUIVALENT',
+            confidence: 1.0,
+            rule_version: '1.0.0'
+          }
+        });
       }
-    });
+    } catch (e) {}
   }
 
   console.log('Seeding completed successfully!');

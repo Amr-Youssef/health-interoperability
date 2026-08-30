@@ -1,6 +1,7 @@
 import { SourceAdapter, SourceSchemaDescriptor, AdapterStatus } from '../adapters/adapter.interface.js';
 import { RawRecord } from '../../core/domain/raw-record.js';
 import { MappingConfiguration } from '../../core/domain/mapping-config.js';
+import { PrismaClient } from '@prisma/client';
 export interface DynamicHospitalDefinition {
     hospitalId: string;
     hospitalName: string;
@@ -26,19 +27,13 @@ export declare class GenericConfigurableAdapter implements SourceAdapter {
     describeSchema(): SourceSchemaDescriptor;
 }
 export declare class DynamicHospitalRegistry {
-    private hospitals;
-    private dynamicAdapters;
-    private readonly persistPath;
-    private db;
-    private static isDemoHospital;
-    constructor(dbPath?: string);
-    registerHospital(definition: DynamicHospitalDefinition): GenericConfigurableAdapter;
-    getHospital(hospitalId: string): DynamicHospitalDefinition | undefined;
-    getAllHospitals(): DynamicHospitalDefinition[];
-    getAdapter(hospitalId: string): GenericConfigurableAdapter | undefined;
-    getAllAdapters(): GenericConfigurableAdapter[];
-    private saveToDisk;
-    private loadFromDisk;
-    clearAll(): void;
-    close(): void;
+    private prisma;
+    constructor(prisma?: PrismaClient);
+    static isDemoHospital(definition?: Partial<DynamicHospitalDefinition>): boolean;
+    registerHospital(definition: DynamicHospitalDefinition): Promise<GenericConfigurableAdapter>;
+    getHospital(hospitalId: string): Promise<DynamicHospitalDefinition | undefined>;
+    getAllHospitals(): Promise<DynamicHospitalDefinition[]>;
+    getAdapter(hospitalId: string): Promise<GenericConfigurableAdapter | undefined>;
+    getAllAdapters(): Promise<GenericConfigurableAdapter[]>;
+    clearAll(): Promise<void>;
 }

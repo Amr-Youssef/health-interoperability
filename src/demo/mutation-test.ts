@@ -10,10 +10,10 @@ async function runMutationTest() {
   const canonicalStore = new PrismaCanonicalStore();
   const engine = new NormalizationEngine(
     new PrismaRawStore(),
-    canonicalStore,
-    new PrismaMpiService(),
-    new PrismaTerminologyService(),
-    new PrismaProvenanceService()
+    canonicalStore as any,
+    new PrismaMpiService() as any,
+    new PrismaTerminologyService() as any,
+    new PrismaProvenanceService() as any
   );
   await engine.boot();
   
