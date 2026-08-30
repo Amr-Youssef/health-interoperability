@@ -417,6 +417,13 @@
           <span class="label">بيانات المنشأة</span>
         </button>
 
+        <button class="nav-item" data-tab="hospital-global" id="tab-btn-hospital-global" title="السجل العام الموحد لجميع المرضى - وطني، منفصل عن سجل منشأتي">
+          <span class="nav-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><rect x="3" y="3" width="5" height="5" rx="1"/><rect x="16" y="3" width="5" height="5" rx="1"/></svg>
+          </span>
+          <span class="label">السجل العام الموحد</span>
+        </button>
+
         <button class="nav-item" data-tab="mapping" id="tab-btn-mapping" title="استوديو الربط والمصطلحات">
           <span class="nav-icon-wrap">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M18 6a9 9 0 0 1-9 9H6"/><polyline points="15 3 18 6 15 9"/></svg>
@@ -1838,6 +1845,61 @@
             </div>
           </div>
         </div>
+      </section>
+
+      <!-- TAB: HOSPITAL GLOBAL REGISTRY (All patients unified - separate from hospital's own) -->
+      <section class="tab-pane" id="pane-hospital-global">
+        <div class="banner-info" style="border-right:4px solid #6366f1; background:linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(14,165,233,0.06) 100%);">
+          <div class="banner-icon" style="background:#6366f1; color:#fff;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><rect x="3" y="3" width="5" height="5" rx="1"/><rect x="16" y="3" width="5" height="5" rx="1"/><line x1="12" y1="8" x2="12" y2="13"/></svg>
+          </div>
+          <div class="banner-text">
+            <h4>السجل العام الموحد لجميع المرضى — نظرة وطنية شاملة (منفصلة عن سجل منشأتي)</h4>
+            <p>هذا السجل يعرض <strong>جميع المرضى الموحدين في قاعدة البيانات الوطنية</strong> (بعد تطبيع `MPI` وربط الهويات). هو <strong>منفصل عرضاً</strong> عن جدول "مرضى منشأتي" لكنه <strong>متكامل بياناتياً</strong>: نفس قاعدة البيانات، نفس المعايير (`SNOMED/ICD/LOINC/SFDA`)، ونفس سلسلة التدقيق. مستشفاك يرى هنا الحالات المحولة أو التاريخ الوطني للمريض عند الحاجة للرعاية المشتركة — قراءة فقط، بلا تعديل.</p>
+          </div>
+          <span class="badge" style="background:#6366f1; color:#fff;">قراءة فقط • وطني</span>
+        </div>
+
+        <div class="card mb-6" style="border:1px solid #6366f1; background:rgba(99,102,241,0.04);">
+          <div class="card-body" style="display:flex; gap:10px; align-items:flex-start;">
+            <svg style="width:18px;height:18px; color:#6366f1; flex-shrink:0; margin-top:2px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            <p style="font-size:0.82rem; color:#4338ca; line-height:1.6; margin:0;"><strong>التكامل محفوظ:</strong> مرضى منشأتك المرحّلون في التبويب السابق هم <strong>جزء</strong> من هذا السجل العام. أي مريض ترحله يظهر تلقائياً هنا بعد تطبيعه وربطه في `MPI`. العزل هنا <strong>عرضي فقط</strong> لتسهيل التركيز: جدول منشأتك للمتابعة اليومية، والجدول العام للاستعلام الوطني عند التحويل أو الطوارئ. كل التحديثات تُسجل في `Provenance` و `Audit Chain`.</p>
+          </div>
+        </div>
+
+        <div class="card mb-6">
+          <div class="card-header" style="background:#eef2ff; border-bottom:1px solid #c7d2fe;">
+            <div class="card-header-title" style="color:#4338ca;">
+              <svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <h3>بحث في السجل العام (وطني)</h3>
+            </div>
+            <span class="badge badge-info" style="background:#6366f1; color:#fff;">قراءة فقط</span>
+          </div>
+          <div class="card-body">
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+              <div style="flex:1; min-width:220px; position:relative;">
+                <input type="text" id="hosp-global-search" class="form-select" placeholder="ابحث بالاسم، الهوية الوطنية، أو MRN..." style="padding-right:36px;">
+                <svg style="position:absolute; right:10px; top:50%; transform:translateY(-50%); width:16px; height:16px; color:var(--m3-on-surface-muted);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              </div>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-hosp-global"><svg class="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg><span>تحديث السجل العام</span></button>
+              <span style="font-size:0.78rem; color:var(--m3-on-surface-muted);">يعرض <strong id="hosp-global-count">—</strong> مريض موحد</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><h3>جدول السجل العام (جميع المرضى)</h3></div>
+          </div>
+          <div class="card-body p-0">
+            <table class="data-table">
+              <thead><tr><th>المريض</th><th>الهوية</th><th>الجنس / الميلاد</th><th>مرتبط بمنشأتي؟</th><th>عرض</th></tr></thead>
+              <tbody id="hosp-global-tbody"><tr><td colspan="5" class="text-center py-4">جاري تحميل السجل العام...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="hosp-global-detail" class="mt-6" style="display:none;"></div>
       </section>
 
       <!-- TAB 4: MAPPING STUDIO -->

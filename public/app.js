@@ -363,17 +363,20 @@ const appAuth = {
       if (patCard) patCard.style.display = 'block';
 
     } else if (this.currentRole === 'HOSPITAL_ADMIN') {
-      // Hospital Management System view: migration gateway + facility profile only
-      ['hospital-migration','hospital-profile'].forEach(id => {
+      // Hospital Management System: migration + global registry (separate but integrated) + facility profile
+      ['hospital-migration','hospital-global','hospital-profile'].forEach(id => {
         const t = document.getElementById(`tab-btn-${id}`);
         if(t) t.style.display = 'flex';
       });
       defaultTab = 'hospital-migration';
 
+      // Hospital HMS is facility-centric: hide global patient bar and longitudinal selector
       const globalSelect = document.getElementById('global-patient-selector');
-      if (globalSelect) globalSelect.style.display = 'block';
+      if (globalSelect) globalSelect.style.display = 'none';
       const patCard = document.querySelector('.patient-selector-card');
-      if (patCard) patCard.style.display = 'block';
+      if (patCard) patCard.style.display = 'none';
+      const bar = document.getElementById('active-patient-bar');
+      if (bar) bar.style.display = 'none';
 
     } else if (this.currentRole === 'PATIENT') {
       ['profile', 'longitudinal', 'medications'].forEach(id => {
@@ -398,6 +401,14 @@ const appAuth = {
     if(dTab) dTab.click();
   }
 };
+
+// === ROLE-BASED TAB ALLOWLIST (security) ===
+function getAllowedTabsForRole(role) {
+  if (role === 'MOH_ADMIN' || role === 'SYS_ADMIN') return ['monitoring','onboarding','cds','nphies','medications','mpi','longitudinal','mapping','provenance','security','bulkexport','fhir'];
+  if (role === 'HOSPITAL_ADMIN') return ['hospital-migration','hospital-global','hospital-profile'];
+  if (role === 'PATIENT') return ['profile','longitudinal','medications'];
+  return [];
+}
 
 // === FETCH INTERCEPTOR FOR JWT AUTHENTICATION ===
 const originalFetch = window.fetch;
@@ -437,6 +448,12 @@ function updateGlobalPatientBar() {
   const globalSelect = document.getElementById('global-patient-selector');
 
   if (!appAuth.currentRole) {
+    if (bar) bar.style.display = 'none';
+    return;
+  }
+
+  // Hospital Management System: no active patient bar - hospital view is facility-centric, not patient-centric
+  if (appAuth.currentRole === 'HOSPITAL_ADMIN') {
     if (bar) bar.style.display = 'none';
     return;
   }
@@ -608,14 +625,28 @@ function showToast(title, message, type = 'success') {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  appAuth.init();
   initThemeSwitcher();
   initSidebarToggle();
   initNavigation();
+  // initAuth after navigation so applyRolePermissions click handlers are bound
+  appAuth.init();
   initActions();
   initGlobalPatientSelector();
   initFileDropzone();
-  loadAllData();
+  // Enforce role-based default tab after all init; fixes refresh hijack to monitoring
+  setTimeout(() => {
+    if (appAuth.currentRole) {
+      const allowed = getAllowedTabsForRole(appAuth.currentRole);
+      if (!allowed.includes(currentTab)) {
+        const fallback = allowed[0] || 'monitoring';
+        const btn = document.getElementById('tab-btn-' + fallback);
+        if (btn) btn.click(); else handleTabSwitch(fallback);
+      } else {
+        handleTabSwitch(currentTab);
+      }
+    }
+    loadAllData();
+  }, 0);
 });
 
 function initThemeSwitcher() {
@@ -906,6 +937,10 @@ function initNavigation() {
       title: 'نظام إدارة المستشفى — بوابة الترحيل الوطني',
       sub: 'واجهة منشأتك الخاصة: رفع الأنظمة القديمة، تطبيعها وربطها بالسجل الوطني مع عزل تنظيمي تام'
     },
+    'hospital-global': {
+      title: 'السجل العام الموحد — نظرة وطنية (منفصل عن سجل منشأتي)',
+      sub: 'استعلام وطني شامل للمرضى الموحدين — قراءة فقط، متكامل مع قاعدة البيانات نفسها لكن معزول عرضاً عن مرضى منشأتك'
+    },
     mapping: {
       title: 'استوديو قواعد الربط وتصنيف المصطلحات',
       sub: 'مصفوفة تحويل الحقول والربط المعياري (SFDA SDC, SNOMED CT, ICD-10-AM, SBS, LOINC)'
@@ -932,6 +967,20 @@ function initNavigation() {
     btn.addEventListener('click', () => {
       const tab = btn.getAttribute('data-tab');
       if (!tab) return;
+      // Security: block unauthorized tab access (e.g., patient/hospital trying to open monitoring via refresh or manual click)
+      if (appAuth.currentRole) {
+        const allowed = getAllowedTabsForRole(appAuth.currentRole);
+        if (!allowed.includes(tab)) {
+          showToast('غير مصرح', 'ليس لديك صلاحية للوصول إلى هذه الصفحة', 'error');
+          const fallback = allowed[0];
+          if (fallback && fallback !== tab) {
+            const fbBtn = document.getElementById('tab-btn-' + fallback);
+            if (fbBtn) { fbBtn.click(); return; }
+            handleTabSwitch(fallback);
+          }
+          return;
+        }
+      }
 
       tabButtons.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
@@ -1398,6 +1447,29 @@ function initActions() {
 }
 
 function handleTabSwitch(tab) {
+  // Security: enforce allowlist on every tab switch (including refresh/programmatic calls)
+  if (appAuth.currentRole) {
+    const allowed = getAllowedTabsForRole(appAuth.currentRole);
+    if (!allowed.includes(tab)) {
+      showToast('غير مصرح', 'ليس لديك صلاحية للوصول إلى هذه الصفحة — تمت إعادتك للصفحة المصرح بها', 'error');
+      const fallback = allowed[0];
+      if (fallback && fallback !== tab) {
+        // Update UI to fallback without recursion
+        currentTab = fallback;
+        const fbBtn = document.getElementById('tab-btn-' + fallback);
+        if (fbBtn) {
+          document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+          fbBtn.classList.add('active');
+          document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+          const fp = document.getElementById('pane-' + fallback);
+          if (fp) fp.classList.add('active');
+        }
+        tab = fallback;
+      } else {
+        return;
+      }
+    }
+  }
   if (tab === 'monitoring') loadMonitoringStats();
   if (tab === 'onboarding') loadOnboardedHospitals();
   if (tab === 'cds') loadCdsAndAnalyticsTab();
@@ -1421,6 +1493,13 @@ function handleTabSwitch(tab) {
   if (tab === 'hospital-migration') {
     if (appAuth.currentRole === 'HOSPITAL_ADMIN') {
       loadHospitalMigrationTab();
+    } else {
+      showToast('تنبيه', 'هذه الصفحة مخصصة لحسابات المنشآت الصحية فقط', 'info');
+    }
+  }
+  if (tab === 'hospital-global') {
+    if (appAuth.currentRole === 'HOSPITAL_ADMIN') {
+      loadHospitalGlobalRegistry();
     } else {
       showToast('تنبيه', 'هذه الصفحة مخصصة لحسابات المنشآت الصحية فقط', 'info');
     }
@@ -2566,7 +2645,7 @@ async function loadHospitalImports() {
       tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4" style="color:var(--m3-on-surface-muted);">لا توجد عمليات ترحيل بعد — ابدأ برفع ملفك القديم أعلاه.</td></tr>';
       return;
     }
-    tbody.innerHTML = list.map((r:any)=>`
+    tbody.innerHTML = list.map((r)=>`
       <tr>
         <td><strong>${r.fileName || r.sourceSystem}</strong><br><small style="color:var(--m3-on-surface-muted);">${r.sourceSystem}</small></td>
         <td><span class="badge badge-info">${r.importType}</span></td>
@@ -2576,7 +2655,7 @@ async function loadHospitalImports() {
       </tr>
     `).join('');
   } catch (e) {
-    tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4" style="color:var(--m3-error);">تعذر تحميل السجل: ${(e as any).message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4" style="color:var(--m3-error);">تعذر تحميل السجل: ${(e).message}</td></tr>`;
   }
 }
 
@@ -2592,9 +2671,9 @@ async function loadHospitalPatientsList() {
       tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4" style="color:var(--m3-on-surface-muted);">لا يوجد مرضى مرتبطون بمنشأتك بعد — البيانات المرحّلة ستظهر هنا بعد التطبيع.</td></tr>';
       return;
     }
-    tbody.innerHTML = list.slice(0,8).map((p:any)=>{
+    tbody.innerHTML = list.slice(0,8).map((p)=>{
       const name = `${p.firstNameAr || p.firstName || ''} ${p.lastNameAr || p.lastName || ''}`.trim() || p.internalId;
-      const nid = p.identifiers?.find((i:any)=>i.type==='NID'||i.type==='IQAMA')?.value || p.internalId.substring(0,8);
+      const nid = p.identifiers?.find((i)=>i.type==='NID'||i.type==='IQAMA')?.value || p.internalId.substring(0,8);
       return `<tr><td><strong>${name}</strong></td><td><code>${nid}</code></td><td>${p.gender==='male'?'ذكر':p.gender==='female'?'أنثى':'—'}</td><td><code>${new Date(p.assignedAt).toLocaleDateString('ar-SA')}</code></td></tr>`;
     }).join('');
     if (list.length>8) tbody.innerHTML += `<tr><td colspan="4" class="text-center py-2" style="color:var(--m3-on-surface-muted); font-size:0.78rem;">+ ${list.length-8} مرضى آخرون</td></tr>`;
@@ -2617,15 +2696,15 @@ function initHospitalMigrationDropzone() {
 
   browseBtn?.addEventListener('click', (e)=>{ e.stopPropagation(); fileInput?.click(); });
   dropzone.addEventListener('click', (e)=>{
-    if (e.target !== browseBtn && !browseBtn?.contains(e.target as any)) fileInput?.click();
+    if (e.target !== browseBtn && !browseBtn?.contains(e.target)) fileInput?.click();
   });
   ['dragenter','dragover'].forEach(n=> dropzone.addEventListener(n,(e)=>{ e.preventDefault(); dropzone.classList.add('dragover'); }));
   ['dragleave','drop'].forEach(n=> dropzone.addEventListener(n,(e)=>{ e.preventDefault(); dropzone.classList.remove('dragover'); }));
-  dropzone.addEventListener('drop', (e:any)=>{
+  dropzone.addEventListener('drop', (e)=>{
     const files = e.dataTransfer?.files;
     if (files && files[0]) handleHospFile(files[0]);
   });
-  fileInput?.addEventListener('change', (e:any)=>{
+  fileInput?.addEventListener('change', (e)=>{
     const files = e.target.files;
     if (files && files[0]) handleHospFile(files[0]);
   });
@@ -2638,15 +2717,15 @@ function initHospitalMigrationDropzone() {
   document.getElementById('btn-refresh-hosp-imports')?.addEventListener('click', ()=>{ loadHospitalImports(); loadHospitalScopedStats(); });
   document.getElementById('btn-refresh-hosp-patients')?.addEventListener('click', ()=> loadHospitalPatientsList());
 
-  async function handleHospFile(file:any) {
+  async function handleHospFile(file) {
     const reader = new FileReader();
-    reader.onload = async (ev:any)=>{
+    reader.onload = async (ev)=>{
       const content = ev.target.result;
       await uploadHospFile(file.name, content);
     };
     reader.readAsText(file);
   }
-  async function loadHospSample(type:any) {
+  async function loadHospSample(type) {
     let fileName='', content='';
     if (type==='hl7') {
       fileName='legacy_adt_a01_'+(appAuth.user?.orgId?.substring(0,4)||'hosp')+'.hl7';
@@ -2660,7 +2739,7 @@ function initHospitalMigrationDropzone() {
     }
     await uploadHospFile(fileName, content);
   }
-  async function uploadHospFile(fileName:any, fileContent:any) {
+  async function uploadHospFile(fileName, fileContent) {
     if (!resultContainer) return;
     const orgId = getHospOrgId();
     resultContainer.style.display='block';
@@ -2682,9 +2761,144 @@ function initHospitalMigrationDropzone() {
         resultContainer.innerHTML=`<div class="ingestion-result-box error"><strong style="color:var(--m3-error);">فشل الترحيل</strong><p style="font-size:0.8rem; margin-top:4px;">${data.error||'تعذر'}</p></div>`;
         showToast('خطأ في الترحيل', data.error||'تعذر', 'error');
       }
-    } catch (err:any) {
+    } catch (err) {
       resultContainer.innerHTML=`<div class="ingestion-result-box error"><strong style="color:var(--m3-error);">خطأ اتصال</strong><p style="font-size:0.8rem; margin-top:4px;">${err.message}</p></div>`;
     }
+  }
+}
+
+let _hospGlobalPatients = [];
+let _hospMyIds = new Set();
+async function loadHospitalGlobalRegistry() {
+  const tbody = document.getElementById('hosp-global-tbody');
+  const countEl = document.getElementById('hosp-global-count');
+  const detailEl = document.getElementById('hosp-global-detail');
+  if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4">جاري تحميل السجل العام...</td></tr>';
+  if (detailEl) detailEl.style.display='none';
+  try {
+    const [globalRes, myRes] = await Promise.all([
+      fetch('/api/hospital/global-patients'),
+      fetch('/api/hospital/patients')
+    ]);
+    const globalList = await globalRes.json();
+    const myList = await myRes.json();
+    const myIds = new Set((Array.isArray(myList)?myList:[]).map(p=>p.id || p.internalId));
+    _hospMyIds = myIds;
+    const list = Array.isArray(globalList) ? globalList : (globalList.entry?.map(e=>e.resource) || []);
+    // Normalize canonical vs FHIR shapes: globalList from /api/patients is canonical {internalId, givenName, familyName, identifiers...}
+    // For hospital global we expect canonical shape; if FHIR shape, map it
+    const normalized = list.map(p=>{
+      // canonical store shape: internalId, givenName, familyName, givenNameAr, familyNameAr, gender, birthDate, identifiers
+      // FHIR shape: id, name[0], gender, birthDate, identifier
+      if (p.internalId) return p;
+      const nameObj = p.name?.[0] || {};
+      const nid = p.identifier?.find(i=>i.system?.includes('nid'))?.value || '';
+      return {
+        internalId: p.id,
+        givenName: nameObj.given?.join(' ') || '',
+        familyName: nameObj.family || '',
+        givenNameAr: '',
+        familyNameAr: nameObj.text || '',
+        gender: p.gender,
+        birthDate: p.birthDate,
+        identifiers: p.identifier?.map(i=>({value:i.value, type: i.system?.includes('nid')?'NID':'MRN', system:i.system})) || [],
+        _nid: nid
+      };
+    });
+    _hospGlobalPatients = normalized;
+    if (countEl) countEl.textContent = String(normalized.length);
+    renderHospGlobalTable('');
+    // Search listener
+    const searchEl = document.getElementById('hosp-global-search');
+    if (searchEl && !searchEl.dataset.bound) {
+      searchEl.dataset.bound='1';
+      searchEl.addEventListener('input', (e)=> renderHospGlobalTable(e.target.value));
+    }
+    document.getElementById('btn-refresh-hosp-global')?.addEventListener('click', ()=> loadHospitalGlobalRegistry());
+  } catch (err) {
+    if (tbody) tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4" style="color:var(--m3-error);">تعذر تحميل السجل العام: ${err.message}</td></tr>`;
+  }
+}
+
+function renderHospGlobalTable(filter) {
+  const tbody = document.getElementById('hosp-global-tbody');
+  if (!tbody) return;
+  const q = (filter||'').trim().toLowerCase();
+  let list = _hospGlobalPatients;
+  if (q) {
+    list = list.filter(p=>{
+      const name = `${p.givenNameAr || p.givenName || ''} ${p.familyNameAr || p.familyName || ''}`.toLowerCase();
+      const nid = (p.identifiers?.find(i=>i.type==='NID'||i.type==='IQAMA')?.value || p._nid || '').toLowerCase();
+      const mrn = (p.identifiers?.find(i=>i.type==='MRN')?.value || '').toLowerCase();
+      return name.includes(q) || nid.includes(q) || mrn.includes(q) || (p.internalId||'').toLowerCase().includes(q);
+    });
+  }
+  if (list.length===0) {
+    tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4" style="color:var(--m3-on-surface-muted);">${q?'لا توجد نتائج للبحث':'لا يوجد مرضى في السجل العام بعد — شغّل خط الأنابيب أو رحّل بيانات منشأتك'}</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = list.slice(0,50).map(p=>{
+    const name = `${p.givenNameAr || p.givenName || ''} ${p.familyNameAr || p.familyName || ''}`.trim() || p.internalId;
+    const nidObj = p.identifiers?.find(i=>i.type==='NID'||i.type==='IQAMA');
+    const nid = nidObj?.value || p._nid || '—';
+    const isMine = _hospMyIds.has(p.internalId) || _hospMyIds.has(p.id);
+    const badge = isMine ? '<span class="badge badge-success" style="font-size:0.68rem;">مرتبط بمنشأتي</span>' : '<span class="badge badge-info" style="font-size:0.68rem; background:#e0e7ff; color:#4338ca;">وطني فقط</span>';
+    return `<tr style="${isMine?'background:rgba(99,102,241,0.06);':''}">
+      <td><strong>${name}</strong><br><small style="color:var(--m3-on-surface-muted);">${p.internalId.substring(0,8)}…</small></td>
+      <td><code>${nid}</code></td>
+      <td>${p.gender==='male'?'ذكر':p.gender==='female'?'أنثى':'—'}<br><small>${p.birthDate? new Date(p.birthDate).toLocaleDateString('ar-SA'): '—'}</small></td>
+      <td>${badge}</td>
+      <td><button type="button" class="btn btn-secondary btn-sm" onclick="showHospGlobalDetail('${p.internalId}')">عرض السجل</button></td>
+    </tr>`;
+  }).join('');
+  if (list.length>50) tbody.innerHTML += `<tr><td colspan="5" class="text-center py-2" style="font-size:0.78rem; color:var(--m3-on-surface-muted);">يعرض 50 من ${list.length} — استخدم البحث للتصفية</td></tr>`;
+}
+
+async function showHospGlobalDetail(patientId) {
+  const detailEl = document.getElementById('hosp-global-detail');
+  if (!detailEl) return;
+  detailEl.style.display='block';
+  detailEl.innerHTML = `<div class="card" style="padding:24px; text-align:center;"><p style="color:var(--m3-on-surface-variant);">جاري تحميل السجل الموحد للمريض <code>${patientId.substring(0,8)}…</code>...</p></div>`;
+  detailEl.scrollIntoView({behavior:'smooth', block:'start'});
+  try {
+    const res = await fetch('/api/hospital/patients/' + encodeURIComponent(patientId) + '/longitudinal');
+    const data = await res.json();
+    if (!res.ok || !data.patient) throw new Error(data.error || 'غير موجود');
+    const p = data.patient;
+    const enc = data.encounters || [];
+    const cond = data.conditions || [];
+    const obs = data.observations || [];
+    const meds = data.medicationRequests || [];
+    const name = `${p.givenNameAr || p.givenName || ''} ${p.familyNameAr || p.familyName || ''}`.trim() || patientId;
+    const nid = p.identifiers?.find(i=>i.type==='NID'||i.type==='IQAMA')?.value || '—';
+    const isMine = _hospMyIds.has(patientId) || _hospMyIds.has(p.internalId);
+    detailEl.innerHTML = `
+      <div class="card mb-6" style="border:1px solid #6366f1;">
+        <div class="card-header" style="background:#eef2ff; border-bottom:1px solid #c7d2fe;">
+          <div class="card-header-title" style="color:#4338ca;">
+            <svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <h3>السجل الموحد — ${name} <small style="font-weight:400; color:var(--m3-on-surface-variant);">(${nid})</small></h3>
+          </div>
+          <div style="display:flex; gap:6px; align-items:center;">
+            ${isMine?'<span class="badge badge-success">من مرضى منشأتك</span>':'<span class="badge badge-info" style="background:#6366f1; color:#fff;">سجل وطني — قراءة فقط</span>'}
+            <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('hosp-global-detail').style.display='none'">إغلاق</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px,1fr)); gap:10px; margin-bottom:14px;">
+            <div style="background:var(--m3-surface-container); padding:10px 12px; border-radius:6px; border:1px solid var(--m3-outline-variant);"><span style="font-size:0.72rem; color:var(--m3-on-surface-muted);">الزيارات</span><strong style="display:block; font-size:1.1rem;">${enc.length}</strong></div>
+            <div style="background:var(--m3-surface-container); padding:10px 12px; border-radius:6px; border:1px solid var(--m3-outline-variant);"><span style="font-size:0.72rem; color:var(--m3-on-surface-muted);">التشخيصات</span><strong style="display:block; font-size:1.1rem;">${cond.length}</strong></div>
+            <div style="background:var(--m3-surface-container); padding:10px 12px; border-radius:6px; border:1px solid var(--m3-outline-variant);"><span style="font-size:0.72rem; color:var(--m3-on-surface-muted);">التحاليل</span><strong style="display:block; font-size:1.1rem;">${obs.length}</strong></div>
+            <div style="background:var(--m3-surface-container); padding:10px 12px; border-radius:6px; border:1px solid var(--m3-outline-variant);"><span style="font-size:0.72rem; color:var(--m3-on-surface-muted);">الأدوية</span><strong style="display:block; font-size:1.1rem;">${meds.length}</strong></div>
+          </div>
+          <p style="font-size:0.78rem; color:var(--m3-on-surface-variant); background:#f5f3ff; padding:8px 10px; border-radius:6px; border:1px solid #ddd6fe;">هذا العرض <strong>قراءة فقط</strong> ومأخوذ من نفس قاعدة البيانات المتكاملة — لا يمكن لمستشفاك تعديله. مصدر كل سجل محفوظ في <code>Provenance</code> ومرتبط بـ <code>${p.internalId}</code>.</p>
+          ${cond.length?`<div style="margin-top:12px;"><h4 style="font-size:0.88rem; margin-bottom:6px;">التشخيصات (وطني)</h4><table class="data-table"><thead><tr><th>التشخيص</th><th>SNOMED</th><th>ICD</th><th>المصدر</th></tr></thead><tbody>${cond.slice(0,5).map(c=>`<tr><td>${c.code?.sourceDisplay||c.code?.sourceCode}</td><td><code>${c.code?.snomedCode||'—'}</code></td><td>${c.code?.icd10amCode||'—'}</td><td><span class="badge badge-info">${c.provenance?.sourceSystemId||'—'}</span></td></tr>`).join('')}</tbody></table></div>`:''}
+          ${enc.length?`<div style="margin-top:12px;"><h4 style="font-size:0.88rem; margin-bottom:6px;">الزيارات</h4><div style="display:flex; flex-direction:column; gap:6px;">${enc.slice(0,5).map(e=>`<div style="background:var(--m3-surface-container); padding:8px 10px; border-radius:6px; border:1px solid var(--m3-outline-variant); display:flex; justify-content:space-between; align-items:center;"><span><strong>${e.class||'زيارة'}</strong> — <code>${new Date(e.period?.start||e.createdAt).toLocaleDateString('ar-SA')}</code></span><span class="badge badge-info">${e.provenance?.sourceSystemId||'—'}</span></div>`).join('')}</div></div>`:''}
+        </div>
+      </div>
+    `;
+  } catch (err) {
+    detailEl.innerHTML = `<div class="card" style="border:1px solid var(--m3-error); background:rgba(239,68,68,0.06); padding:16px; text-align:center;"><p style="color:var(--m3-error);">تعذر تحميل السجل: ${err.message}</p></div>`;
   }
 }
 

@@ -1,9 +1,11 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { verifyToken } from '../../security/auth-middleware.js';
 import { PrismaClient } from '@prisma/client';
+import { PrismaCanonicalStore } from '../../persistence/prisma-canonical-store.js';
 
 const router = Router();
 const prisma = new PrismaClient();
+const canonicalStore = new PrismaCanonicalStore(prisma);
 
 const ALLOWED_HOSPITAL_FIELDS = new Set([
   'phone', 'email', 'fullName',
@@ -315,6 +317,36 @@ router.get('/me/stats', async (req: Request, res: Response) => {
   }
 });
 
+// Global unified registry (read-only) for hospital - all patients nationally, separate from hospital's own but same DB (integrated)
+router.get('/global-patients', async (req: Request, res: Response) => {
+  try {
+    const patients = await prisma.patient.findMany({
+      include: { identifiers: true },
+      orderBy: { created_at: 'desc' },
+      take: 100
+    });
+    res.json(patients.map((p: any) => ({
+      id: p.id,
+      internalId: p.internal_id,
+      firstName: p.first_name,
+      lastName: p.last_name,
+      firstNameAr: p.first_name_ar,
+      lastNameAr: p.last_name_ar,
+      gender: p.gender,
+      birthDate: p.birth_date ? p.birth_date.toISOString().split('T')[0] : null,
+      phone: p.phone,
+      email: p.email,
+      identifiers: p.identifiers,
+      sourceSystemId: p.source_system_id,
+      status: p.status,
+      createdAt: p.created_at
+    })));
+  } catch (error) {
+    console.error('Hospital global patients error:', error);
+    res.status(500).json({ error: 'Failed to load global registry' });
+  }
+});
+
 // Hospital patients (scoped) - uses PatientOrganization link, fallback to source_system_id for legacy uploads
 router.get('/patients', async (req: Request, res: Response) => {
   try {
@@ -366,6 +398,32 @@ router.get('/patients', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Hospital patients error:', error);
     res.status(500).json({ error: 'Failed to load patients' });
+  }
+});
+
+// Hospital view of global longitudinal record (read-only, separate but integrated)
+router.get('/patients/:id/longitudinal', async (req: Request, res: Response) => {
+  try {
+    const patientId = req.params.id as string;
+    const record = await canonicalStore.getLongitudinalRecord(patientId);
+    if (!record) return res.status(404).json({ error: 'Patient not found' });
+    // Audit hospital viewing global record (read-only)
+    try {
+      await prisma.auditLog.create({
+        data: {
+          entity_type: 'Patient',
+          entity_id: patientId,
+          action: 'HOSPITAL_VIEW_GLOBAL_RECORD',
+          actor_id: req.user!.id,
+          organization_id: req.user!.organization_id,
+          details: `Hospital ${req.user!.organization_id} viewed global longitudinal record for patient ${patientId} (read-only, separate view but integrated DB)`
+        }
+      });
+    } catch (e) {}
+    res.json(record);
+  } catch (error) {
+    console.error('Hospital longitudinal error:', error);
+    res.status(500).json({ error: 'Failed to load longitudinal record' });
   }
 });
 
