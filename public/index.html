@@ -33,6 +33,11 @@
         </div>
       </div>
 
+      <div class="auth-tabs" style="display:flex;gap:10px;margin-bottom:20px;">
+        <button type="button" class="auth-tab-btn active" id="tab-login" onclick="appAuth.switchTab('login')" style="flex:1;padding:10px;border-radius:4px;border:none;background:#2d3748;color:white;cursor:pointer;">تسجيل الدخول</button>
+        <button type="button" class="auth-tab-btn" id="tab-register" onclick="appAuth.switchTab('register')" style="flex:1;padding:10px;border-radius:4px;border:none;background:#1a202c;color:#a0aec0;cursor:pointer;">إنشاء حساب</button>
+      </div>
+
       <form id="login-form" class="auth-form" onsubmit="event.preventDefault(); appAuth.login();">
         <div class="auth-form-group">
           <label for="login-username">
@@ -78,19 +83,12 @@
           <span>تسجيل الدخول والتحقق الآمن</span>
         </button>
 
-        <div class="auth-quick-accounts">
-          <div class="quick-accounts-title">
-            <span>الحسابات التجريبية المعتمدة (Quick Fill):</span>
-          </div>
-          <div class="quick-chips-grid">
-            <button type="button" class="quick-chip-btn" onclick="appAuth.fillCredentials('admin', 'admin123')" title="تسجيل الدخول كمسؤول النظام">
-              <span class="quick-chip-title">مسؤول النظام (MOH)</span>
-              <span class="quick-chip-desc">admin / admin123</span>
-            </button>
-            <button type="button" class="quick-chip-btn" onclick="appAuth.fillCredentials('kfmc_admin', 'hosp123')" title="تسجيل الدخول كمدير مستشفى">
-              <span class="quick-chip-title">مدير المستشفى (KFMC)</span>
-              <span class="quick-chip-desc">kfmc_admin / hosp123</span>
-            </button>
+        <div class="auth-demo-links">
+          <span>دخول سريع للمطورين:</span>
+          <div class="auth-demo-buttons">
+            <button type="button" onclick="appAuth.fillCredentials('admin', 'admin123')">وزارة الصحة (Admin)</button>
+            <button type="button" onclick="appAuth.fillCredentials('hospital_a', 'pass123')">مستشفى (Hospital)</button>
+            <button type="button" onclick="appAuth.fillCredentials('patient', 'patient123')">مريض (Patient)</button>
           </div>
         </div>
 
@@ -98,6 +96,38 @@
           نظام سيادي مصرح لوزارة الصحة والمنشآت الصحية المعتمدة فقط وفق ضوابط الهيئة الوطنية للأمن السيبراني (NCA ECC-1:2018).
         </p>
       </form>
+
+      <form id="register-form" class="auth-form" style="display:none;" onsubmit="event.preventDefault(); appAuth.register();">
+        <div class="auth-form-group">
+          <label for="register-fullname">الاسم الكامل</label>
+          <div class="auth-input-wrap"><input type="text" id="register-fullname" placeholder="أدخل اسمك الكامل" required class="auth-input"></div>
+        </div>
+        
+        <div class="auth-form-group">
+          <label for="register-username">اسم المستخدم / المعرف الوطني</label>
+          <div class="auth-input-wrap"><input type="text" id="register-username" required class="auth-input"></div>
+        </div>
+        <div class="auth-form-group">
+          <label for="register-password">كلمة المرور</label>
+          <div class="auth-input-wrap"><input type="password" id="register-password" required class="auth-input"></div>
+        </div>
+        <div class="auth-form-group">
+          <label for="register-role">نوع الحساب</label>
+          <div class="auth-input-wrap">
+            <select id="register-role" class="auth-input" onchange="appAuth.toggleRegisterRole()">
+              <option value="PATIENT">فرد / مريض</option>
+              <option value="HOSPITAL_ADMIN">منشأة صحية / مستشفى</option>
+            </select>
+          </div>
+        </div>
+        <div class="auth-form-group" id="register-org-group" style="display:none;">
+          <label for="register-org">اسم المنشأة الصحية</label>
+          <div class="auth-input-wrap"><input type="text" id="register-org" class="auth-input"></div>
+        </div>
+        <div id="register-error" class="auth-error-box"><span id="register-error-text">حدث خطأ</span></div>
+        <button type="submit" class="auth-submit-btn">إنشاء الحساب</button>
+      </form>
+
     </div>
   </div>
 
@@ -533,6 +563,7 @@
                   <span>تسجيل وتفعيل موصل المنشأة</span>
                 </button>
               </form>
+
             </div>
           </div>
 
@@ -571,6 +602,7 @@
                   <span>استيعاب وتطبيع السجل فورياً</span>
                 </button>
               </form>
+
             </div>
           </div>
         </div>
@@ -1057,6 +1089,7 @@
                 </button>
               </div>
             </form>
+
 
             <div id="mpi-merge-result-container" class="mt-4"></div>
           </div>

@@ -28,6 +28,78 @@ const appAuth = {
     this.login();
   },
 
+  switchTab(tab) {
+    const btnLogin = document.getElementById('tab-login');
+    const btnRegister = document.getElementById('tab-register');
+    if (tab === 'login') {
+      document.getElementById('login-form').style.display = 'block';
+      document.getElementById('register-form').style.display = 'none';
+      btnLogin.style.background = '#2d3748'; btnLogin.style.color = 'white';
+      btnRegister.style.background = '#1a202c'; btnRegister.style.color = '#a0aec0';
+    } else {
+      document.getElementById('login-form').style.display = 'none';
+      document.getElementById('register-form').style.display = 'block';
+      btnRegister.style.background = '#2d3748'; btnRegister.style.color = 'white';
+      btnLogin.style.background = '#1a202c'; btnLogin.style.color = '#a0aec0';
+    }
+  },
+
+  toggleRegisterRole() {
+    const role = document.getElementById('register-role').value;
+    const orgGroup = document.getElementById('register-org-group');
+    if (role === 'HOSPITAL_ADMIN') {
+      orgGroup.style.display = 'block';
+    } else {
+      orgGroup.style.display = 'none';
+    }
+  },
+
+  async register() {
+    const fullname = document.getElementById('register-fullname').value;
+    const username = document.getElementById('register-username').value;
+    const password = document.getElementById('register-password').value;
+    const roleType = document.getElementById('register-role').value;
+    const orgName = document.getElementById('register-org').value;
+    
+    const errorDiv = document.getElementById('register-error');
+    const errorText = document.getElementById('register-error-text');
+    if (errorDiv) errorDiv.style.display = 'none';
+
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          full_name: fullname,
+          username: username,
+          password: password,
+          roleType: roleType,
+          organization_name: orgName
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        const msg = data.error || 'حدث خطأ في إنشاء الحساب';
+        if (errorText) errorText.textContent = msg;
+        else if (errorDiv) errorDiv.textContent = msg;
+        if (errorDiv) errorDiv.style.display = 'flex';
+        return;
+      }
+      this.currentRole = data.user.role;
+      this.token = data.token;
+      this.user = data.user;
+      localStorage.setItem('shiep_role', this.currentRole);
+      localStorage.setItem('shiep_token', this.token);
+      this.updateUI();
+    } catch (err) {
+      const msg = 'انقطع الاتصال بالخادم';
+      if (errorText) errorText.textContent = msg;
+      else if (errorDiv) errorDiv.textContent = msg;
+      if (errorDiv) errorDiv.style.display = 'flex';
+    }
+  },
+
+
   async login() {
     const userField = document.getElementById('login-username').value;
     const passField = document.getElementById('login-password').value;

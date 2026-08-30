@@ -51,6 +51,7 @@ Each model serves a distinct purpose:
 | G8 | FHIR R4.0.1 as exchange layer (not internal model) | CHDM → FHIR serialization on demand |
 | G9 | NPHIES as optional external integration (not prerequisite) | Core MVP functions without NPHIES connectivity |
 | G10 | Visible integration monitoring | Dashboard showing source status, record counts, errors |
+| G11 | Live Patient Portal & Empowerment | Patient user role fetching real-time canonical data (no mock/dummy data) from the backend API |
 
 ---
 
