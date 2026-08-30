@@ -124,6 +124,81 @@
           <label for="register-org">اسم المنشأة الصحية</label>
           <div class="auth-input-wrap"><input type="text" id="register-org" class="auth-input"></div>
         </div>
+        
+        <!-- Patient Profile Data Section (Hidden by default) -->
+        <div id="register-patient-profile-group" style="display:none; border-top:1px solid var(--m3-outline-variant); padding-top:16px; margin-top:16px;">
+          <h4 style="font-size:0.92rem; margin-bottom:12px; color:var(--m3-on-surface);">البيانات الشخصية والصحية الأساسية (اختياري - يمكن تحديثها لاحقاً)</h4>
+          
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <div class="auth-form-group">
+              <label for="register-preferred-first-name">الاسم الأول المفضل</label>
+              <div class="auth-input-wrap"><input type="text" id="register-preferred-first-name" placeholder="مثلاً: أحمد" class="auth-input"></div>
+            </div>
+            <div class="auth-form-group">
+              <label for="register-preferred-last-name">الاسم الأخير المفضل</label>
+              <div class="auth-input-wrap"><input type="text" id="register-preferred-last-name" placeholder="مثلاً: محمد" class="auth-input"></div>
+            </div>
+          </div>
+          
+          <div class="auth-form-group">
+            <label for="register-preferred-language">اللغة المفضلة للتواصل</label>
+            <div class="auth-input-wrap">
+              <select id="register-preferred-language" class="auth-input">
+                <option value="ar">العربية</option>
+                <option value="en">English</option>
+              </select>
+            </div>
+          </div>
+          
+          <h4 style="font-size:0.9rem; margin-top:14px; margin-bottom:10px; color:var(--m3-on-surface-variant);">جهة الاتصال في حالات الطوارئ</h4>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <div class="auth-form-group">
+              <label for="register-emergency-name">اسم جهة الطوارئ</label>
+              <div class="auth-input-wrap"><input type="text" id="register-emergency-name" placeholder="اسم الشخص أو القريب" class="auth-input"></div>
+            </div>
+            <div class="auth-form-group">
+              <label for="register-emergency-phone">رقم الجوال</label>
+              <div class="auth-input-wrap"><input type="tel" id="register-emergency-phone" placeholder="+966 50 0000000" class="auth-input"></div>
+            </div>
+          </div>
+          
+          <div class="auth-form-group">
+            <label for="register-emergency-relationship">العلاقة</label>
+            <div class="auth-input-wrap">
+              <select id="register-emergency-relationship" class="auth-input">
+                <option value="">-- اختر العلاقة --</option>
+                <option value="PARENT">الوالد / الوالدة</option>
+                <option value="SPOUSE">الزوج / الزوجة</option>
+                <option value="SIBLING">الأخ / الأخت</option>
+                <option value="CHILD">الابن / الابنة</option>
+                <option value="FRIEND">صديق</option>
+                <option value="OTHER">أخرى</option>
+              </select>
+            </div>
+          </div>
+          
+          <h4 style="font-size:0.9rem; margin-top:14px; margin-bottom:10px; color:var(--m3-on-surface-variant);">العنوان (اختياري)</h4>
+          <div class="auth-form-group">
+            <label for="register-address-line">الشارع والرقم</label>
+            <div class="auth-input-wrap"><input type="text" id="register-address-line" placeholder="مثلاً: شارع الملك فهد، الرياض 1234" class="auth-input"></div>
+          </div>
+          
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;">
+            <div class="auth-form-group">
+              <label for="register-address-city">المدينة</label>
+              <div class="auth-input-wrap"><input type="text" id="register-address-city" placeholder="الرياض" class="auth-input"></div>
+            </div>
+            <div class="auth-form-group">
+              <label for="register-address-district">الحي</label>
+              <div class="auth-input-wrap"><input type="text" id="register-address-district" placeholder="العليا" class="auth-input"></div>
+            </div>
+            <div class="auth-form-group">
+              <label for="register-address-postal">الرمز البريدي</label>
+              <div class="auth-input-wrap"><input type="text" id="register-address-postal" placeholder="12345" class="auth-input"></div>
+            </div>
+          </div>
+        </div>
+        
         <div id="register-error" class="auth-error-box"><span id="register-error-text">حدث خطأ</span></div>
         <button type="submit" class="auth-submit-btn">إنشاء الحساب</button>
       </form>
@@ -1041,6 +1116,48 @@
             </table>
           </div>
         </div>
+
+        <div class="card mt-6" id="patient-allergy-management-card" style="display:none;">
+          <div class="card-header">
+            <div class="card-header-title">
+              <svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+              <h3>إدارة الحساسيات المبلغ عنها ذاتياً</h3>
+            </div>
+            <span class="badge badge-warning">غير مؤكدة سريرياً</span>
+          </div>
+          <div class="card-body">
+            <form id="patient-allergy-form" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:12px;align-items:end;">
+              <div>
+                <label for="patient-allergy-name" style="display:block; font-size:0.78rem; margin-bottom:6px;">اسم المادة المسببة</label>
+                <input id="patient-allergy-name" class="form-select" type="text" placeholder="مثل: اللوبيا، البنسلين" required>
+              </div>
+              <div>
+                <label for="patient-allergy-reaction" style="display:block; font-size:0.78rem; margin-bottom:6px;">نوع التفاعل</label>
+                <input id="patient-allergy-reaction" class="form-select" type="text" placeholder="مثل: طفح جلدي، ضيق تنفس">
+              </div>
+              <div>
+                <label for="patient-allergy-severity" style="display:block; font-size:0.78rem; margin-bottom:6px;">شدة التفاعل</label>
+                <select id="patient-allergy-severity" class="form-select">
+                  <option value="MILD">خفيفة</option>
+                  <option value="MODERATE">متوسطة</option>
+                  <option value="SEVERE">شديدة</option>
+                </select>
+              </div>
+              <div>
+                <label for="patient-allergy-date" style="display:block; font-size:0.78rem; margin-bottom:6px;">تاريخ البداية</label>
+                <input id="patient-allergy-date" class="form-select" type="date">
+              </div>
+              <div>
+                <label for="patient-allergy-notes" style="display:block; font-size:0.78rem; margin-bottom:6px;">ملاحظات</label>
+                <input id="patient-allergy-notes" class="form-select" type="text" placeholder="ملاحظات إضافية">
+              </div>
+              <div>
+                <button type="submit" class="btn btn-primary" style="width:100%;">حفظ الحساسية المبلغ عنها</button>
+              </div>
+            </form>
+            <div id="patient-allergies-container" class="mt-4"></div>
+          </div>
+        </div>
       </section>
 
       <!-- TAB 2: MPI (Master Patient Index) -->
@@ -1114,6 +1231,7 @@
           </div>
         </div>
 
+        <div id="patient-self-reported-dashboard" class="mt-4" style="display:none;"></div>
         <div id="longitudinal-content" class="longitudinal-content">
           <!-- Populated by app.js -->
         </div>

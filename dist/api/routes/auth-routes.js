@@ -7,9 +7,140 @@ import { v4 as uuidv4 } from 'uuid';
 const router = Router();
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-national-health-key-2026';
+async function ensureDefaultAccounts() {
+    const [sysAdminRole, hospitalAdminRole, patientRole] = await Promise.all([
+        prisma.role.upsert({
+            where: { role_code: 'SYS_ADMIN' },
+            update: {},
+            create: {
+                role_name: 'System Administrator',
+                role_code: 'SYS_ADMIN',
+                description: 'Global system administrator',
+                is_system_role: true
+            }
+        }),
+        prisma.role.upsert({
+            where: { role_code: 'HOSPITAL_ADMIN' },
+            update: {},
+            create: {
+                role_name: 'Hospital Administrator',
+                role_code: 'HOSPITAL_ADMIN',
+                description: 'Hospital level admin',
+                is_system_role: false
+            }
+        }),
+        prisma.role.upsert({
+            where: { role_code: 'PATIENT' },
+            update: {},
+            create: {
+                role_name: 'Patient',
+                role_code: 'PATIENT',
+                description: 'Individual Patient Access',
+                is_system_role: true
+            }
+        })
+    ]);
+    let mohOrg = await prisma.organization.findFirst({ where: { organization_type: 'MOH' } });
+    if (!mohOrg) {
+        mohOrg = await prisma.organization.create({
+            data: {
+                organization_name: 'Ministry of Health',
+                organization_name_ar: 'وزارة الصحة',
+                organization_type: 'MOH',
+                region: 'National',
+                status: 'ACTIVE'
+            }
+        });
+    }
+    const hospitalOrg = await prisma.organization.findFirst({ where: { organization_type: 'HOSPITAL' } })
+        ?? await prisma.organization.create({
+            data: {
+                organization_name: 'Hospital A',
+                organization_name_ar: 'مستشفى أ',
+                organization_type: 'HOSPITAL',
+                region: 'Riyadh',
+                status: 'ACTIVE'
+            }
+        });
+    const adminHash = await bcrypt.hash('admin123', 10);
+    await prisma.user.upsert({
+        where: { username: 'admin' },
+        update: { password_hash: adminHash, full_name: 'System Admin', role_id: sysAdminRole.id, organization_id: mohOrg.id, is_active: true },
+        create: {
+            username: 'admin',
+            password_hash: adminHash,
+            full_name: 'System Admin',
+            role_id: sysAdminRole.id,
+            organization_id: mohOrg.id,
+            is_active: true
+        }
+    });
+    const hospitalHash = await bcrypt.hash('pass123', 10);
+    await prisma.user.upsert({
+        where: { username: 'hospital_a' },
+        update: { password_hash: hospitalHash, full_name: 'Hospital A Administrator', role_id: hospitalAdminRole.id, organization_id: hospitalOrg.id, is_active: true },
+        create: {
+            username: 'hospital_a',
+            password_hash: hospitalHash,
+            full_name: 'Hospital A Administrator',
+            role_id: hospitalAdminRole.id,
+            organization_id: hospitalOrg.id,
+            is_active: true
+        }
+    });
+    const patientHash = await bcrypt.hash('patient123', 10);
+    let patient = await prisma.patient.findUnique({ where: { internal_id: '1088445566' } });
+    if (!patient) {
+        patient = await prisma.patient.create({
+            data: {
+                internal_id: '1088445566',
+                first_name: 'Ahmed',
+                last_name: 'Al-Rashidi',
+                first_name_ar: 'أحمد',
+                last_name_ar: 'الرشيدي',
+                gender: 'male',
+                birth_date: new Date('1985-05-12'),
+                status: 'ACTIVE'
+            }
+        });
+        const existingIdentifier = await prisma.patientIdentifier.findFirst({
+            where: { patient_id: patient.id, value: '1088445566' }
+        });
+        if (!existingIdentifier) {
+            await prisma.patientIdentifier.create({
+                data: {
+                    patient_id: patient.id,
+                    value: '1088445566',
+                    type: 'NID',
+                    system: 'urn:sa:nca:nid'
+                }
+            });
+        }
+    }
+    await prisma.user.upsert({
+        where: { username: 'patient' },
+        update: {
+            password_hash: patientHash,
+            full_name: 'أحمد الرشيدي (Ahmed Al-Rashidi)',
+            role_id: patientRole.id,
+            organization_id: mohOrg.id,
+            patient_profile_id: patient.id,
+            is_active: true
+        },
+        create: {
+            username: 'patient',
+            password_hash: patientHash,
+            full_name: 'أحمد الرشيدي (Ahmed Al-Rashidi)',
+            role_id: patientRole.id,
+            organization_id: mohOrg.id,
+            patient_profile_id: patient.id,
+            is_active: true
+        }
+    });
+}
 router.post('/register', async (req, res) => {
     try {
-        const { username, password, full_name, roleType, organization_name } = req.body;
+        const { username, password, full_name, roleType, organization_name, patient_profile } = req.body;
         if (!username || !password || !full_name || !roleType) {
             return res.status(400).json({ error: 'Username, password, full_name, and roleType are required' });
         }
@@ -66,6 +197,33 @@ router.post('/register', async (req, res) => {
                 }
             });
             patient_profile_id = patient.id;
+            // Save patient profile data if provided
+            if (patient_profile) {
+                try {
+                    await prisma.patientProfile.create({
+                        data: {
+                            patient_id: patient.id,
+                            preferred_first_name: patient_profile.preferred_first_name,
+                            preferred_last_name: patient_profile.preferred_last_name,
+                            preferred_language: patient_profile.preferred_language,
+                            emergency_contact_name: patient_profile.emergency_contact_name,
+                            emergency_contact_phone: patient_profile.emergency_contact_phone,
+                            emergency_contact_relationship: patient_profile.emergency_contact_relationship,
+                            address_line: patient_profile.address_line,
+                            address_city: patient_profile.address_city,
+                            address_district: patient_profile.address_district,
+                            address_postal_code: patient_profile.address_postal_code,
+                            source: 'PATIENT',
+                            verification_status: 'SELF_REPORTED',
+                            recorded_at: new Date(),
+                            notes: 'Created during patient registration'
+                        }
+                    });
+                }
+                catch (profileErr) {
+                    console.warn('Warning: Failed to save patient profile during registration, but user created', profileErr);
+                }
+            }
         }
         const user = await prisma.user.create({
             data: {
@@ -100,6 +258,7 @@ router.post('/register', async (req, res) => {
 });
 router.post('/login', async (req, res) => {
     try {
+        await ensureDefaultAccounts();
         const { username, password } = req.body;
         if (!username || !password) {
             return res.status(400).json({ error: 'Username and password required' });

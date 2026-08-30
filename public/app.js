@@ -47,10 +47,17 @@ const appAuth = {
   toggleRegisterRole() {
     const role = document.getElementById('register-role').value;
     const orgGroup = document.getElementById('register-org-group');
+    const patientProfileGroup = document.getElementById('register-patient-profile-group');
+    
     if (role === 'HOSPITAL_ADMIN') {
-      orgGroup.style.display = 'block';
+      if (orgGroup) orgGroup.style.display = 'block';
+      if (patientProfileGroup) patientProfileGroup.style.display = 'none';
+    } else if (role === 'PATIENT') {
+      if (orgGroup) orgGroup.style.display = 'none';
+      if (patientProfileGroup) patientProfileGroup.style.display = 'block';
     } else {
-      orgGroup.style.display = 'none';
+      if (orgGroup) orgGroup.style.display = 'none';
+      if (patientProfileGroup) patientProfileGroup.style.display = 'none';
     }
   },
 
@@ -60,6 +67,18 @@ const appAuth = {
     const password = document.getElementById('register-password').value;
     const roleType = document.getElementById('register-role').value;
     const orgName = document.getElementById('register-org').value;
+    
+    // Patient profile data
+    const preferredFirstName = document.getElementById('register-preferred-first-name')?.value || '';
+    const preferredLastName = document.getElementById('register-preferred-last-name')?.value || '';
+    const preferredLanguage = document.getElementById('register-preferred-language')?.value || 'ar';
+    const emergencyContactName = document.getElementById('register-emergency-name')?.value || '';
+    const emergencyContactPhone = document.getElementById('register-emergency-phone')?.value || '';
+    const emergencyContactRelationship = document.getElementById('register-emergency-relationship')?.value || '';
+    const addressLine = document.getElementById('register-address-line')?.value || '';
+    const addressCity = document.getElementById('register-address-city')?.value || '';
+    const addressDistrict = document.getElementById('register-address-district')?.value || '';
+    const addressPostalCode = document.getElementById('register-address-postal')?.value || '';
     
     const errorDiv = document.getElementById('register-error');
     const errorText = document.getElementById('register-error-text');
@@ -74,7 +93,20 @@ const appAuth = {
           username: username,
           password: password,
           roleType: roleType,
-          organization_name: orgName
+          organization_name: orgName,
+          // Patient profile data
+          patient_profile: roleType === 'PATIENT' ? {
+            preferred_first_name: preferredFirstName,
+            preferred_last_name: preferredLastName,
+            preferred_language: preferredLanguage,
+            emergency_contact_name: emergencyContactName,
+            emergency_contact_phone: emergencyContactPhone,
+            emergency_contact_relationship: emergencyContactRelationship,
+            address_line: addressLine,
+            address_city: addressCity,
+            address_district: addressDistrict,
+            address_postal_code: addressPostalCode
+          } : undefined
         })
       });
       const data = await res.json();
@@ -210,6 +242,9 @@ const appAuth = {
         if(t) t.style.display = 'flex';
       });
       defaultTab = 'longitudinal';
+
+      const selfReportedCard = document.getElementById('patient-allergy-management-card');
+      if (selfReportedCard) selfReportedCard.style.display = 'block';
 
       // STRICT PATIENT SECURITY: Hide all cross-patient selectors
       const globalSelect = document.getElementById('global-patient-selector');
@@ -1111,6 +1146,47 @@ function initActions() {
     }
   });
 
+  document.getElementById('patient-allergy-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (appAuth.currentRole !== 'PATIENT') return;
+
+    const allergenName = document.getElementById('patient-allergy-name')?.value?.trim();
+    const reactionText = document.getElementById('patient-allergy-reaction')?.value?.trim();
+    const reactionSeverity = document.getElementById('patient-allergy-severity')?.value || 'MILD';
+    const onsetDate = document.getElementById('patient-allergy-date')?.value;
+    const notes = document.getElementById('patient-allergy-notes')?.value?.trim();
+
+    if (!allergenName) {
+      showToast('تنبيه', 'يرجى إدخال اسم المادة المسببة.', 'warning');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/patients/me/allergies', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          allergenName,
+          reactionText,
+          reactionSeverity,
+          onsetDate,
+          notes,
+          verificationStatus: 'UNVERIFIED',
+          source: 'PATIENT'
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to save allergy');
+      document.getElementById('patient-allergy-form').reset();
+      showToast('تمت الإضافة', 'تم حفظ الحساسية المبلغ عنها كبيانات ذاتية غير مؤكدة.', 'success');
+      loadPatientSelfReportedDashboard();
+      loadLongitudinalRecord(currentPatientId || cachedPatients[0]?.id);
+    } catch (err) {
+      console.error('Failed to save patient allergy', err);
+      showToast('خطأ', 'تعذر حفظ الحساسية المبلغ عنها.', 'error');
+    }
+  });
+
   // MPI Patient Merge Form Listener
   document.getElementById('form-mpi-merge')?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -1177,7 +1253,12 @@ function handleTabSwitch(tab) {
   if (tab === 'nphies') loadNphiesTab();
   if (tab === 'medications') loadMedicationsTab();
   if (tab === 'mpi') loadMpiIdentities();
-  if (tab === 'longitudinal') loadPatientsDropdown();
+  if (tab === 'longitudinal') {
+    loadPatientsDropdown();
+    if (appAuth.currentRole === 'PATIENT') {
+      loadPatientSelfReportedDashboard();
+    }
+  }
   if (tab === 'mapping') loadMappingStudio();
   if (tab === 'provenance') loadProvenanceRecords();
   if (tab === 'security') loadSecurityAuditChain();
@@ -1783,6 +1864,7 @@ async function loadPatientsDropdown() {
     }
     if (currentPatientId) {
       loadLongitudinalRecord(currentPatientId);
+      loadPatientSelfReportedDashboard();
     }
     return;
   }
@@ -1816,6 +1898,98 @@ async function loadPatientsDropdown() {
     }
   } catch (err) {
     console.error('Failed to load patients dropdown', err);
+  }
+}
+
+async function loadPatientSelfReportedDashboard() {
+  const container = document.getElementById('patient-self-reported-dashboard');
+  if (!container || appAuth.currentRole !== 'PATIENT') return;
+
+  try {
+    const selfReportedDashboard = document.getElementById('patient-self-reported-dashboard');
+    if (selfReportedDashboard) selfReportedDashboard.style.display = 'block';
+
+    const res = await fetch('/api/patients/me/health-profile');
+    const profile = await res.json();
+    if (!profile || !profile.allergies) {
+      container.innerHTML = '<div class="card"><div class="card-body"><p class="text-center py-4 text-muted">لا توجد بيانات شخصية مسجلة بعد.</p></div></div>';
+      return;
+    }
+
+    const allergyList = Array.isArray(profile.allergies) ? profile.allergies : [];
+    const medicationList = Array.isArray(profile.medications) ? profile.medications : [];
+    const conditionList = Array.isArray(profile.conditions) ? profile.conditions : [];
+    const profileData = profile.profile || {};
+
+    container.innerHTML = `
+      <div class="card mb-6">
+        <div class="card-header">
+          <div class="card-header-title">
+            <svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <h3>ملفي الصحي الشخصي (بيانات يتم إدخالها ذاتياً)</h3>
+          </div>
+          <span class="badge badge-warning">مصدر: المريض • غير مؤكدة</span>
+        </div>
+        <div class="card-body">
+          <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:12px;">
+            <div class="metric-card" style="padding:14px; min-height:unset;">
+              <div class="metric-label">الاسم المفضل</div>
+              <div class="metric-value" style="font-size:1.05rem;">${profileData.preferredFirstName || '—'} ${profileData.preferredLastName || ''}</div>
+            </div>
+            <div class="metric-card" style="padding:14px; min-height:unset;">
+              <div class="metric-label">لغة التواصل</div>
+              <div class="metric-value" style="font-size:1.05rem;">${profileData.preferredLanguage || 'العربية'}</div>
+            </div>
+            <div class="metric-card" style="padding:14px; min-height:unset;">
+              <div class="metric-label">جهة الطوارئ</div>
+              <div class="metric-value" style="font-size:1.05rem;">${profileData.emergencyContactName || '—'}</div>
+            </div>
+            <div class="metric-card" style="padding:14px; min-height:unset;">
+              <div class="metric-label">العنوان</div>
+              <div class="metric-value" style="font-size:0.95rem;">${profileData.addressCity || '—'}${profileData.addressDistrict ? ` / ${profileData.addressDistrict}` : ''}</div>
+            </div>
+          </div>
+          <div class="mt-4" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px;">
+            <div class="card" style="padding:12px; background:var(--m3-surface-container-low); border:1px solid var(--m3-outline-variant);">
+              <strong>حساسياتي (${allergyList.length})</strong>
+              <ul style="margin:10px 0 0 0; padding-right:18px; color:var(--m3-on-surface-variant);">
+                ${allergyList.length ? allergyList.slice(0, 3).map(a => `<li>${a.allergenName} (${a.reactionSeverity || 'غير محدد'})</li>`).join('') : '<li>لا توجد بيانات حساسية مسجلة</li>'}
+              </ul>
+            </div>
+            <div class="card" style="padding:12px; background:var(--m3-surface-container-low); border:1px solid var(--m3-outline-variant);">
+              <strong>أدويتي (${medicationList.length})</strong>
+              <ul style="margin:10px 0 0 0; padding-right:18px; color:var(--m3-on-surface-variant);">
+                ${medicationList.length ? medicationList.slice(0, 3).map(m => `<li>${m.medicationName} ${m.currentlyTaking ? '• ما زال يتناولها' : '• توقف عنها'}</li>`).join('') : '<li>لا توجد أدوية تم تسجيلها ذاتياً</li>'}
+              </ul>
+            </div>
+            <div class="card" style="padding:12px; background:var(--m3-surface-container-low); border:1px solid var(--m3-outline-variant);">
+              <strong>حالات صحية (${conditionList.length})</strong>
+              <ul style="margin:10px 0 0 0; padding-right:18px; color:var(--m3-on-surface-variant);">
+                ${conditionList.length ? conditionList.slice(0, 3).map(c => `<li>${c.conditionName}</li>`).join('') : '<li>لا توجد حالات صحية تم إدخالها ذاتياً</li>'}
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const allergyContainer = document.getElementById('patient-allergies-container');
+    if (allergyContainer) {
+      allergyContainer.innerHTML = allergyList.length ? allergyList.map((a) => `
+        <div style="padding:12px 14px; margin-bottom:8px; border:1px solid var(--m3-outline-variant); border-radius:var(--radius-xs); background:var(--m3-surface-container-low);">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:6px;">
+            <strong>${a.allergenName}</strong>
+            <span class="badge badge-warning">${a.verificationStatus || 'UNVERIFIED'}</span>
+          </div>
+          <div style="font-size:0.8rem; color:var(--m3-on-surface-variant);">التفاعل: ${a.reactionText || 'غير محدد'} | الدرجة: ${a.reactionSeverity || 'غير محددة'} | التاريخ: ${a.onsetDate ? new Date(a.onsetDate).toLocaleDateString('ar-SA') : 'غير محدد'}</div>
+        </div>
+      `).join('') : '<p class="text-center py-4 text-muted">لا توجد حساسية مسجلة حتى الآن.</p>';
+    }
+  } catch (err) {
+    console.error('Failed to load patient self-reported dashboard', err);
+    if (container) {
+      container.innerHTML = '<div class="card"><div class="card-body"><p class="text-center py-4 text-muted">تعذّر تحميل الملف الصحي الشخصي.</p></div></div>';
+    }
   }
 }
 
