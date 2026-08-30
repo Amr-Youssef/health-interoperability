@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
+import { PrismaClient } from '@prisma/client';
 import { DynamicHospitalRegistry } from '../ingestion/dynamic/dynamic-adapter.js';
 import { MappingEngine } from '../mapping/engine/mapping-engine.js';
 import { DataQualityEngine } from '../validation/validation-engine.js';
@@ -225,9 +226,85 @@ export class NormalizationEngine {
      * Ingest and normalize a custom payload for a dynamic hospital
      */
     async ingestDynamicPayload(hospitalId, entityType, sourceRecordId, payload) {
-        const adapter = await this.dynamicRegistry.getAdapter(hospitalId);
-        if (!adapter)
-            throw new Error(`Hospital [${hospitalId}] is not registered in the dynamic registry.`);
+        let adapter = await this.dynamicRegistry.getAdapter(hospitalId);
+        if (!adapter) {
+            // Auto-onboard for auth-registered hospitals (UUID) via Hospital Gateway legacy migration
+            const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(hospitalId);
+            if (isUuid) {
+                try {
+                    // Fetch real organization name if exists (auth-registered hospital)
+                    let orgName = `Hospital ${hospitalId.substring(0, 8)}`;
+                    let orgNameAr = `مستشفى ${hospitalId.substring(0, 8)}`;
+                    let orgRegion = 'Riyadh';
+                    try {
+                        const tmpPrisma = new PrismaClient();
+                        const org = await tmpPrisma.organization.findUnique({ where: { id: hospitalId } });
+                        if (org) {
+                            if (org.organization_name)
+                                orgName = org.organization_name;
+                            if (org.organization_name_ar)
+                                orgNameAr = org.organization_name_ar;
+                            if (org.region && ['Riyadh', 'Makkah', 'Eastern', 'Madinah', 'Asir'].includes(org.region))
+                                orgRegion = org.region;
+                        }
+                        await tmpPrisma.$disconnect();
+                    }
+                    catch (e) { }
+                    const defaultDef = {
+                        hospitalId,
+                        hospitalName: orgName,
+                        hospitalNameAr: orgNameAr,
+                        facilityType: 'hospital',
+                        region: orgRegion,
+                        adapterVersion: '1.0.0',
+                        sourceSchema: {
+                            sourceSystemId: hospitalId,
+                            tables: [
+                                {
+                                    name: 'client_registry',
+                                    fields: [
+                                        { name: 'client_id', type: 'string', isNullable: false },
+                                        { name: 'national_id_num', type: 'string', isNullable: false },
+                                        { name: 'full_arabic_name', type: 'string', isNullable: false },
+                                        { name: 'dob_gregorian', type: 'string', isNullable: false },
+                                        { name: 'sex_code', type: 'string', isNullable: false }
+                                    ]
+                                }
+                            ]
+                        },
+                        defaultMappingConfigs: [
+                            {
+                                id: `map-${hospitalId}-pt-v1`,
+                                sourceSystemId: hospitalId,
+                                sourceEntityType: 'client_registry',
+                                targetCanonicalEntity: 'CanonicalPatient',
+                                mappingVersion: '1.0.0',
+                                effectiveDate: '2026-01-01',
+                                status: 'ACTIVE',
+                                author: 'Auto-Onboard Hospital Gateway',
+                                description: `Auto-generated mapping for hospital ${hospitalId}`,
+                                validationState: 'VALIDATED',
+                                fieldMappings: [
+                                    { sourceField: 'client_id', targetField: 'mrn', required: true },
+                                    { sourceField: 'national_id_num', targetField: 'nationalId', required: true },
+                                    { sourceField: 'full_arabic_name', targetField: 'givenNameAr', required: true },
+                                    { sourceField: 'sex_code', targetField: 'gender', required: true, transformation: 'gender_normalize' },
+                                    { sourceField: 'dob_gregorian', targetField: 'birthDate', required: true, transformation: 'date_normalize' }
+                                ]
+                            }
+                        ],
+                        createdAt: new Date().toISOString()
+                    };
+                    await this.onboardHospital(defaultDef);
+                    adapter = await this.dynamicRegistry.getAdapter(hospitalId);
+                }
+                catch (e) {
+                    throw new Error(`Hospital [${hospitalId}] is not registered in the dynamic registry.`);
+                }
+            }
+            if (!adapter)
+                throw new Error(`Hospital [${hospitalId}] is not registered in the dynamic registry.`);
+        }
         const rawRecord = adapter.queueRawRecord(entityType, sourceRecordId, payload);
         await this.rawStore.save(rawRecord);
         const mapped = await this.mappingEngine.mapRecord(rawRecord);
@@ -410,7 +487,7 @@ export class NormalizationEngine {
                 headers.forEach((h, idx) => {
                     rowObj[h] = values[idx] || '';
                 });
-                // Translate CSV row to dynamic hospital patient
+                // Translate CSV row to dynamic hospital patient - use caller's sourceSystemId for hospital-scoped migration
                 const payload = {
                     client_id: rowObj.client_id || rowObj.mrn || rowObj.id || `CSV-${i}`,
                     national_id_num: rowObj.national_id || rowObj.national_id_num || rowObj.nid || '1088445566',
@@ -418,7 +495,9 @@ export class NormalizationEngine {
                     dob_gregorian: rowObj.dob_gregorian || rowObj.birthdate || rowObj.dob || '1988-03-20',
                     sex_code: rowObj.sex_code || rowObj.gender || rowObj.sex || 'M'
                 };
-                const res = await this.ingestDynamicPayload('hospital-d', 'client_registry', payload.client_id, payload);
+                // Use sourceSystemId if it belongs to a registered hospital, otherwise fallback to hospital-d which has legacy mapping
+                const csvSourceId = sourceSystemId && sourceSystemId !== 'file-dropzone-uploader' ? sourceSystemId : 'hospital-d';
+                const res = await this.ingestDynamicPayload(csvSourceId, 'client_registry', payload.client_id, payload);
                 if (res.validation?.decision !== 'REJECTED')
                     csvIngestedCount++;
             }

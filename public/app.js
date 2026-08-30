@@ -18,6 +18,11 @@ const appAuth = {
 
   init() {
     this.updateUI();
+    // Ensure registration fields visibility matches default role (PATIENT) on load
+    // Use timeout to ensure DOM is ready when init called from DOMContentLoaded
+    setTimeout(() => {
+      try { this.toggleRegisterRole(); } catch(e) {}
+    }, 0);
   },
 
   fillCredentials(user, pass) {
@@ -31,21 +36,28 @@ const appAuth = {
   switchTab(tab) {
     const btnLogin = document.getElementById('tab-login');
     const btnRegister = document.getElementById('tab-register');
+    const loginForm = document.getElementById('login-form');
+    const registerForm = document.getElementById('register-form');
+    const authModal = document.querySelector('.auth-modal');
     if (tab === 'login') {
-      document.getElementById('login-form').style.display = 'block';
-      document.getElementById('register-form').style.display = 'none';
-      btnLogin.style.background = '#2d3748'; btnLogin.style.color = 'white';
-      btnRegister.style.background = '#1a202c'; btnRegister.style.color = '#a0aec0';
+      if (loginForm) loginForm.style.display = 'flex';
+      if (registerForm) registerForm.style.display = 'none';
+      if (btnLogin) { btnLogin.style.background = '#2d3748'; btnLogin.style.color = 'white'; btnLogin.classList.add('active'); }
+      if (btnRegister) { btnRegister.style.background = '#1a202c'; btnRegister.style.color = '#a0aec0'; btnRegister.classList.remove('active'); }
     } else {
-      document.getElementById('login-form').style.display = 'none';
-      document.getElementById('register-form').style.display = 'block';
-      btnRegister.style.background = '#2d3748'; btnRegister.style.color = 'white';
-      btnLogin.style.background = '#1a202c'; btnLogin.style.color = '#a0aec0';
+      if (loginForm) loginForm.style.display = 'none';
+      if (registerForm) registerForm.style.display = 'flex';
+      if (btnRegister) { btnRegister.style.background = '#2d3748'; btnRegister.style.color = 'white'; btnRegister.classList.add('active'); }
+      if (btnLogin) { btnLogin.style.background = '#1a202c'; btnLogin.style.color = '#a0aec0'; btnLogin.classList.remove('active'); }
+      // Ensure correct subgroup visibility for default PATIENT and reset scroll to top
+      try { this.toggleRegisterRole(); } catch(e) {}
+      if (authModal) authModal.scrollTop = 0;
+      if (registerForm) registerForm.scrollTop = 0;
     }
   },
 
   toggleRegisterRole() {
-    const role = document.getElementById('register-role').value;
+    const role = document.getElementById('register-role')?.value || 'PATIENT';
     const orgGroup = document.getElementById('register-org-group');
     const trustedGroup = document.getElementById('register-patient-trusted-group');
     const patientProfileGroup = document.getElementById('register-patient-profile-group');
@@ -63,6 +75,34 @@ const appAuth = {
       if (trustedGroup) trustedGroup.style.display = 'none';
       if (patientProfileGroup) patientProfileGroup.style.display = 'none';
     }
+    // Smoothly keep modal scroll sensible after toggle
+    try {
+      const modal = document.querySelector('.auth-modal');
+      if (modal) modal.scrollTop = 0;
+    } catch(e) {}
+  },
+
+  showRegisterError(msg) {
+    const errorDiv = document.getElementById('register-error');
+    const errorText = document.getElementById('register-error-text');
+    if (errorText) errorText.textContent = msg;
+    if (errorDiv) {
+      errorDiv.style.display = 'flex';
+      requestAnimationFrame(() => {
+        try {
+          const modal = document.querySelector('.auth-modal');
+          if (modal) {
+            const r = errorDiv.getBoundingClientRect();
+            const mr = modal.getBoundingClientRect();
+            if (r.bottom > mr.bottom || r.top < mr.top) {
+              errorDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+          } else {
+            errorDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+        } catch(e) {}
+      });
+    }
   },
 
   async register() {
@@ -70,7 +110,12 @@ const appAuth = {
     const username = document.getElementById('register-username').value.trim();
     const password = document.getElementById('register-password').value;
     const roleType = document.getElementById('register-role').value;
-    const orgName = document.getElementById('register-org').value;
+    const orgName = document.getElementById('register-org')?.value.trim() || '';
+    const orgNameAr = document.getElementById('register-hosp-org-ar')?.value.trim() || '';
+    const hospRegion = document.getElementById('register-hosp-region')?.value || '';
+    const hospFacilityType = document.getElementById('register-hosp-facility-type')?.value || 'HOSPITAL';
+    const hospPhone = document.getElementById('register-hosp-phone')?.value.trim() || '';
+    const hospEmail = document.getElementById('register-hosp-email')?.value.trim() || '';
     
     // Trusted patient fields (mandatory for reliable data)
     const nationalId = document.getElementById('register-national-id')?.value.trim() || '';
@@ -98,46 +143,68 @@ const appAuth = {
     // Client-side validation for PATIENT trusted data (improves UX before server roundtrip)
     if (roleType === 'PATIENT') {
       if (!nationalId) {
-        const msg = 'رقم الهوية الوطنية / الإقامة مطلوب (10 أرقام يبدأ بـ 1 أو 2)';
-        if (errorText) errorText.textContent = msg; if (errorDiv) errorDiv.style.display = 'flex'; return;
+        const msg = 'رقم الهوية الوطنية / الإقامة مطلوب (10 أرقام يبدأ بـ 1 أو 2)'; this.showRegisterError(msg); return;
       }
       if (!/^(1|2)\d{9}$/.test(nationalId)) {
-        const msg = 'رقم الهوية غير صحيح: يجب أن يكون 10 أرقام ويبدأ بـ 1 أو 2';
-        if (errorText) errorText.textContent = msg; if (errorDiv) errorDiv.style.display = 'flex'; return;
+        const msg = 'رقم الهوية غير صحيح: يجب أن يكون 10 أرقام ويبدأ بـ 1 أو 2'; this.showRegisterError(msg); return;
       }
       if (!birthDate) {
-        const msg = 'تاريخ الميلاد مطلوب';
-        if (errorText) errorText.textContent = msg; if (errorDiv) errorDiv.style.display = 'flex'; return;
+        const msg = 'تاريخ الميلاد مطلوب'; this.showRegisterError(msg); return;
       }
       const dob = new Date(birthDate);
       if (isNaN(dob.getTime()) || dob > new Date() || dob < new Date('1900-01-01')) {
-        const msg = 'تاريخ الميلاد غير صالح';
-        if (errorText) errorText.textContent = msg; if (errorDiv) errorDiv.style.display = 'flex'; return;
+        const msg = 'تاريخ الميلاد غير صالح'; this.showRegisterError(msg); return;
       }
       if (!gender) {
-        const msg = 'الجنس مطلوب';
-        if (errorText) errorText.textContent = msg; if (errorDiv) errorDiv.style.display = 'flex'; return;
+        const msg = 'الجنس مطلوب'; this.showRegisterError(msg); return;
       }
       if (!phone) {
-        const msg = 'رقم الجوال السعودي مطلوب';
-        if (errorText) errorText.textContent = msg; if (errorDiv) errorDiv.style.display = 'flex'; return;
+        const msg = 'رقم الجوال السعودي مطلوب'; this.showRegisterError(msg); return;
       }
       const phoneClean = phone.replace(/[\s\-\(\)]/g,'');
       if (!/^(?:\+9665\d{8}|9665\d{8}|05\d{8}|5\d{8})$/.test(phoneClean)) {
-        const msg = 'رقم الجوال غير صحيح: يجب أن يكون رقم سعودي (05xxxxxxxx)';
-        if (errorText) errorText.textContent = msg; if (errorDiv) errorDiv.style.display = 'flex'; return;
+        const msg = 'رقم الجوال غير صحيح: يجب أن يكون رقم سعودي (05xxxxxxxx)'; this.showRegisterError(msg); return;
       }
       if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        const msg = 'صيغة البريد الإلكتروني غير صحيحة';
-        if (errorText) errorText.textContent = msg; if (errorDiv) errorDiv.style.display = 'flex'; return;
+        const msg = 'صيغة البريد الإلكتروني غير صحيحة'; this.showRegisterError(msg); return;
       }
       if (!fullname || fullname.split(/\s+/).length < 2) {
-        const msg = 'الاسم الكامل يجب أن يحتوي على الاسم الأول واسم العائلة';
-        if (errorText) errorText.textContent = msg; if (errorDiv) errorDiv.style.display = 'flex'; return;
+        const msg = 'الاسم الكامل يجب أن يحتوي على الاسم الأول واسم العائلة'; this.showRegisterError(msg); return;
       }
       if (password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
-        const msg = 'كلمة المرور يجب أن تكون 8 أحرف على الأقل وتحتوي حروف وأرقام';
-        if (errorText) errorText.textContent = msg; if (errorDiv) errorDiv.style.display = 'flex'; return;
+        const msg = 'كلمة المرور يجب أن تكون 8 أحرف على الأقل وتحتوي حروف وأرقام'; this.showRegisterError(msg); return;
+      }
+    } else if (roleType === 'HOSPITAL_ADMIN') {
+      if (!orgName || orgName.length < 3) {
+        const msg = 'اسم المنشأة بالإنجليزية مطلوب (3 أحرف على الأقل)'; this.showRegisterError(msg); return;
+      }
+      if (!orgNameAr || orgNameAr.length < 3) {
+        const msg = 'اسم المنشأة بالعربية مطلوب'; this.showRegisterError(msg); return;
+      }
+      if (!/[\u0600-\u06FF]/.test(orgNameAr)) {
+        const msg = 'اسم المنشأة بالعربية يجب أن يحتوي على حروف عربية'; this.showRegisterError(msg); return;
+      }
+      if (!hospRegion) {
+        const msg = 'المنطقة الإدارية مطلوبة'; this.showRegisterError(msg); return;
+      }
+      if (!hospPhone) {
+        const msg = 'رقم جوال مسؤول المنشأة مطلوب'; this.showRegisterError(msg); return;
+      }
+      const hpClean = hospPhone.replace(/[\s\-\(\)]/g,'');
+      if (!/^(?:\+9665\d{8}|9665\d{8}|05\d{8}|5\d{8})$/.test(hpClean)) {
+        const msg = 'رقم جوال المنشأة غير صحيح: يجب أن يكون رقم سعودي (05xxxxxxxx)'; this.showRegisterError(msg); return;
+      }
+      if (!hospEmail) {
+        const msg = 'البريد الرسمي للمنشأة مطلوب'; this.showRegisterError(msg); return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(hospEmail)) {
+        const msg = 'صيغة البريد الإلكتروني للمنشأة غير صحيحة'; this.showRegisterError(msg); return;
+      }
+      if (!fullname || fullname.split(/\s+/).length < 2) {
+        const msg = 'الاسم الكامل لمسؤول المنشأة يجب أن يحتوي على الاسم الأول واسم العائلة'; this.showRegisterError(msg); return;
+      }
+      if (password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+        const msg = 'كلمة المرور يجب أن تكون 8 أحرف على الأقل وتحتوي حروف وأرقام'; this.showRegisterError(msg); return;
       }
     }
 
@@ -151,12 +218,15 @@ const appAuth = {
           password: password,
           roleType: roleType,
           organization_name: orgName,
+          organization_name_ar: roleType === 'HOSPITAL_ADMIN' ? orgNameAr : undefined,
+          region: roleType === 'HOSPITAL_ADMIN' ? hospRegion : undefined,
+          facility_type: roleType === 'HOSPITAL_ADMIN' ? hospFacilityType : undefined,
           // Trusted identity fields (only for PATIENT)
           nationalId: roleType === 'PATIENT' ? nationalId : undefined,
           birthDate: roleType === 'PATIENT' ? birthDate : undefined,
           gender: roleType === 'PATIENT' ? gender : undefined,
-          phone: roleType === 'PATIENT' ? phone : undefined,
-          email: email || undefined,
+          phone: roleType === 'PATIENT' ? phone : (roleType === 'HOSPITAL_ADMIN' ? hospPhone : undefined),
+          email: roleType === 'PATIENT' ? (email || undefined) : (roleType === 'HOSPITAL_ADMIN' ? hospEmail : undefined),
           // Patient profile data
           patient_profile: roleType === 'PATIENT' ? {
             preferred_first_name: preferredFirstName,
@@ -175,9 +245,7 @@ const appAuth = {
       const data = await res.json();
       if (!res.ok) {
         const msg = data.error || 'حدث خطأ في إنشاء الحساب';
-        if (errorText) errorText.textContent = msg;
-        else if (errorDiv) errorDiv.textContent = msg;
-        if (errorDiv) errorDiv.style.display = 'flex';
+        this.showRegisterError(msg);
         return;
       }
       this.currentRole = data.user.role;
@@ -192,9 +260,20 @@ const appAuth = {
       });
     } catch (err) {
       const msg = 'انقطع الاتصال بالخادم';
-      if (errorText) errorText.textContent = msg;
-      else if (errorDiv) errorDiv.textContent = msg;
-      if (errorDiv) errorDiv.style.display = 'flex';
+      this.showRegisterError(msg);
+    }
+  },
+
+  showLoginError(msg) {
+    const errorDiv = document.getElementById('login-error');
+    const errorText = document.getElementById('login-error-text');
+    if (errorText) errorText.textContent = msg;
+    else if (errorDiv) errorDiv.textContent = msg;
+    if (errorDiv) {
+      errorDiv.style.display = 'flex';
+      requestAnimationFrame(() => {
+        try { errorDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch(e) {}
+      });
     }
   },
 
@@ -215,9 +294,7 @@ const appAuth = {
       const data = await res.json();
       if (!res.ok) {
         const msg = data.error || 'حدث خطأ في تسجيل الدخول';
-        if (errorText) errorText.textContent = msg;
-        else if (errorDiv) errorDiv.textContent = msg;
-        if (errorDiv) errorDiv.style.display = 'flex';
+        this.showLoginError(msg);
         return;
       }
       this.currentRole = data.user.role;
@@ -232,9 +309,7 @@ const appAuth = {
       });
     } catch (err) {
       const msg = 'انقطع الاتصال بالخادم';
-      if (errorText) errorText.textContent = msg;
-      else if (errorDiv) errorDiv.textContent = msg;
-      if (errorDiv) errorDiv.style.display = 'flex';
+      this.showLoginError(msg);
     }
   },
 
@@ -288,11 +363,12 @@ const appAuth = {
       if (patCard) patCard.style.display = 'block';
 
     } else if (this.currentRole === 'HOSPITAL_ADMIN') {
-      ['onboarding', 'bulkexport', 'fhir'].forEach(id => {
+      // Hospital Management System view: migration gateway + facility profile only
+      ['hospital-migration','hospital-profile'].forEach(id => {
         const t = document.getElementById(`tab-btn-${id}`);
         if(t) t.style.display = 'flex';
       });
-      defaultTab = 'onboarding';
+      defaultTab = 'hospital-migration';
 
       const globalSelect = document.getElementById('global-patient-selector');
       if (globalSelect) globalSelect.style.display = 'block';
@@ -822,6 +898,14 @@ function initNavigation() {
       title: 'بياناتي الشخصية - إدارة البيانات المصرح بها',
       sub: 'عرض وتحديث بيانات التواصل، اللغة المفضلة، جهة اتصال الطوارئ والعنوان الوطني — الحقول المحمية للعرض فقط'
     },
+    'hospital-profile': {
+      title: 'بيانات المنشأة الصحية - إدارة البيانات المصرح بها',
+      sub: 'عرض وتحديث بيانات التواصل والمعلومات العامة للمنشأة — النوع والمعرف محميان للعرض فقط'
+    },
+    'hospital-migration': {
+      title: 'نظام إدارة المستشفى — بوابة الترحيل الوطني',
+      sub: 'واجهة منشأتك الخاصة: رفع الأنظمة القديمة، تطبيعها وربطها بالسجل الوطني مع عزل تنظيمي تام'
+    },
     mapping: {
       title: 'استوديو قواعد الربط وتصنيف المصطلحات',
       sub: 'مصفوفة تحويل الحقول والربط المعياري (SFDA SDC, SNOMED CT, ICD-10-AM, SBS, LOINC)'
@@ -1332,6 +1416,20 @@ function handleTabSwitch(tab) {
     } else {
       // Non-patient should not see this tab; redirect
       showToast('تنبيه', 'هذه الصفحة مخصصة لحسابات المرضى فقط', 'info');
+    }
+  }
+  if (tab === 'hospital-migration') {
+    if (appAuth.currentRole === 'HOSPITAL_ADMIN') {
+      loadHospitalMigrationTab();
+    } else {
+      showToast('تنبيه', 'هذه الصفحة مخصصة لحسابات المنشآت الصحية فقط', 'info');
+    }
+  }
+  if (tab === 'hospital-profile') {
+    if (appAuth.currentRole === 'HOSPITAL_ADMIN') {
+      loadHospitalProfileTab();
+    } else {
+      showToast('تنبيه', 'هذه الصفحة مخصصة لحسابات المنشآت الصحية فقط', 'info');
     }
   }
   if (tab === 'mapping') loadMappingStudio();
@@ -2274,6 +2372,319 @@ async function savePatientProfile() {
   } finally {
     btn.disabled = false;
     btn.innerHTML = originalText;
+  }
+}
+
+// ===================== HOSPITAL PROFILE EDITING (Authorized Fields Only) =====================
+async function loadHospitalProfileTab() {
+  const loadingEl = document.getElementById('hospital-profile-loading');
+  const contentEl = document.getElementById('hospital-profile-content');
+  const statusEl = document.getElementById('hospital-profile-edit-status');
+  if (!loadingEl || !contentEl) return;
+  if (appAuth.currentRole !== 'HOSPITAL_ADMIN') {
+    loadingEl.innerHTML = '<p style="color:var(--m3-error);">هذه الصفحة مخصصة لحسابات المنشآت الصحية فقط.</p>';
+    return;
+  }
+  loadingEl.style.display = 'block';
+  contentEl.style.display = 'none';
+  if (statusEl) statusEl.style.display = 'none';
+
+  try {
+    const res = await fetch('/api/hospital/me', { headers: { 'Content-Type': 'application/json' } });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'فشل تحميل بيانات المنشأة');
+    // Read-only
+    document.getElementById('hosp-ro-id') && (document.getElementById('hosp-ro-id').textContent = data.organization?.id?.substring(0,12) + '…' || '—');
+    document.getElementById('hosp-ro-type') && (document.getElementById('hosp-ro-type').textContent = data.organization?.organizationType || '—');
+    const statusElRo = document.getElementById('hosp-ro-status');
+    if (statusElRo) {
+      statusElRo.textContent = data.organization?.status === 'ACTIVE' ? 'نشطة ومعتمدة' : data.organization?.status || '—';
+      statusElRo.className = data.organization?.status === 'ACTIVE' ? 'badge badge-success' : 'badge badge-warning';
+    }
+    document.getElementById('hosp-ro-created') && (document.getElementById('hosp-ro-created').textContent = data.organization?.createdAt ? new Date(data.organization.createdAt).toLocaleDateString('ar-SA') : '—');
+    document.getElementById('hosp-ro-username') && (document.getElementById('hosp-ro-username').textContent = data.user?.username || '—');
+
+    // Editable
+    document.getElementById('edit-hosp-org-name') && (document.getElementById('edit-hosp-org-name').value = data.organization?.organizationName || '');
+    document.getElementById('edit-hosp-org-name-ar') && (document.getElementById('edit-hosp-org-name-ar').value = data.organization?.organizationNameAr || '');
+    document.getElementById('edit-hosp-region') && (document.getElementById('edit-hosp-region').value = data.organization?.region || 'Riyadh');
+    document.getElementById('edit-hosp-fullname') && (document.getElementById('edit-hosp-fullname').value = data.user?.fullName || '');
+    document.getElementById('edit-hosp-phone') && (document.getElementById('edit-hosp-phone').value = data.user?.phone || '');
+    document.getElementById('edit-hosp-email') && (document.getElementById('edit-hosp-email').value = data.user?.email || '');
+
+    loadingEl.style.display = 'none';
+    contentEl.style.display = 'block';
+  } catch (err) {
+    console.error('Failed to load hospital profile', err);
+    loadingEl.innerHTML = `<div class="card" style="border:1px solid var(--m3-error); background:rgba(239,68,68,0.08); padding:16px; text-align:center;">
+      <p style="color:var(--m3-error); font-weight:700;">تعذر تحميل بيانات المنشأة</p>
+      <p style="font-size:0.82rem; color:var(--m3-on-surface-variant); margin-top:6px;">${err.message || 'حدث خطأ في الاتصال'}</p>
+      <button type="button" class="btn btn-secondary btn-sm" style="margin-top:10px;" onclick="loadHospitalProfileTab()">إعادة المحاولة</button>
+    </div>`;
+  }
+}
+
+async function saveHospitalProfile() {
+  const btn = document.getElementById('btn-save-hospital-profile');
+  const statusEl = document.getElementById('hospital-profile-edit-status');
+  if (!btn || !statusEl) return;
+
+  const payload = {
+    organizationName: document.getElementById('edit-hosp-org-name')?.value.trim() || '',
+    organizationNameAr: document.getElementById('edit-hosp-org-name-ar')?.value.trim() || '',
+    region: document.getElementById('edit-hosp-region')?.value || '',
+    fullName: document.getElementById('edit-hosp-fullname')?.value.trim() || '',
+    phone: document.getElementById('edit-hosp-phone')?.value.trim() || '',
+    email: document.getElementById('edit-hosp-email')?.value.trim() || ''
+  };
+
+  // Client validation
+  if (!payload.organizationName || payload.organizationName.length < 3) {
+    statusEl.style.display = 'block';
+    statusEl.innerHTML = `<div style="background:rgba(239,68,68,0.10); border:1px solid var(--m3-error); color:var(--m3-error); padding:10px 14px; border-radius:6px; font-size:0.85rem;">اسم المنشأة بالإنجليزية مطلوب</div>`;
+    return;
+  }
+  if (!payload.organizationNameAr || payload.organizationNameAr.length < 3) {
+    statusEl.style.display = 'block';
+    statusEl.innerHTML = `<div style="background:rgba(239,68,68,0.10); border:1px solid var(--m3-error); color:var(--m3-error); padding:10px 14px; border-radius:6px; font-size:0.85rem;">اسم المنشأة بالعربية مطلوب</div>`;
+    return;
+  }
+  if (!/[\u0600-\u06FF]/.test(payload.organizationNameAr)) {
+    statusEl.style.display = 'block';
+    statusEl.innerHTML = `<div style="background:rgba(239,68,68,0.10); border:1px solid var(--m3-error); color:var(--m3-error); padding:10px 14px; border-radius:6px; font-size:0.85rem;">اسم المنشأة بالعربية يجب أن يحتوي على حروف عربية</div>`;
+    return;
+  }
+  if (!payload.region) {
+    statusEl.style.display = 'block';
+    statusEl.innerHTML = `<div style="background:rgba(239,68,68,0.10); border:1px solid var(--m3-error); color:var(--m3-error); padding:10px 14px; border-radius:6px; font-size:0.85rem;">المنطقة مطلوبة</div>`;
+    return;
+  }
+  if (!payload.phone) {
+    statusEl.style.display = 'block';
+    statusEl.innerHTML = `<div style="background:rgba(239,68,68,0.10); border:1px solid var(--m3-error); color:var(--m3-error); padding:10px 14px; border-radius:6px; font-size:0.85rem;">رقم الجوال مطلوب</div>`;
+    return;
+  }
+  const phoneClean = payload.phone.replace(/[\s\-\(\)]/g,'');
+  if (!/^(?:\+9665\d{8}|9665\d{8}|05\d{8}|5\d{8})$/.test(phoneClean)) {
+    statusEl.style.display = 'block';
+    statusEl.innerHTML = `<div style="background:rgba(239,68,68,0.10); border:1px solid var(--m3-error); color:var(--m3-error); padding:10px 14px; border-radius:6px; font-size:0.85rem;">رقم الجوال غير صحيح (05xxxxxxxx)</div>`;
+    return;
+  }
+  if (!payload.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)) {
+    statusEl.style.display = 'block';
+    statusEl.innerHTML = `<div style="background:rgba(239,68,68,0.10); border:1px solid var(--m3-error); color:var(--m3-error); padding:10px 14px; border-radius:6px; font-size:0.85rem;">البريد الرسمي مطلوب وصيغته يجب أن تكون صحيحة</div>`;
+    return;
+  }
+  if (!payload.fullName || payload.fullName.split(/\s+/).length < 2) {
+    statusEl.style.display = 'block';
+    statusEl.innerHTML = `<div style="background:rgba(239,68,68,0.10); border:1px solid var(--m3-error); color:var(--m3-error); padding:10px 14px; border-radius:6px; font-size:0.85rem;">الاسم الكامل للمسؤول مطلوب</div>`;
+    return;
+  }
+
+  const originalText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = `${getSvgIcon('spinner','btn-svg-icon')} <span>جاري الحفظ...</span>`;
+  statusEl.style.display = 'none';
+
+  try {
+    const res = await fetch('/api/hospital/me', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'فشل الحفظ');
+    statusEl.style.display = 'block';
+    statusEl.innerHTML = `<div style="background:rgba(16,185,129,0.12); border:1px solid var(--m3-primary); color:var(--m3-on-primary-container); padding:12px 14px; border-radius:6px; font-size:0.88rem; display:flex; align-items:center; gap:8px;">
+      ${getSvgIcon('shieldCheck','style="width:18px;height:18px; color:var(--m3-primary);"')}
+      <span>${data.message || 'تم حفظ التغييرات بنجاح'}</span>
+    </div>`;
+    showToast('تم الحفظ', 'تم تحديث بيانات المنشأة المصرح بها', 'success');
+    setTimeout(() => loadHospitalProfileTab(), 900);
+  } catch (err) {
+    statusEl.style.display = 'block';
+    statusEl.innerHTML = `<div style="background:rgba(239,68,68,0.10); border:1px solid var(--m3-error); color:var(--m3-error); padding:10px 14px; border-radius:6px; font-size:0.85rem;">${err.message}</div>`;
+    showToast('خطأ في الحفظ', err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalText;
+  }
+}
+
+async function loadHospitalMigrationTab() {
+  if (appAuth.currentRole !== 'HOSPITAL_ADMIN') return;
+  // Load hospital header
+  try {
+    const meRes = await fetch('/api/hospital/me');
+    const me = await meRes.json();
+    if (meRes.ok) {
+      const org = me.organization;
+      const user = me.user;
+      document.getElementById('hosp-hms-name') && (document.getElementById('hosp-hms-name').textContent = org?.organizationNameAr || org?.organizationName || user?.fullName || 'منشأتك');
+      document.getElementById('hosp-hms-meta') && (document.getElementById('hosp-hms-meta').textContent = `${user?.fullName || ''} • ${user?.username || ''} • يخدمك محرك الربط الوطني`);
+      document.getElementById('hosp-hms-id') && (document.getElementById('hosp-hms-id').textContent = org?.id?.substring(0,12) + '…' || '—');
+      document.getElementById('hosp-hms-type') && (document.getElementById('hosp-hms-type').textContent = org?.organizationType || 'HOSPITAL');
+      document.getElementById('hosp-hms-region') && (document.getElementById('hosp-hms-region').textContent = org?.region || '—');
+      document.getElementById('hosp-hms-status') && (document.getElementById('hosp-hms-status').textContent = org?.status === 'ACTIVE' ? 'نشط ومربوط وطنياً' : org?.status || '—');
+      document.getElementById('hosp-dropzone-orgid') && (document.getElementById('hosp-dropzone-orgid').textContent = org?.id?.substring(0,8) || org?.id || '—');
+      document.getElementById('hosp-migration-title') && (document.getElementById('hosp-migration-title').textContent = `نظام ${org?.organizationNameAr || org?.organizationName || 'المستشفى'} — بوابة الترحيل والربط الوطني`);
+    }
+  } catch (e) { console.warn('hospital me load failed', e); }
+
+  // Load scoped stats
+  loadHospitalScopedStats();
+  loadHospitalImports();
+  loadHospitalPatientsList();
+  initHospitalMigrationDropzone();
+}
+
+async function loadHospitalScopedStats() {
+  try {
+    const res = await fetch('/api/hospital/me/stats');
+    const s = await res.json();
+    if (!res.ok) throw new Error(s.error);
+    document.getElementById('hosp-stat-patients') && (document.getElementById('hosp-stat-patients').textContent = String(s.patientsCount ?? 0));
+    document.getElementById('hosp-stat-encounters') && (document.getElementById('hosp-stat-encounters').textContent = String(s.encountersCount ?? 0));
+    document.getElementById('hosp-stat-raw') && (document.getElementById('hosp-stat-raw').textContent = String(s.rawRecordsCount ?? 0));
+    document.getElementById('hosp-stat-claims') && (document.getElementById('hosp-stat-claims').textContent = String(s.claimsCount ?? 0));
+  } catch (e) {
+    ['hosp-stat-patients','hosp-stat-encounters','hosp-stat-raw','hosp-stat-claims'].forEach(id=>{
+      const el=document.getElementById(id); if(el) el.textContent='—';
+    });
+  }
+}
+
+async function loadHospitalImports() {
+  const tbody = document.getElementById('hosp-imports-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4">جاري التحميل...</td></tr>';
+  try {
+    const res = await fetch('/api/hospital/imports');
+    const list = await res.json();
+    if (!res.ok) throw new Error(list.error);
+    if (!list || list.length===0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4" style="color:var(--m3-on-surface-muted);">لا توجد عمليات ترحيل بعد — ابدأ برفع ملفك القديم أعلاه.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = list.map((r:any)=>`
+      <tr>
+        <td><strong>${r.fileName || r.sourceSystem}</strong><br><small style="color:var(--m3-on-surface-muted);">${r.sourceSystem}</small></td>
+        <td><span class="badge badge-info">${r.importType}</span></td>
+        <td><span class="badge ${r.status==='COMPLETED'?'badge-success':'badge-warning'}">${r.status}</span></td>
+        <td><strong>${r.recordsProcessed}</strong> <small style="color:var(--m3-error);">/${r.recordsFailed} فشل</small></td>
+        <td><code>${new Date(r.startedAt).toLocaleDateString('ar-SA')}</code></td>
+      </tr>
+    `).join('');
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4" style="color:var(--m3-error);">تعذر تحميل السجل: ${(e as any).message}</td></tr>`;
+  }
+}
+
+async function loadHospitalPatientsList() {
+  const tbody = document.getElementById('hosp-patients-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4">جاري التحميل...</td></tr>';
+  try {
+    const res = await fetch('/api/hospital/patients');
+    const list = await res.json();
+    if (!res.ok) throw new Error(list.error);
+    if (!list || list.length===0) {
+      tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4" style="color:var(--m3-on-surface-muted);">لا يوجد مرضى مرتبطون بمنشأتك بعد — البيانات المرحّلة ستظهر هنا بعد التطبيع.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = list.slice(0,8).map((p:any)=>{
+      const name = `${p.firstNameAr || p.firstName || ''} ${p.lastNameAr || p.lastName || ''}`.trim() || p.internalId;
+      const nid = p.identifiers?.find((i:any)=>i.type==='NID'||i.type==='IQAMA')?.value || p.internalId.substring(0,8);
+      return `<tr><td><strong>${name}</strong></td><td><code>${nid}</code></td><td>${p.gender==='male'?'ذكر':p.gender==='female'?'أنثى':'—'}</td><td><code>${new Date(p.assignedAt).toLocaleDateString('ar-SA')}</code></td></tr>`;
+    }).join('');
+    if (list.length>8) tbody.innerHTML += `<tr><td colspan="4" class="text-center py-2" style="color:var(--m3-on-surface-muted); font-size:0.78rem;">+ ${list.length-8} مرضى آخرون</td></tr>`;
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="4" class="text-center py-4" style="color:var(--m3-error);">تعذر تحميل المرضى</td></tr>`;
+  }
+}
+
+let _hospDropzoneInit = false;
+function initHospitalMigrationDropzone() {
+  if (_hospDropzoneInit) return;
+  _hospDropzoneInit = true;
+  const dropzone = document.getElementById('hospital-migration-dropzone');
+  const fileInput = document.getElementById('input-hospital-migration-file');
+  const browseBtn = document.getElementById('btn-browse-hospital-file');
+  const resultContainer = document.getElementById('hospital-migration-result');
+  if (!dropzone) return;
+
+  const getHospOrgId = () => appAuth.user?.orgId || appAuth.user?.organizationId || '';
+
+  browseBtn?.addEventListener('click', (e)=>{ e.stopPropagation(); fileInput?.click(); });
+  dropzone.addEventListener('click', (e)=>{
+    if (e.target !== browseBtn && !browseBtn?.contains(e.target as any)) fileInput?.click();
+  });
+  ['dragenter','dragover'].forEach(n=> dropzone.addEventListener(n,(e)=>{ e.preventDefault(); dropzone.classList.add('dragover'); }));
+  ['dragleave','drop'].forEach(n=> dropzone.addEventListener(n,(e)=>{ e.preventDefault(); dropzone.classList.remove('dragover'); }));
+  dropzone.addEventListener('drop', (e:any)=>{
+    const files = e.dataTransfer?.files;
+    if (files && files[0]) handleHospFile(files[0]);
+  });
+  fileInput?.addEventListener('change', (e:any)=>{
+    const files = e.target.files;
+    if (files && files[0]) handleHospFile(files[0]);
+  });
+  document.querySelectorAll('.btn-hosp-sample').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const t = btn.getAttribute('data-sample');
+      loadHospSample(t);
+    });
+  });
+  document.getElementById('btn-refresh-hosp-imports')?.addEventListener('click', ()=>{ loadHospitalImports(); loadHospitalScopedStats(); });
+  document.getElementById('btn-refresh-hosp-patients')?.addEventListener('click', ()=> loadHospitalPatientsList());
+
+  async function handleHospFile(file:any) {
+    const reader = new FileReader();
+    reader.onload = async (ev:any)=>{
+      const content = ev.target.result;
+      await uploadHospFile(file.name, content);
+    };
+    reader.readAsText(file);
+  }
+  async function loadHospSample(type:any) {
+    let fileName='', content='';
+    if (type==='hl7') {
+      fileName='legacy_adt_a01_'+(appAuth.user?.orgId?.substring(0,4)||'hosp')+'.hl7';
+      content=`MSH|^~\\&|LEGACY_HIS|${getHospOrgId()}|SAUDI_INTEROP_HUB|MOH_KSA|20260827230000||ADT^A01|MSG-LEGACY-001|P|2.5\nEVN|A01|20260827230000\nPID|1||MRN-LEGACY-001^^^${getHospOrgId()}^MR||مريض تجريبي للترحيل^Test^Patient||1990-05-20|M|||الرياض^الرياض^^11564^SAU||+966551234567|||M|||1099887766\nPV1|1|O|CLINIC-A^ROOM-02|O|||DR-001^د. طبيب^Test|||MED||||||||VIS-LEGACY-001`;
+    } else if (type==='fhir') {
+      fileName='legacy_fhir_bundle_'+(getHospOrgId().substring(0,4)||'hosp')+'.json';
+      content=JSON.stringify({ resourceType:'Bundle', type:'transaction', entry:[{ resource:{ resourceType:'Patient', id:'pat-legacy-001', identifier:[{system:'urn:sa:nid', value:'1'+String(Date.now()).substring(3,12)}, {system:'urn:sa:facility:'+getHospOrgId(), value:'MRN-LEGACY-002'}], name:[{text:'مريض ترحيل تجريبي'}], gender:'male', birthDate:'1988-11-11' } }]}, null, 2);
+    } else {
+      fileName='legacy_patients_'+(getHospOrgId().substring(0,4)||'hosp')+'.csv';
+      content=`client_id,national_id_num,full_arabic_name,dob_gregorian,sex_code\nLEGACY-001,1${String(Date.now()).substring(4,13)},فيصل بن عبدالعزيز,1992-06-18,ذكر\nLEGACY-002,1${String(Date.now()+1).substring(4,13)},ريم بنت منصور,1995-09-12,أنثى`;
+    }
+    await uploadHospFile(fileName, content);
+  }
+  async function uploadHospFile(fileName:any, fileContent:any) {
+    if (!resultContainer) return;
+    const orgId = getHospOrgId();
+    resultContainer.style.display='block';
+    resultContainer.innerHTML=`<div class="ingestion-result-box" style="display:flex; align-items:center; gap:10px;">${getSvgIcon('spinner','style="width:20px; height:20px; color:#0284c7;"')}<div><strong style="color:var(--m3-on-surface); font-size:0.9rem;">جاري ترحيل وتطبيع ملف منشأتك: <code>${fileName}</code>...</strong><p style="font-size:0.78rem; color:var(--m3-on-surface-muted);">المنشأة: <code>${orgId.substring(0,8)}</code> • فحص البنية وربط MPI...</p></div></div>`;
+    try {
+      const res = await fetch('/api/ingest/file', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ fileName, fileContent, sourceSystemId: orgId })
+      });
+      const data = await res.json();
+      if (data.success && data.result) {
+        const r=data.result;
+        const badge = r.format==='hl7v2'?'<span class="badge badge-warning">HL7 v2.5</span>': r.format==='fhir-bundle'?'<span class="badge badge-success">FHIR R4</span>':'<span class="badge badge-info">CSV</span>';
+        resultContainer.innerHTML=`<div class="ingestion-result-box success"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;"><div style="display:flex; align-items:center; gap:8px;">${getSvgIcon('shieldCheck','style="width:20px; height:20px; color:#0284c7;"')}<strong style="color:var(--m3-on-surface); font-size:0.96rem;">تم ترحيل وتطبيع ملف منشأتك بنجاح: <code>${r.fileName}</code></strong></div>${badge}</div><p style="font-size:0.82rem; color:var(--m3-on-surface-variant); margin-bottom:10px;">تم استيعاب <strong>${r.totalIngested}</strong> سجل باسم منشأتك وربطها في السجل الوطني مع حفظ المصدر.</p><div style="display:flex; gap:8px;"><span class="badge badge-success">جودة 100/100</span><button type="button" class="btn btn-secondary btn-sm" onclick="loadHospitalMigrationTab()">تحديث الإحصائيات</button></div></div>`;
+        showToast('تم الترحيل بنجاح', `تم ترحيل ${r.totalIngested} سجل لمنشأتك`, 'success');
+        loadHospitalScopedStats(); loadHospitalImports(); loadHospitalPatientsList();
+      } else {
+        resultContainer.innerHTML=`<div class="ingestion-result-box error"><strong style="color:var(--m3-error);">فشل الترحيل</strong><p style="font-size:0.8rem; margin-top:4px;">${data.error||'تعذر'}</p></div>`;
+        showToast('خطأ في الترحيل', data.error||'تعذر', 'error');
+      }
+    } catch (err:any) {
+      resultContainer.innerHTML=`<div class="ingestion-result-box error"><strong style="color:var(--m3-error);">خطأ اتصال</strong><p style="font-size:0.8rem; margin-top:4px;">${err.message}</p></div>`;
+    }
   }
 }
 

@@ -2181,12 +2181,15 @@ body.light-theme .toast,
   background: rgba(10, 10, 10, 0.88);
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;
   z-index: 99999;
-  padding: 20px;
+  padding: 24px 16px;
+  overflow-y: auto;
+  overflow-x: hidden;
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   animation: authFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  -webkit-overflow-scrolling: touch;
 }
 
 body.light-theme .auth-overlay,
@@ -2207,8 +2210,35 @@ body.light-theme .auth-overlay,
   padding: 32px 36px 28px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.65);
   position: relative;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: 90vh;
+  max-height: 90dvh;
+  flex-shrink: 0;
+  margin: auto;
   text-align: right;
+  scrollbar-width: thin;
+  scrollbar-color: var(--m3-surface-container-highest) transparent;
+}
+
+.auth-modal::-webkit-scrollbar {
+  width: 6px;
+}
+
+.auth-modal::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.auth-modal::-webkit-scrollbar-thumb {
+  background: var(--m3-surface-container-highest);
+}
+
+.auth-overlay::-webkit-scrollbar {
+  width: 6px;
+}
+
+.auth-overlay::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.15);
 }
 
 body.light-theme .auth-modal,
@@ -2453,6 +2483,112 @@ body.light-theme .auth-submit-btn:hover,
   color: var(--m3-on-surface-muted);
   margin-top: 16px;
   line-height: 1.4;
+}
+
+/* Auth Modal Internal Grids - Responsive Stacking */
+.auth-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.auth-tab-btn {
+  flex: 1;
+  padding: 10px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 0.88rem;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.auth-tab-btn.active {
+  background: #2d3748 !important;
+  color: white !important;
+}
+
+.auth-tab-btn:not(.active) {
+  background: #1a202c !important;
+  color: #a0aec0 !important;
+}
+
+.auth-demo-links {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--m3-surface-container-high);
+}
+
+.auth-demo-links > span {
+  font-size: 0.74rem;
+  color: var(--m3-on-surface-muted);
+  font-weight: 600;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.auth-demo-buttons {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.auth-demo-buttons button {
+  flex: 1;
+  min-width: 90px;
+  padding: 6px 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-family: inherit;
+  background: var(--m3-surface-container-low);
+  color: var(--m3-on-surface-variant);
+  border-radius: var(--radius-sharp);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.auth-demo-buttons button:hover {
+  background: var(--m3-surface-container-highest);
+  color: var(--m3-on-surface);
+}
+
+@media (max-width: 560px) {
+  .auth-overlay {
+    padding: 12px;
+    align-items: flex-start;
+  }
+
+  .auth-modal {
+    max-width: 100%;
+    padding: 22px 18px 20px;
+    max-height: 96vh;
+    max-height: 96dvh;
+    margin: 0 auto;
+  }
+
+  /* Stack 2-column internal grids to single column */
+  #register-patient-trusted-group div[style*="grid-template-columns:1fr 1fr"],
+  #register-org-group div[style*="grid-template-columns:1fr 1fr"],
+  #register-patient-profile-group div[style*="grid-template-columns:1fr 1fr"],
+  #register-patient-profile-group div[style*="grid-template-columns:1fr 1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  .auth-demo-buttons {
+    flex-direction: column;
+  }
+
+  .auth-demo-buttons button {
+    width: 100%;
+  }
+}
+
+@media (max-height: 720px) {
+  .auth-modal {
+    max-height: 96vh;
+    max-height: 96dvh;
+  }
 }
 
 /* Sidebar Logout Button */

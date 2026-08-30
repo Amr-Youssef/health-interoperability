@@ -173,7 +173,7 @@ async function ensureDefaultAccounts() {
 
 router.post('/register', async (req: Request, res: Response) => {
   try {
-    const { username, password, full_name, roleType, organization_name, patient_profile, nationalId, birthDate, gender, phone, email } = req.body;
+    const { username, password, full_name, roleType, organization_name, organization_name_ar, region, facility_type, patient_profile, nationalId, birthDate, gender, phone, email } = req.body;
 
     if (!username || !password || !full_name || !roleType) {
       return res.status(400).json({ error: 'Username, password, full_name, and roleType are required' });
@@ -218,25 +218,173 @@ router.post('/register', async (req: Request, res: Response) => {
     let patient_profile_id: string | null = null;
 
     if (roleCode === 'HOSPITAL_ADMIN') {
-      if (!organization_name) {
-        return res.status(400).json({ error: 'organization_name is required for hospitals' });
+      // ===== HOSPITAL: Trusted organizational data =====
+      if (!organization_name || !organization_name.trim()) {
+        return res.status(400).json({ error: 'اسم المنشأة بالإنجليزية مطلوب' });
       }
+      if (organization_name.trim().length < 3 || organization_name.trim().length > 120) {
+        return res.status(400).json({ error: 'اسم المنشأة بالإنجليزية يجب أن يكون بين 3 و 120 حرفاً' });
+      }
+      if (!organization_name_ar || !organization_name_ar.trim()) {
+        return res.status(400).json({ error: 'اسم المنشأة بالعربية مطلوب لضمان بيانات موثوقة' });
+      }
+      if (organization_name_ar.trim().length < 3 || organization_name_ar.trim().length > 120) {
+        return res.status(400).json({ error: 'اسم المنشأة بالعربية يجب أن يكون بين 3 و 120 حرفاً' });
+      }
+      // Arabic name validation (must contain Arabic letters)
+      if (!/[\u0600-\u06FF]/.test(organization_name_ar.trim())) {
+        return res.status(400).json({ error: 'اسم المنشأة بالعربية يجب أن يحتوي على حروف عربية' });
+      }
+      if (!region || !region.trim()) {
+        return res.status(400).json({ error: 'المنطقة الإدارية مطلوبة' });
+      }
+      const allowedRegions = ['Riyadh','Makkah','Eastern','Madinah','Asir','Qassim','Hail','Tabuk','Najran','Jazan','AlBaha','AlJawf','NorthernBorders','Riyadh_region','Makkah_region','Eastern_region'];
+      const regionNorm = region.trim();
+      // Allow Arabic region names too
+      const regionAllowed = ['الرياض','مكة المكرمة','المنطقة الشرقية','المدينة المنورة','عسير','القصيم','حائل','تبوك','نجران','جازان','الباحة','الجوف','الحدود الشمالية','Riyadh','Makkah','Eastern','Madinah','Asir','Riyadh Region','Makkah Region'];
+      if (regionNorm.length < 2 || regionNorm.length > 50) {
+        return res.status(400).json({ error: 'اسم المنطقة غير صالح' });
+      }
+
+      // Facility type validation (organization_type)
+      const allowedFacilityTypes = ['HOSPITAL','CLINIC','DAY_SURGERY','LABORATORY','PHARMACY','CENTER','hospital','clinic','day_surgery','laboratory'];
+      let orgTypeNorm = 'HOSPITAL';
+      if (facility_type) {
+        const ft = String(facility_type).trim().toUpperCase();
+        if (['HOSPITAL','CLINIC','DAY_SURGERY','LABORATORY','PHARMACY','CENTER'].includes(ft)) {
+          orgTypeNorm = ft;
+        } else if (['hospital','clinic','laboratory'].includes(String(facility_type).toLowerCase())) {
+          orgTypeNorm = String(facility_type).toUpperCase();
+        } else {
+          return res.status(400).json({ error: 'نوع المنشأة غير صالح' });
+        }
+      }
+
+      // Phone & email mandatory for hospital contact reliability
+      if (!phone || !phone.trim()) {
+        return res.status(400).json({ error: 'رقم جوال مسؤول المنشأة مطلوب (05xxxxxxxx)' });
+      }
+      const normalizedHospPhone = normalizeSaudiPhone(phone.trim());
+      if (!normalizedHospPhone) {
+        return res.status(400).json({ error: 'رقم الجوال غير صحيح: يجب أن يكون رقم سعودي يبدأ بـ 05 أو +9665' });
+      }
+      if (!email || !email.trim()) {
+        return res.status(400).json({ error: 'البريد الإلكتروني الرسمي للمنشأة مطلوب' });
+      }
+      if (!isValidEmail(email.trim())) {
+        return res.status(400).json({ error: 'صيغة البريد الإلكتروني غير صحيحة' });
+      }
+      const emailNormHosp = email.trim().toLowerCase();
+      const dupHospEmail = await prisma.user.findFirst({ where: { email: emailNormHosp } });
+      if (dupHospEmail) {
+        return res.status(400).json({ error: 'البريد الإلكتروني مسجل مسبقاً' });
+      }
+      // Full name for hospital admin
+      if (!full_name || full_name.trim().length < 3 || full_name.trim().length > 80) {
+        return res.status(400).json({ error: 'الاسم الكامل لمسؤول المنشأة يجب أن يكون بين 3 و 80 حرفاً' });
+      }
+      const namePartsHosp = full_name.trim().split(/\s+/);
+      if (namePartsHosp.length < 2) {
+        return res.status(400).json({ error: 'الاسم الكامل يجب أن يحتوي على الاسم الأول واسم العائلة' });
+      }
+
+      // Check duplicate organization name (both languages)
+      const dupOrg = await prisma.organization.findFirst({
+        where: {
+          OR: [
+            { organization_name: organization_name.trim() },
+            { organization_name_ar: organization_name_ar.trim() }
+          ]
+        }
+      });
+      if (dupOrg) {
+        return res.status(400).json({ error: 'اسم المنشأة مسجل مسبقاً (العربي أو الإنجليزي)' });
+      }
+
       const org = await prisma.organization.create({
         data: {
-          organization_name,
-          organization_type: 'HOSPITAL',
+          organization_name: organization_name.trim(),
+          organization_name_ar: organization_name_ar.trim(),
+          organization_type: orgTypeNorm,
+          region: regionNorm,
           status: 'ACTIVE'
         }
       });
       organization_id = org.id;
+
+      // Auto-onboard into DynamicHospitalRegistry for legacy migration gateway (Hospital HMS view)
+      try {
+        const facilityForDynamic = (() => {
+          const ft = orgTypeNorm.toLowerCase();
+          if (['hospital','clinic','laboratory','pharmacy'].includes(ft)) return ft as any;
+          if (ft === 'day_surgery') return 'day_surgery';
+          return 'hospital';
+        })();
+        const regionForDynamic: any = ['Riyadh','Makkah','Eastern','Madinah','Asir'].includes(regionNorm) ? regionNorm : 'Riyadh';
+        const mappingConfig = {
+          id: `map-${org.id}-pt-v1`,
+          sourceSystemId: org.id,
+          sourceEntityType: 'client_registry',
+          targetCanonicalEntity: 'CanonicalPatient',
+          mappingVersion: '1.0.0',
+          effectiveDate: '2026-01-01',
+          status: 'ACTIVE',
+          author: 'Hospital Gateway Auto-Onboard',
+          description: `Maps ${organization_name_ar.trim()} records to CanonicalPatient`,
+          validationState: 'VALIDATED',
+          fieldMappings: [
+            { sourceField: 'client_id', targetField: 'mrn', required: true },
+            { sourceField: 'national_id_num', targetField: 'nationalId', required: true },
+            { sourceField: 'full_arabic_name', targetField: 'givenNameAr', required: true },
+            { sourceField: 'sex_code', targetField: 'gender', required: true, transformation: 'gender_normalize' },
+            { sourceField: 'dob_gregorian', targetField: 'birthDate', required: true, transformation: 'date_normalize' }
+          ]
+        };
+        const sourceSchemaObj = {
+          sourceSystemId: org.id,
+          tables: [{ name: 'client_registry', fields: [
+            { name: 'client_id', type: 'string', isNullable: false },
+            { name: 'national_id_num', type: 'string', isNullable: false },
+            { name: 'full_arabic_name', type: 'string', isNullable: false },
+            { name: 'dob_gregorian', type: 'string', isNullable: false },
+            { name: 'sex_code', type: 'string', isNullable: false }
+          ]}]
+        };
+        await prisma.dynamicHospital.upsert({
+          where: { hospitalId: org.id },
+          update: {
+            hospitalName: organization_name.trim(),
+            hospitalNameAr: organization_name_ar.trim(),
+            facilityType: facilityForDynamic,
+            region: regionForDynamic,
+            adapterVersion: '1.0.0',
+            sourceSchema: JSON.stringify(sourceSchemaObj),
+            defaultMappingConfigs: JSON.stringify([mappingConfig]),
+            createdAt: new Date().toISOString()
+          },
+          create: {
+            hospitalId: org.id,
+            hospitalName: organization_name.trim(),
+            hospitalNameAr: organization_name_ar.trim(),
+            facilityType: facilityForDynamic,
+            region: regionForDynamic,
+            adapterVersion: '1.0.0',
+            sourceSchema: JSON.stringify(sourceSchemaObj),
+            defaultMappingConfigs: JSON.stringify([mappingConfig]),
+            createdAt: new Date().toISOString()
+          }
+        });
+      } catch (dynErr) {
+        console.warn('Warning: Failed to auto-onboard dynamic hospital for migration gateway', dynErr);
+      }
       const password_hash_hosp = await bcrypt.hash(password, 10);
       const userHosp = await prisma.user.create({
         data: {
           username: username.trim(),
           password_hash: password_hash_hosp,
           full_name: full_name.trim(),
-          email: email?.trim() || null,
-          phone: phone ? normalizeSaudiPhone(phone.trim()) : null,
+          email: emailNormHosp,
+          phone: normalizedHospPhone,
           role_id: role.id,
           organization_id,
           patient_profile_id: null,
@@ -244,6 +392,22 @@ router.post('/register', async (req: Request, res: Response) => {
         },
         include: { role: true, organization: true }
       });
+
+      // Audit - hospital trusted registration
+      try {
+        await prisma.auditLog.create({
+          data: {
+            entity_type: 'Organization',
+            entity_id: org.id,
+            action: 'HOSPITAL_REGISTER_TRUSTED',
+            actor_id: userHosp.id,
+            organization_id: org.id,
+            new_values: JSON.stringify({ organization_name: org.organization_name, organization_name_ar: org.organization_name_ar, region: org.region, organization_type: org.organization_type, adminUsername: userHosp.username }),
+            details: `Trusted hospital registration: ${org.organization_name_ar} (${org.organization_name}) in ${org.region}`
+          }
+        });
+      } catch (e) { /* best effort */ }
+
       const tokenHosp = jwt.sign(
         { userId: userHosp.id, role: userHosp.role.role_code, orgId: userHosp.organization_id },
         JWT_SECRET,
@@ -257,6 +421,7 @@ router.post('/register', async (req: Request, res: Response) => {
           fullName: userHosp.full_name,
           role: userHosp.role.role_code,
           organization: userHosp.organization?.organization_name,
+          organizationAr: (userHosp.organization as any)?.organization_name_ar,
           orgId: userHosp.organization_id,
           patientProfileId: userHosp.patient_profile_id
         }

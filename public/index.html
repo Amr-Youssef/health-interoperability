@@ -33,9 +33,9 @@
         </div>
       </div>
 
-      <div class="auth-tabs" style="display:flex;gap:10px;margin-bottom:20px;">
-        <button type="button" class="auth-tab-btn active" id="tab-login" onclick="appAuth.switchTab('login')" style="flex:1;padding:10px;border-radius:4px;border:none;background:#2d3748;color:white;cursor:pointer;">تسجيل الدخول</button>
-        <button type="button" class="auth-tab-btn" id="tab-register" onclick="appAuth.switchTab('register')" style="flex:1;padding:10px;border-radius:4px;border:none;background:#1a202c;color:#a0aec0;cursor:pointer;">إنشاء حساب</button>
+      <div class="auth-tabs">
+        <button type="button" class="auth-tab-btn active" id="tab-login" onclick="appAuth.switchTab('login')">تسجيل الدخول</button>
+        <button type="button" class="auth-tab-btn" id="tab-register" onclick="appAuth.switchTab('register')">إنشاء حساب</button>
       </div>
 
       <form id="login-form" class="auth-form" onsubmit="event.preventDefault(); appAuth.login();">
@@ -120,9 +120,70 @@
             </select>
           </div>
         </div>
-        <div class="auth-form-group" id="register-org-group" style="display:none;">
-          <label for="register-org">اسم المنشأة الصحية</label>
-          <div class="auth-input-wrap"><input type="text" id="register-org" class="auth-input"></div>
+        <div id="register-org-group" style="display:none; border:1px solid #0ea5e9; background:rgba(14,165,233,0.06); border-radius:8px; padding:16px; margin-top:16px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+            <svg style="width:18px;height:18px;color:#0ea5e9;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            <h4 style="font-size:0.95rem; color:var(--m3-on-surface); margin:0;">بيانات المنشأة الصحية الموثقة <span style="color:var(--m3-error);">*</span></h4>
+            <span class="badge badge-info" style="margin-right:auto; font-size:0.68rem; background:#0ea5e9; color:#fff;">مطلوبة لاعتماد المنشأة</span>
+          </div>
+          <p style="font-size:0.76rem; color:var(--m3-on-surface-variant); margin-bottom:14px;">تُستخدم هذه البيانات لإنشاء سجل المنشأة في السجل الوطني الموحد وربطها إلكترونياً بخدمات نفيس (NPHIES) والترميز الوطني. سيتم التحقق منها إدارياً.</p>
+
+          <div class="auth-form-group">
+            <label for="register-org">اسم المنشأة بالإنجليزية <span style="color:var(--m3-error);">*</span></label>
+            <div class="auth-input-wrap"><input type="text" id="register-org" placeholder="Dar Al-Shifa Hospital" class="auth-input" dir="ltr" style="text-align:left;"></div>
+          </div>
+          <div class="auth-form-group" style="margin-top:10px;">
+            <label for="register-hosp-org-ar">اسم المنشأة بالعربية <span style="color:var(--m3-error);">*</span></label>
+            <div class="auth-input-wrap"><input type="text" id="register-hosp-org-ar" placeholder="مستشفى دار الشفاء" class="auth-input"></div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;">
+            <div class="auth-form-group">
+              <label for="register-hosp-region">المنطقة الإدارية <span style="color:var(--m3-error);">*</span></label>
+              <div class="auth-input-wrap">
+                <select id="register-hosp-region" class="auth-input">
+                  <option value="">-- اختر المنطقة --</option>
+                  <option value="Riyadh">الرياض</option>
+                  <option value="Makkah">مكة المكرمة</option>
+                  <option value="Eastern">المنطقة الشرقية</option>
+                  <option value="Madinah">المدينة المنورة</option>
+                  <option value="Asir">عسير</option>
+                  <option value="Qassim">القصيم</option>
+                  <option value="Hail">حائل</option>
+                  <option value="Tabuk">تبوك</option>
+                  <option value="Najran">نجران</option>
+                  <option value="Jazan">جازان</option>
+                  <option value="AlBaha">الباحة</option>
+                  <option value="AlJawf">الجوف</option>
+                  <option value="NorthernBorders">الحدود الشمالية</option>
+                </select>
+              </div>
+            </div>
+            <div class="auth-form-group">
+              <label for="register-hosp-facility-type">نوع المنشأة</label>
+              <div class="auth-input-wrap">
+                <select id="register-hosp-facility-type" class="auth-input">
+                  <option value="HOSPITAL">مستشفى</option>
+                  <option value="CLINIC">مجمع عيادات / مركز صحي</option>
+                  <option value="DAY_SURGERY">مركز جراحة يوم واحد</option>
+                  <option value="LABORATORY">مختبر</option>
+                  <option value="PHARMACY">صيدلية</option>
+                  <option value="CENTER">مركز تخصصي</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;">
+            <div class="auth-form-group">
+              <label for="register-hosp-phone">جوال مسؤول المنشأة <span style="color:var(--m3-error);">*</span></label>
+              <div class="auth-input-wrap"><input type="tel" id="register-hosp-phone" placeholder="05xxxxxxxx" class="auth-input" dir="ltr" style="text-align:left; font-family:'JetBrains Mono', monospace;"></div>
+            </div>
+            <div class="auth-form-group">
+              <label for="register-hosp-email">البريد الرسمي للمنشأة <span style="color:var(--m3-error);">*</span></label>
+              <div class="auth-input-wrap"><input type="email" id="register-hosp-email" placeholder="info@hospital.sa" class="auth-input" dir="ltr" style="text-align:left;"></div>
+            </div>
+          </div>
         </div>
         
         <!-- Trusted Identity & Contact Data (Required for PATIENT - Reliable Data) -->
@@ -340,6 +401,20 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-5"/><path d="M12 12l8-8a2.18 2.18 0 0 1 3 3l-8 8a2 2 0 0 1-1 .59l-3 1 1-3a2 2 0 0 1 .59-1z"/><circle cx="12" cy="7" r="2"/></svg>
           </span>
           <span class="label">بياناتي الشخصية</span>
+        </button>
+
+        <button class="nav-item" data-tab="hospital-migration" id="tab-btn-hospital-migration" title="نظام المستشفى - ترحيل البيانات القديمة">
+          <span class="nav-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/><rect x="10" y="3" width="4" height="4"/><path d="M4 7h16"/></svg>
+          </span>
+          <span class="label">نظام المستشفى</span>
+        </button>
+
+        <button class="nav-item" data-tab="hospital-profile" id="tab-btn-hospital-profile" title="بيانات المنشأة - تعديل البيانات المصرح بها">
+          <span class="nav-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V9h6v13"/><path d="M9 13h6"/><path d="M9 17h6"/></svg>
+          </span>
+          <span class="label">بيانات المنشأة</span>
         </button>
 
         <button class="nav-item" data-tab="mapping" id="tab-btn-mapping" title="استوديو الربط والمصطلحات">
@@ -1485,6 +1560,283 @@
             </div>
           </div>
 
+        </div>
+      </section>
+
+      <!-- TAB: HOSPITAL MIGRATION GATEWAY - HMS-like view for HOSPITAL_ADMIN -->
+      <section class="tab-pane" id="pane-hospital-migration">
+        <div class="banner-info" style="border-right:4px solid #0284c7; background:linear-gradient(135deg, rgba(14,165,233,0.09) 0%, rgba(16,185,129,0.06) 100%);">
+          <div class="banner-icon" style="background:#0284c7; color:#fff;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V9h6v13"/><path d="M12 2v4"/><path d="M12 18h.01"/></svg>
+          </div>
+          <div class="banner-text">
+            <h4 id="hosp-migration-title">نظام إدارة المستشفى — بوابة الترحيل والربط الوطني</h4>
+            <p id="hosp-migration-subtitle">مرحباً بك في نظامك الخاص. ارفع البيانات القديمة من نظامك السابق (CSV / HL7 / FHIR) وسيقوم محرك التطبيع الوطني بتحويلها وربطها تلقائياً مع السجل الموحد مع الحفاظ على مصدرها الأصلي.</p>
+          </div>
+          <div style="margin-right:auto; display:flex; gap:8px; align-items:center;">
+            <span class="badge badge-success" style="background:#0284c7; color:#fff; font-size:0.75rem;">HMS Gateway</span>
+          </div>
+        </div>
+
+        <!-- Hospital HMS Header Card -->
+        <div class="card mb-6" style="border:1px solid #0284c7; overflow:hidden;">
+          <div style="background:linear-gradient(135deg, #0c4a6e 0%, #0284c7 100%); color:#fff; padding:18px 20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+            <div style="display:flex; align-items:center; gap:14px;">
+              <div style="width:44px; height:44px; background:rgba(255,255,255,0.18); border-radius:10px; display:flex; align-items:center; justify-content:center;">
+                <svg style="width:24px; height:24px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V9h6v13"/></svg>
+              </div>
+              <div>
+                <h3 id="hosp-hms-name" style="margin:0; font-size:1.15rem; color:#fff;">—</h3>
+                <p id="hosp-hms-meta" style="margin:2px 0 0 0; font-size:0.8rem; opacity:0.92;">—</p>
+              </div>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <span id="hosp-hms-status" class="badge" style="background:#10b981; color:#fff; border:1px solid rgba(255,255,255,0.3);">نشط ومربوط وطنياً</span>
+              <span id="hosp-hms-region" class="badge" style="background:rgba(255,255,255,0.18); color:#fff;">—</span>
+            </div>
+          </div>
+          <div class="card-body" style="padding:14px 16px; background:var(--m3-surface-container-low); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <span style="font-size:0.82rem; color:var(--m3-on-surface-variant);">معرف المنشأة: <code id="hosp-hms-id">—</code> • نوع: <strong id="hosp-hms-type">—</strong></span>
+            <span style="font-size:0.78rem; color:var(--m3-on-surface-muted);">بوابة مخصصة لإدارة وترحيل بيانات منشأتك فقط • معزولة تنظيمياً وفق <code>NCA</code> و <code>PDPL</code></span>
+          </div>
+        </div>
+
+        <!-- HMS Stats Grid (scoped) -->
+        <div class="metrics-grid" id="hosp-stats-grid">
+          <div class="metric-card">
+            <div class="metric-icon bg-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
+            <div class="metric-info"><span class="metric-label">مرضى المنشأة المرتبطون</span><h3 class="metric-value" id="hosp-stat-patients">—</h3><span class="metric-sub">مرتبطون بمنشأتك فقط</span></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon bg-cyan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l8-4v18"/></svg></div>
+            <div class="metric-info"><span class="metric-label">الزيارات المرحّلة</span><h3 class="metric-value" id="hosp-stat-encounters">—</h3><span class="metric-sub">من الأنظمة القديمة + الحالي</span></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon bg-purple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"/><path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"/><circle cx="20" cy="10" r="2"/></svg></div>
+            <div class="metric-info"><span class="metric-label">السجلات الخام المرفوعة</span><h3 class="metric-value" id="hosp-stat-raw">—</h3><span class="metric-sub">قبل التطبيع والتحويل</span></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon bg-emerald"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></div>
+            <div class="metric-info"><span class="metric-label">مطالبات نفيس للمنشأة</span><h3 class="metric-value" id="hosp-stat-claims">—</h3><span class="metric-sub">محصور بمنشأتك</span></div>
+          </div>
+        </div>
+
+        <!-- Legacy Migration Dropzone (Hospital-scoped) -->
+        <div class="card mb-6" style="border:2px dashed #0284c7; background:rgba(14,165,233,0.04);">
+          <div class="card-header" style="background:rgba(14,165,233,0.08); border-bottom:1px solid rgba(14,165,233,0.18);">
+            <div class="card-header-title" style="color:#0c4a6e;">
+              <svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <h3>ترحيل البيانات القديمة من النظام السابق — اسحب ملفاتك هنا</h3>
+            </div>
+            <span class="badge badge-info" style="background:#0284c7; color:#fff;">HL7 v2 / FHIR R4 / CSV</span>
+          </div>
+          <div class="card-body">
+            <p style="font-size:0.84rem; color:var(--m3-on-surface-variant); margin-bottom:14px;">هذه <strong>بوابة منشأتك الخاصة</strong> — أي ملف ترفعه سيُوسم تلقائياً بمعرف منشأتك (<code id="hosp-dropzone-orgid" style="background:#0c4a6e; color:#fff; padding:2px 6px; border-radius:4px;">—</code>) وسيُطبّع ويُربط في السجل الوطني مع الحفاظ على مصدره. لن يرى أي مستشفى آخر بياناتك.</p>
+
+            <div class="file-dropzone" id="hospital-migration-dropzone" style="border-color:#0284c7; background:#fff;">
+              <input type="file" id="input-hospital-migration-file" accept=".hl7,.json,.csv,.txt" style="display:none;">
+              <svg class="dropzone-icon" style="color:#0284c7;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m16 16-4-4-4 4"/></svg>
+              <h4 style="font-size:0.96rem; margin-bottom:4px; color:var(--m3-on-surface);">اسحب ملفات النظام القديم وأفلتها هنا</h4>
+              <p style="font-size:0.78rem; color:var(--m3-on-surface-muted); margin-bottom:12px;">سيتم تطبيعها تلقائياً: ترميز `SNOMED → ICD-10-AM`, `LOINC`, `SFDA SDC`, وربط الهوية في `MPI`</p>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-browse-hospital-file" style="border-color:#0284c7; color:#0284c7;">
+                <svg class="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <span>اختر ملفات من جهازك</span>
+              </button>
+              <p style="font-size:0.72rem; color:var(--m3-on-surface-muted); margin-top:10px; display:flex; align-items:center; justify-content:center; gap:6px;"><svg style="width:14px;height:14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg> آمن ومشفر — مصدر البيانات يُحفظ في `Provenance` ولا يُشارك إلا بموافقة</p>
+            </div>
+
+            <div style="margin-top:16px;">
+              <span style="font-size:0.78rem; font-weight:700; color:var(--m3-on-surface-muted); display:block; margin-bottom:8px;">جرّب بنقرة واحدة (سيُنسب لمنشأتك تلقائياً):</span>
+              <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button type="button" class="btn btn-secondary btn-sm btn-hosp-sample" data-sample="hl7"><span>HL7 v2.5 (ADT^A01)</span></button>
+                <button type="button" class="btn btn-secondary btn-sm btn-hosp-sample" data-sample="fhir"><span>FHIR R4 Bundle</span></button>
+                <button type="button" class="btn btn-secondary btn-sm btn-hosp-sample" data-sample="csv"><span>جدول مرضى CSV</span></button>
+              </div>
+            </div>
+
+            <div id="hospital-migration-result" class="mt-4" style="display:none;"></div>
+
+            <div style="margin-top:16px; padding:10px 12px; background:#f0f9ff; border:1px solid #bae6fd; border-radius:6px; display:flex; gap:10px; align-items:flex-start;">
+              <svg style="width:18px;height:18px; color:#0284c7; flex-shrink:0; margin-top:2px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+              <p style="font-size:0.78rem; color:#0c4a6e; line-height:1.5;">بعد الرفع، يتحول ملفك من صيغة نظامك القديم إلى السجل الوطني الموحد. يمكنك متابعة حالة التطبيع في جدول "سجل التراكمات" أدناه — كل سجل يمر بـ `استيعاب → تطبيع → ربط MPI → توثيق`.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Imports & Patients -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;" class="mb-6">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><h3>سجل عمليات الترحيل (خاص بمنشأتك)</h3></div>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-hosp-imports"><svg class="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg><span>تحديث</span></button>
+            </div>
+            <div class="card-body p-0">
+              <table class="data-table">
+                <thead><tr><th>الملف / النظام المصدر</th><th>النوع</th><th>الحالة</th><th>سجلات</th><th>التاريخ</th></tr></thead>
+                <tbody id="hosp-imports-tbody"><tr><td colspan="5" class="text-center py-4">جاري التحميل...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><h3>مرضى منشأتك المرحّلون (معزولون تنظيمياً)</h3></div>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-hosp-patients"><svg class="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg><span>تحديث</span></button>
+            </div>
+            <div class="card-body p-0">
+              <table class="data-table">
+                <thead><tr><th>الاسم</th><th>الهوية</th><th>الجنس</th><th>تاريخ الربط</th></tr></thead>
+                <tbody id="hosp-patients-tbody"><tr><td colspan="4" class="text-center py-4">جاري التحميل...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- TAB: HOSPITAL PROFILE (HOSPITAL_ADMIN ONLY) -->
+      <section class="tab-pane" id="pane-hospital-profile">
+        <div class="banner-info" style="border-right:4px solid #0ea5e9; background:rgba(14,165,233,0.07);">
+          <div class="banner-icon" style="background:#e0f2fe; color:#0284c7;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V9h6v13"/></svg>
+          </div>
+          <div class="banner-text">
+            <h4>بيانات المنشأة الصحية - إدارة البيانات المصرح بها</h4>
+            <p>يمكن لمسؤول المنشأة تحديث بيانات التواصل (جوال، بريد، اسم المسؤول) والبيانات العامة للمنشأة (الاسم عربي/إنجليزي، المنطقة) فقط. نوع المنشأة، المعرف، والحالة <strong>محمية</strong> وتتطلب اعتماد الوزارة.</p>
+          </div>
+        </div>
+
+        <div id="hospital-profile-loading" style="text-align:center; padding:40px; color:var(--m3-on-surface-variant);">
+          <svg style="width:28px;height:28px; animation:spin 1s linear infinite;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg>
+          <p style="margin-top:10px;">جاري تحميل بيانات المنشأة الموثقة...</p>
+        </div>
+
+        <div id="hospital-profile-content" style="display:none;">
+          <!-- Read-only Organization Identity -->
+          <div class="card mb-6" style="border:1px solid var(--m3-outline-variant); background:var(--m3-surface-container-low);">
+            <div class="card-header">
+              <div class="card-header-title">
+                <svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><circle cx="12" cy="8" r="3"/></svg>
+                <h3>هوية المنشأة الموثقة (للعرض فقط)</h3>
+              </div>
+              <span class="badge badge-warning" style="background:#B45309; color:#fff;">محمية - لا يمكن تعديل النوع/المعرف</span>
+            </div>
+            <div class="card-body">
+              <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px;">
+                <div class="metric-card" style="padding:14px; background:var(--m3-surface-container); border:1px dashed var(--m3-outline-variant);">
+                  <span class="metric-label">معرف المنشأة</span>
+                  <strong id="hosp-ro-id" style="font-family:'JetBrains Mono', monospace; font-size:0.92rem;">—</strong>
+                  <small style="display:block; color:var(--m3-on-surface-muted); font-size:0.72rem; margin-top:4px;">المعرف الداخلي الموحد</small>
+                </div>
+                <div class="metric-card" style="padding:14px; background:var(--m3-surface-container); border:1px dashed var(--m3-outline-variant);">
+                  <span class="metric-label">نوع المنشأة</span>
+                  <strong id="hosp-ro-type">—</strong>
+                  <small style="display:block; color:var(--m3-on-surface-muted); font-size:0.72rem; margin-top:4px;">يتطلب اعتماد الوزارة لتغييره</small>
+                </div>
+                <div class="metric-card" style="padding:14px; background:var(--m3-surface-container); border:1px dashed var(--m3-outline-variant);">
+                  <span class="metric-label">حالة الاعتماد</span>
+                  <strong><span id="hosp-ro-status" class="badge badge-success">—</span></strong>
+                  <small style="display:block; color:var(--m3-on-surface-muted); font-size:0.72rem; margin-top:4px;">حالة التفعيل في المنصة الوطنية</small>
+                </div>
+                <div class="metric-card" style="padding:14px; background:var(--m3-surface-container); border:1px dashed var(--m3-outline-variant);">
+                  <span class="metric-label">تاريخ التسجيل</span>
+                  <strong id="hosp-ro-created">—</strong>
+                </div>
+                <div class="metric-card" style="padding:14px; background:var(--m3-surface-container); border:1px dashed var(--m3-outline-variant);">
+                  <span class="metric-label">اسم المستخدم (مسؤول)</span>
+                  <strong id="hosp-ro-username" style="font-family:'JetBrains Mono', monospace;">—</strong>
+                </div>
+                <div class="metric-card" style="padding:14px; background:var(--m3-surface-container); border:1px dashed var(--m3-outline-variant);">
+                  <span class="metric-label">الدور</span>
+                  <strong>HOSPITAL_ADMIN</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Editable Hospital Data -->
+          <div class="card mb-6" style="border:1px solid #0ea5e9; box-shadow:0 2px 12px rgba(14,165,233,0.10);">
+            <div class="card-header" style="background:#e0f2fe; border-bottom:1px solid rgba(14,165,233,0.25);">
+              <div class="card-header-title" style="color:#0c4a6e;">
+                <svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-5"/><path d="M12 12l8-8a2.18 2.18 0 0 1 3 3l-8 8a2 2 0 0 1-1 .59l-3 1 1-3a2 2 0 0 1 .59-1z"/></svg>
+                <h3>بيانات التواصل والمعلومات العامة للمنشأة (قابلة للتعديل)</h3>
+              </div>
+              <span class="badge badge-success">مصرح بتعديلها ذاتياً</span>
+            </div>
+            <div class="card-body">
+              <div id="hospital-profile-edit-status" style="display:none; margin-bottom:16px;"></div>
+              <form id="form-edit-hospital-profile" style="display:flex; flex-direction:column; gap:18px;" onsubmit="event.preventDefault(); saveHospitalProfile();">
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                  <div class="form-group">
+                    <label for="edit-hosp-org-name">اسم المنشأة بالإنجليزية <span style="color:var(--m3-primary);">*</span></label>
+                    <input type="text" id="edit-hosp-org-name" class="form-select" dir="ltr" style="text-align:left;">
+                  </div>
+                  <div class="form-group">
+                    <label for="edit-hosp-org-name-ar">اسم المنشأة بالعربية <span style="color:var(--m3-primary);">*</span></label>
+                    <input type="text" id="edit-hosp-org-name-ar" class="form-select">
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="edit-hosp-region">المنطقة الإدارية <span style="color:var(--m3-primary);">*</span></label>
+                  <select id="edit-hosp-region" class="form-select">
+                    <option value="Riyadh">الرياض</option>
+                    <option value="Makkah">مكة المكرمة</option>
+                    <option value="Eastern">المنطقة الشرقية</option>
+                    <option value="Madinah">المدينة المنورة</option>
+                    <option value="Asir">عسير</option>
+                    <option value="Qassim">القصيم</option>
+                    <option value="Hail">حائل</option>
+                    <option value="Tabuk">تبوك</option>
+                    <option value="Najran">نجران</option>
+                    <option value="Jazan">جازان</option>
+                    <option value="AlBaha">الباحة</option>
+                    <option value="AlJawf">الجوف</option>
+                    <option value="NorthernBorders">الحدود الشمالية</option>
+                  </select>
+                </div>
+
+                <div style="background:var(--m3-surface-container); border:1px solid var(--m3-outline-variant); border-radius:8px; padding:14px;">
+                  <h4 style="font-size:0.88rem; margin-bottom:10px; display:flex; align-items:center; gap:8px;"><svg style="width:16px;height:16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg> بيانات مسؤول المنشأة (مصرح بتعديلها)</h4>
+                  <div class="form-group">
+                    <label for="edit-hosp-fullname">الاسم الكامل لمسؤول المنشأة</label>
+                    <input type="text" id="edit-hosp-fullname" class="form-select">
+                  </div>
+                  <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:10px;">
+                    <div class="form-group">
+                      <label for="edit-hosp-phone">جوال المسؤول <span style="color:var(--m3-primary);">*</span></label>
+                      <input type="tel" id="edit-hosp-phone" class="form-select" dir="ltr" style="text-align:left; font-family:'JetBrains Mono', monospace;">
+                    </div>
+                    <div class="form-group">
+                      <label for="edit-hosp-email">البريد الرسمي <span style="color:var(--m3-primary);">*</span></label>
+                      <input type="email" id="edit-hosp-email" class="form-select" dir="ltr" style="text-align:left;">
+                    </div>
+                  </div>
+                </div>
+
+                <div style="display:flex; gap:10px; justify-content:flex-end; padding-top:8px; border-top:1px solid var(--m3-outline-variant);">
+                  <button type="button" class="btn btn-secondary" onclick="loadHospitalProfileTab()">
+                    <svg class="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    <span>إلغاء</span>
+                  </button>
+                  <button type="submit" class="btn btn-primary" id="btn-save-hospital-profile" style="background:#0284c7;">
+                    <svg class="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                    <span>حفظ تعديلات المنشأة</span>
+                  </button>
+                </div>
+                <p style="font-size:0.73rem; color:var(--m3-on-surface-variant); text-align:center;">سيتم توثيق تعديلات المنشأة في سجل التدقيق المشفر ومراجعتها كـ تغيير ذاتي مصرح به.</p>
+              </form>
+            </div>
+          </div>
+
+          <div class="card" style="border:1px dashed var(--m3-warning); background:rgba(180,83,9,0.06);">
+            <div class="card-body" style="display:flex; gap:10px; align-items:flex-start;">
+              <svg style="width:20px;height:20px; color:var(--m3-warning); flex-shrink:0; margin-top:2px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <div>
+                <strong style="font-size:0.88rem;">ماذا لا يمكنك تعديله؟</strong>
+                <p style="font-size:0.8rem; color:var(--m3-on-surface-variant); line-height:1.6; margin-top:4px;">معرف المنشأة، نوعها (مستشفى/عيادة/مختبر)، وحالة الاعتماد <strong>محمية</strong> وتتطلب طلب اعتماد عبر وزارة الصحة. المنطقة واسم المنشأة متاح للتعديل ذاتياً لكن مع تدقيق إداري لاحق وضمان عدم تكرار الأسماء.</p>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
