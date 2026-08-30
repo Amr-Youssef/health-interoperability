@@ -9,6 +9,28 @@ const router = Router();
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-national-health-key-2026';
 
+// ---------------- Validation helpers for trusted patient data ----------------
+function isValidSaudiNationalId(id: string): boolean {
+  return /^(1|2)\d{9}$/.test(id.trim());
+}
+function normalizeSaudiPhone(raw: string): string | null {
+  const cleaned = raw.replace(/[\s\-\(\)]/g, '');
+  if (/^05\d{8}$/.test(cleaned)) return '+966' + cleaned.substring(1);
+  if (/^5\d{8}$/.test(cleaned)) return '+966' + cleaned;
+  if (/^9665\d{8}$/.test(cleaned)) return '+' + cleaned;
+  if (/^\+9665\d{8}$/.test(cleaned)) return cleaned;
+  return null;
+}
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+}
+function normalizeGender(g: string): 'male' | 'female' | null {
+  const v = g.trim().toLowerCase();
+  if (['male', 'ذكر', 'm'].includes(v)) return 'male';
+  if (['female', 'أنثى', 'انثى', 'f'].includes(v)) return 'female';
+  return null;
+}
+
 async function ensureDefaultAccounts() {
   const [sysAdminRole, hospitalAdminRole, patientRole] = await Promise.all([
     prisma.role.upsert({
@@ -151,10 +173,30 @@ async function ensureDefaultAccounts() {
 
 router.post('/register', async (req: Request, res: Response) => {
   try {
-    const { username, password, full_name, roleType, organization_name, patient_profile } = req.body;
+    const { username, password, full_name, roleType, organization_name, patient_profile, nationalId, birthDate, gender, phone, email } = req.body;
 
     if (!username || !password || !full_name || !roleType) {
       return res.status(400).json({ error: 'Username, password, full_name, and roleType are required' });
+    }
+
+    // Password strength: min 8 chars, at least one letter and one digit
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'كلمة المرور ضعيفة: يجب أن تكون 8 أحرف على الأقل' });
+    }
+    if (!/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+      return res.status(400).json({ error: 'كلمة المرور يجب أن تحتوي على حروف وأرقام' });
+    }
+
+    // Check username uniqueness early
+    const existingUsername = await prisma.user.findUnique({ where: { username: username.trim() } });
+    if (existingUsername) {
+      return res.status(400).json({ error: 'اسم المستخدم موجود مسبقاً. يرجى اختيار اسم آخر' });
+    }
+    if (email && email.trim()) {
+      const existingEmail = await prisma.user.findFirst({ where: { email: email.trim() } });
+      if (existingEmail) {
+        return res.status(400).json({ error: 'البريد الإلكتروني مسجل مسبقاً' });
+      }
     }
 
     // Determine the role
@@ -172,7 +214,6 @@ router.post('/register', async (req: Request, res: Response) => {
       });
     }
 
-    const password_hash = await bcrypt.hash(password, 10);
     let organization_id: string;
     let patient_profile_id: string | null = null;
 
@@ -188,8 +229,118 @@ router.post('/register', async (req: Request, res: Response) => {
         }
       });
       organization_id = org.id;
+      const password_hash_hosp = await bcrypt.hash(password, 10);
+      const userHosp = await prisma.user.create({
+        data: {
+          username: username.trim(),
+          password_hash: password_hash_hosp,
+          full_name: full_name.trim(),
+          email: email?.trim() || null,
+          phone: phone ? normalizeSaudiPhone(phone.trim()) : null,
+          role_id: role.id,
+          organization_id,
+          patient_profile_id: null,
+          is_active: true
+        },
+        include: { role: true, organization: true }
+      });
+      const tokenHosp = jwt.sign(
+        { userId: userHosp.id, role: userHosp.role.role_code, orgId: userHosp.organization_id },
+        JWT_SECRET,
+        { expiresIn: '8h' }
+      );
+      return res.json({
+        token: tokenHosp,
+        user: {
+          id: userHosp.id,
+          username: userHosp.username,
+          fullName: userHosp.full_name,
+          role: userHosp.role.role_code,
+          organization: userHosp.organization?.organization_name,
+          orgId: userHosp.organization_id,
+          patientProfileId: userHosp.patient_profile_id
+        }
+      });
     } else {
-      // PATIENT
+      // ===== PATIENT: Enhanced trusted data collection =====
+      // National ID / Iqama is MANDATORY for reliable patient identity
+      if (!nationalId || !nationalId.trim()) {
+        return res.status(400).json({ error: 'رقم الهوية الوطنية / الإقامة مطلوب (10 أرقام يبدأ بـ 1 أو 2)' });
+      }
+      const nidTrimmed = nationalId.trim();
+      if (!isValidSaudiNationalId(nidTrimmed)) {
+        return res.status(400).json({ error: 'رقم الهوية الوطنية / الإقامة غير صحيح: يجب أن يكون 10 أرقام ويبدأ بـ 1 أو 2' });
+      }
+      // Unique NID check
+      const existingNid = await prisma.patientIdentifier.findFirst({ where: { value: nidTrimmed } });
+      if (existingNid) {
+        return res.status(400).json({ error: 'رقم الهوية الوطنية / الإقامة مسجل مسبقاً في المنصة' });
+      }
+      // Also prevent NID being reused as username by another account
+      const existingNidAsUsername = await prisma.user.findUnique({ where: { username: nidTrimmed } });
+      if (existingNidAsUsername) {
+        return res.status(400).json({ error: 'رقم الهوية مستخدم كاسم دخول في حساب آخر' });
+      }
+
+      // Birth date mandatory
+      if (!birthDate) {
+        return res.status(400).json({ error: 'تاريخ الميلاد مطلوب للحصول على بيانات موثوقة' });
+      }
+      const dob = new Date(birthDate);
+      if (isNaN(dob.getTime())) {
+        return res.status(400).json({ error: 'تاريخ الميلاد غير صالح' });
+      }
+      if (dob > new Date()) {
+        return res.status(400).json({ error: 'تاريخ الميلاد لا يمكن أن يكون في المستقبل' });
+      }
+      if (dob < new Date('1900-01-01')) {
+        return res.status(400).json({ error: 'تاريخ الميلاد غير واقعي (قبل 1900)' });
+      }
+      const ageYears = new Date().getFullYear() - dob.getFullYear();
+      if (ageYears > 120 || ageYears < 0) {
+        return res.status(400).json({ error: 'العمر غير واقعي (يجب أن يكون بين 0 و 120 سنة)' });
+      }
+
+      // Gender mandatory
+      if (!gender) {
+        return res.status(400).json({ error: 'الجنس مطلوب' });
+      }
+      const genderNorm = normalizeGender(String(gender));
+      if (!genderNorm) {
+        return res.status(400).json({ error: 'الجنس غير صالح: اختر ذكر أو أنثى' });
+      }
+
+      // Phone mandatory - Saudi format
+      if (!phone || !phone.trim()) {
+        return res.status(400).json({ error: 'رقم الجوال السعودي مطلوب (مثال: 05xxxxxxxx أو +9665xxxxxxxx)' });
+      }
+      const normalizedPhone = normalizeSaudiPhone(phone.trim());
+      if (!normalizedPhone) {
+        return res.status(400).json({ error: 'رقم الجوال غير صحيح: يجب أن يكون رقم سعودي يبدأ بـ 05 أو +9665 (مثال: 0555123456)' });
+      }
+
+      // Email optional but if provided must be valid
+      let normalizedEmail: string | null = null;
+      if (email && email.trim()) {
+        if (!isValidEmail(email.trim())) {
+          return res.status(400).json({ error: 'صيغة البريد الإلكتروني غير صحيحة' });
+        }
+        normalizedEmail = email.trim().toLowerCase();
+        const duplicateEmail = await prisma.user.findFirst({ where: { email: normalizedEmail } });
+        if (duplicateEmail) {
+          return res.status(400).json({ error: 'البريد الإلكتروني مسجل مسبقاً' });
+        }
+      }
+
+      // Full name validation - at least 2 parts, 2 chars each, Arabic/English letters
+      const nameParts = full_name.trim().split(/\s+/);
+      if (nameParts.length < 2) {
+        return res.status(400).json({ error: 'الاسم الكامل يجب أن يحتوي على الاسم الأول واسم العائلة على الأقل' });
+      }
+      if (full_name.trim().length < 3 || full_name.trim().length > 80) {
+        return res.status(400).json({ error: 'الاسم الكامل يجب أن يكون بين 3 و 80 حرفاً' });
+      }
+
       // Find default MOH org or create one
       let mohOrg = await prisma.organization.findFirst({ where: { organization_type: 'MOH' } });
       if (!mohOrg) {
@@ -203,79 +354,145 @@ router.post('/register', async (req: Request, res: Response) => {
       }
       organization_id = mohOrg.id;
 
-      // Create Patient profile
+      const password_hash_patient = await bcrypt.hash(password, 10);
+
+      // Create Patient with trusted demographic data
+      const firstName = nameParts[0];
+      const lastName = nameParts.slice(1).join(' ');
+      // Try to separate Arabic names if full_name contains Arabic
+      const hasArabic = /[\u0600-\u06FF]/.test(full_name);
       const patient = await prisma.patient.create({
         data: {
-          internal_id: uuidv4(),
-          first_name: full_name.split(' ')[0],
-          last_name: full_name.split(' ').slice(1).join(' '),
+          internal_id: nidTrimmed, // Use NID as canonical internal_id for traceability & MPI
+          first_name: hasArabic ? null : firstName,
+          last_name: hasArabic ? null : lastName,
+          first_name_ar: hasArabic ? firstName : null,
+          last_name_ar: hasArabic ? lastName : lastName,
+          birth_date: dob,
+          gender: genderNorm,
+          phone: normalizedPhone,
+          email: normalizedEmail,
           status: 'ACTIVE'
         }
       });
       patient_profile_id = patient.id;
 
-      // Save patient profile data if provided
+      // Create NID/Iqama identifier
+      const nidType = nidTrimmed.startsWith('1') ? 'NID' : 'IQAMA';
+      const nidSystem = nidTrimmed.startsWith('1') ? 'urn:sa:nca:nid' : 'urn:sa:iqama';
+      await prisma.patientIdentifier.create({
+        data: {
+          patient_id: patient.id,
+          value: nidTrimmed,
+          type: nidType,
+          system: nidSystem
+        }
+      });
+
+      // Save patient profile supplementary data if provided
       if (patient_profile) {
         try {
+          // Validate emergency contact phone if provided
+          let emergencyPhoneNormalized: string | undefined = undefined;
+          if (patient_profile.emergency_contact_phone) {
+            const ep = normalizeSaudiPhone(String(patient_profile.emergency_contact_phone).trim());
+            if (ep) emergencyPhoneNormalized = ep;
+          }
+          // Validate postal code if provided (5 digits)
+          let postalValid = patient_profile.address_postal_code;
+          if (postalValid && !/^\d{5}$/.test(String(postalValid).trim())) {
+            postalValid = null; // silently drop invalid but keep rest
+          }
           await prisma.patientProfile.create({
             data: {
               patient_id: patient.id,
-              preferred_first_name: patient_profile.preferred_first_name,
-              preferred_last_name: patient_profile.preferred_last_name,
-              preferred_language: patient_profile.preferred_language,
-              emergency_contact_name: patient_profile.emergency_contact_name,
-              emergency_contact_phone: patient_profile.emergency_contact_phone,
-              emergency_contact_relationship: patient_profile.emergency_contact_relationship,
-              address_line: patient_profile.address_line,
-              address_city: patient_profile.address_city,
-              address_district: patient_profile.address_district,
-              address_postal_code: patient_profile.address_postal_code,
+              preferred_first_name: patient_profile.preferred_first_name?.trim() || null,
+              preferred_last_name: patient_profile.preferred_last_name?.trim() || null,
+              preferred_language: ['ar','en'].includes(patient_profile.preferred_language) ? patient_profile.preferred_language : 'ar',
+              emergency_contact_name: patient_profile.emergency_contact_name?.trim() || null,
+              emergency_contact_phone: emergencyPhoneNormalized || patient_profile.emergency_contact_phone?.trim() || null,
+              emergency_contact_relationship: patient_profile.emergency_contact_relationship || null,
+              address_line: patient_profile.address_line?.trim() || null,
+              address_city: patient_profile.address_city?.trim() || null,
+              address_district: patient_profile.address_district?.trim() || null,
+              address_postal_code: postalValid ? String(postalValid).trim() : null,
               source: 'PATIENT',
               verification_status: 'SELF_REPORTED',
               recorded_at: new Date(),
-              notes: 'Created during patient registration'
+              notes: 'Created during trusted patient registration'
             }
           });
         } catch (profileErr) {
           console.warn('Warning: Failed to save patient profile during registration, but user created', profileErr);
         }
       }
+
+      // Create user linked to patient
+      const user = await prisma.user.create({
+        data: {
+          username: username.trim(),
+          password_hash: password_hash_patient,
+          full_name: full_name.trim(),
+          email: normalizedEmail,
+          phone: normalizedPhone,
+          role_id: role.id,
+          organization_id,
+          patient_profile_id,
+          is_active: true
+        },
+        include: { role: true, organization: true }
+      });
+
+      // Audit - record trusted registration
+      try {
+        await prisma.auditLog.create({
+          data: {
+            entity_type: 'Patient',
+            entity_id: patient.internal_id,
+            action: 'PATIENT_REGISTER_TRUSTED',
+            actor_id: user.id,
+            organization_id,
+            new_values: JSON.stringify({ username: user.username, nationalId: nidTrimmed, gender: genderNorm, birthDate: dob.toISOString().split('T')[0] }),
+            details: `Trusted patient registration: NID ${nidTrimmed} with verified demographics`
+          }
+        });
+      } catch (e) { /* audit best effort */ }
+
+      const token = jwt.sign(
+        { userId: user.id, role: user.role.role_code, orgId: user.organization_id, patientProfileId: user.patient_profile_id },
+        JWT_SECRET,
+        { expiresIn: '8h' }
+      );
+
+      return res.json({
+        token,
+        user: {
+          id: user.id,
+          username: user.username,
+          fullName: user.full_name,
+          role: user.role.role_code,
+          organization: user.organization?.organization_name,
+          orgId: user.organization_id,
+          patientProfileId: user.patient_profile_id
+        }
+      });
     }
 
-    const user = await prisma.user.create({
-      data: {
-        username,
-        password_hash,
-        full_name,
-        role_id: role.id,
-        organization_id,
-        patient_profile_id,
-        is_active: true
-      },
-      include: { role: true, organization: true }
-    });
+    // Fallback (should not reach here) - already handled hospital branch
 
-    const token = jwt.sign(
-      { userId: user.id, role: user.role.role_code, orgId: user.organization_id },
-      JWT_SECRET,
-      { expiresIn: '8h' }
-    );
-
-    res.json({
-      token,
-      user: {
-        id: user.id,
-        username: user.username,
-        fullName: user.full_name,
-        role: user.role.role_code,
-        organization: user.organization?.organization_name,
-        orgId: user.organization_id,
-        patientProfileId: user.patient_profile_id
-      }
-    });
-
-  } catch (error) {
+  } catch (error: any) {
     console.error('Registration error:', error);
+    // Handle Prisma unique constraint errors with friendly message
+    if (error.code === 'P2002') {
+      const target = error.meta?.target;
+      if (target && String(target).includes('username')) {
+        return res.status(400).json({ error: 'اسم المستخدم موجود مسبقاً' });
+      }
+      if (target && String(target).includes('email')) {
+        return res.status(400).json({ error: 'البريد الإلكتروني مسجل مسبقاً' });
+      }
+      return res.status(400).json({ error: 'بيانات مسجلة مسبقاً: تحقق من الهوية أو اسم المستخدم' });
+    }
     res.status(500).json({ error: 'Internal server error during registration' });
   }
 });

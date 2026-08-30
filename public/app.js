@@ -47,28 +47,39 @@ const appAuth = {
   toggleRegisterRole() {
     const role = document.getElementById('register-role').value;
     const orgGroup = document.getElementById('register-org-group');
+    const trustedGroup = document.getElementById('register-patient-trusted-group');
     const patientProfileGroup = document.getElementById('register-patient-profile-group');
     
     if (role === 'HOSPITAL_ADMIN') {
       if (orgGroup) orgGroup.style.display = 'block';
+      if (trustedGroup) trustedGroup.style.display = 'none';
       if (patientProfileGroup) patientProfileGroup.style.display = 'none';
     } else if (role === 'PATIENT') {
       if (orgGroup) orgGroup.style.display = 'none';
+      if (trustedGroup) trustedGroup.style.display = 'block';
       if (patientProfileGroup) patientProfileGroup.style.display = 'block';
     } else {
       if (orgGroup) orgGroup.style.display = 'none';
+      if (trustedGroup) trustedGroup.style.display = 'none';
       if (patientProfileGroup) patientProfileGroup.style.display = 'none';
     }
   },
 
   async register() {
-    const fullname = document.getElementById('register-fullname').value;
-    const username = document.getElementById('register-username').value;
+    const fullname = document.getElementById('register-fullname').value.trim();
+    const username = document.getElementById('register-username').value.trim();
     const password = document.getElementById('register-password').value;
     const roleType = document.getElementById('register-role').value;
     const orgName = document.getElementById('register-org').value;
     
-    // Patient profile data
+    // Trusted patient fields (mandatory for reliable data)
+    const nationalId = document.getElementById('register-national-id')?.value.trim() || '';
+    const birthDate = document.getElementById('register-birth-date')?.value || '';
+    const gender = document.getElementById('register-gender')?.value || '';
+    const phone = document.getElementById('register-phone')?.value.trim() || '';
+    const email = document.getElementById('register-email')?.value.trim() || '';
+
+    // Patient profile data (optional supplementary)
     const preferredFirstName = document.getElementById('register-preferred-first-name')?.value || '';
     const preferredLastName = document.getElementById('register-preferred-last-name')?.value || '';
     const preferredLanguage = document.getElementById('register-preferred-language')?.value || 'ar';
@@ -84,6 +95,52 @@ const appAuth = {
     const errorText = document.getElementById('register-error-text');
     if (errorDiv) errorDiv.style.display = 'none';
 
+    // Client-side validation for PATIENT trusted data (improves UX before server roundtrip)
+    if (roleType === 'PATIENT') {
+      if (!nationalId) {
+        const msg = 'رقم الهوية الوطنية / الإقامة مطلوب (10 أرقام يبدأ بـ 1 أو 2)';
+        if (errorText) errorText.textContent = msg; if (errorDiv) errorDiv.style.display = 'flex'; return;
+      }
+      if (!/^(1|2)\d{9}$/.test(nationalId)) {
+        const msg = 'رقم الهوية غير صحيح: يجب أن يكون 10 أرقام ويبدأ بـ 1 أو 2';
+        if (errorText) errorText.textContent = msg; if (errorDiv) errorDiv.style.display = 'flex'; return;
+      }
+      if (!birthDate) {
+        const msg = 'تاريخ الميلاد مطلوب';
+        if (errorText) errorText.textContent = msg; if (errorDiv) errorDiv.style.display = 'flex'; return;
+      }
+      const dob = new Date(birthDate);
+      if (isNaN(dob.getTime()) || dob > new Date() || dob < new Date('1900-01-01')) {
+        const msg = 'تاريخ الميلاد غير صالح';
+        if (errorText) errorText.textContent = msg; if (errorDiv) errorDiv.style.display = 'flex'; return;
+      }
+      if (!gender) {
+        const msg = 'الجنس مطلوب';
+        if (errorText) errorText.textContent = msg; if (errorDiv) errorDiv.style.display = 'flex'; return;
+      }
+      if (!phone) {
+        const msg = 'رقم الجوال السعودي مطلوب';
+        if (errorText) errorText.textContent = msg; if (errorDiv) errorDiv.style.display = 'flex'; return;
+      }
+      const phoneClean = phone.replace(/[\s\-\(\)]/g,'');
+      if (!/^(?:\+9665\d{8}|9665\d{8}|05\d{8}|5\d{8})$/.test(phoneClean)) {
+        const msg = 'رقم الجوال غير صحيح: يجب أن يكون رقم سعودي (05xxxxxxxx)';
+        if (errorText) errorText.textContent = msg; if (errorDiv) errorDiv.style.display = 'flex'; return;
+      }
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        const msg = 'صيغة البريد الإلكتروني غير صحيحة';
+        if (errorText) errorText.textContent = msg; if (errorDiv) errorDiv.style.display = 'flex'; return;
+      }
+      if (!fullname || fullname.split(/\s+/).length < 2) {
+        const msg = 'الاسم الكامل يجب أن يحتوي على الاسم الأول واسم العائلة';
+        if (errorText) errorText.textContent = msg; if (errorDiv) errorDiv.style.display = 'flex'; return;
+      }
+      if (password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+        const msg = 'كلمة المرور يجب أن تكون 8 أحرف على الأقل وتحتوي حروف وأرقام';
+        if (errorText) errorText.textContent = msg; if (errorDiv) errorDiv.style.display = 'flex'; return;
+      }
+    }
+
     try {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
@@ -94,6 +151,12 @@ const appAuth = {
           password: password,
           roleType: roleType,
           organization_name: orgName,
+          // Trusted identity fields (only for PATIENT)
+          nationalId: roleType === 'PATIENT' ? nationalId : undefined,
+          birthDate: roleType === 'PATIENT' ? birthDate : undefined,
+          gender: roleType === 'PATIENT' ? gender : undefined,
+          phone: roleType === 'PATIENT' ? phone : undefined,
+          email: email || undefined,
           // Patient profile data
           patient_profile: roleType === 'PATIENT' ? {
             preferred_first_name: preferredFirstName,
@@ -237,11 +300,11 @@ const appAuth = {
       if (patCard) patCard.style.display = 'block';
 
     } else if (this.currentRole === 'PATIENT') {
-      ['longitudinal', 'medications'].forEach(id => {
+      ['profile', 'longitudinal', 'medications'].forEach(id => {
         const t = document.getElementById(`tab-btn-${id}`);
         if(t) t.style.display = 'flex';
       });
-      defaultTab = 'longitudinal';
+      defaultTab = 'profile';
 
       const selfReportedCard = document.getElementById('patient-allergy-management-card');
       if (selfReportedCard) selfReportedCard.style.display = 'block';
@@ -755,6 +818,10 @@ function initNavigation() {
       title: 'الملف الصحي الموحد الشامل (Longitudinal Record)',
       sub: 'عرض تتابعي زمني يجمع الزيارات والتشخيصات والتحاليل والأدوية والتطعيمات والمطالبات'
     },
+    profile: {
+      title: 'بياناتي الشخصية - إدارة البيانات المصرح بها',
+      sub: 'عرض وتحديث بيانات التواصل، اللغة المفضلة، جهة اتصال الطوارئ والعنوان الوطني — الحقول المحمية للعرض فقط'
+    },
     mapping: {
       title: 'استوديو قواعد الربط وتصنيف المصطلحات',
       sub: 'مصفوفة تحويل الحقول والربط المعياري (SFDA SDC, SNOMED CT, ICD-10-AM, SBS, LOINC)'
@@ -1257,6 +1324,14 @@ function handleTabSwitch(tab) {
     loadPatientsDropdown();
     if (appAuth.currentRole === 'PATIENT') {
       loadPatientSelfReportedDashboard();
+    }
+  }
+  if (tab === 'profile') {
+    if (appAuth.currentRole === 'PATIENT') {
+      loadPatientProfileTab();
+    } else {
+      // Non-patient should not see this tab; redirect
+      showToast('تنبيه', 'هذه الصفحة مخصصة لحسابات المرضى فقط', 'info');
     }
   }
   if (tab === 'mapping') loadMappingStudio();
@@ -1990,6 +2065,215 @@ async function loadPatientSelfReportedDashboard() {
     if (container) {
       container.innerHTML = '<div class="card"><div class="card-body"><p class="text-center py-4 text-muted">تعذّر تحميل الملف الصحي الشخصي.</p></div></div>';
     }
+  }
+}
+
+// ===================== PATIENT PROFILE EDITING (Authorized Fields Only) =====================
+let _profileCache = null;
+
+async function loadPatientProfileTab() {
+  const loadingEl = document.getElementById('profile-loading');
+  const contentEl = document.getElementById('profile-content');
+  const statusEl = document.getElementById('profile-edit-status');
+  if (!loadingEl || !contentEl) return;
+  if (appAuth.currentRole !== 'PATIENT') {
+    loadingEl.innerHTML = '<p style="color:var(--m3-error);">هذه الصفحة مخصصة لحسابات المرضى فقط.</p>';
+    return;
+  }
+  loadingEl.style.display = 'block';
+  contentEl.style.display = 'none';
+  if (statusEl) statusEl.style.display = 'none';
+
+  try {
+    const res = await fetch('/api/patient/me', { headers: { 'Content-Type': 'application/json' } });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'فشل تحميل البيانات');
+    _profileCache = data;
+
+    // Populate read-only identity card
+    const nid = data.patient?.nationalId || data.patient?.identifiers?.find(i=>i.type==='NID' || i.type==='IQAMA')?.value || '—';
+    const nidType = data.patient?.nationalIdType || data.patient?.identifiers?.find(i=>i.type==='NID' || i.type==='IQAMA')?.type || '—';
+    const fullName = data.user?.fullName || `${data.patient?.firstNameAr || data.patient?.firstName || ''} ${data.patient?.lastNameAr || data.patient?.lastName || ''}`.trim() || '—';
+    const birthDate = data.patient?.birthDate ? new Date(data.patient.birthDate).toLocaleDateString('ar-SA') : '—';
+    const gender = data.patient?.gender === 'male' ? 'ذكر' : data.patient?.gender === 'female' ? 'أنثى' : '—';
+    const username = data.user?.username || '—';
+
+    document.getElementById('profile-ro-nationalId') && (document.getElementById('profile-ro-nationalId').textContent = nid);
+    document.getElementById('profile-ro-nationalIdType') && (document.getElementById('profile-ro-nationalIdType').textContent = nidType === 'NID' ? 'هوية وطنية' : nidType === 'IQAMA' ? 'إقامة' : nidType);
+    document.getElementById('profile-ro-fullName') && (document.getElementById('profile-ro-fullName').textContent = fullName);
+    document.getElementById('profile-ro-birthDate') && (document.getElementById('profile-ro-birthDate').textContent = birthDate);
+    document.getElementById('profile-ro-gender') && (document.getElementById('profile-ro-gender').textContent = gender);
+    document.getElementById('profile-ro-username') && (document.getElementById('profile-ro-username').textContent = username);
+
+    // Populate editable fields
+    const p = data.profile || {};
+    document.getElementById('edit-phone') && (document.getElementById('edit-phone').value = data.patient?.phone || data.user?.phone || '');
+    document.getElementById('edit-email') && (document.getElementById('edit-email').value = data.patient?.email || data.user?.email || '');
+    document.getElementById('edit-preferred-first-name') && (document.getElementById('edit-preferred-first-name').value = p.preferredFirstName || '');
+    document.getElementById('edit-preferred-last-name') && (document.getElementById('edit-preferred-last-name').value = p.preferredLastName || '');
+    document.getElementById('edit-preferred-language') && (document.getElementById('edit-preferred-language').value = p.preferredLanguage || 'ar');
+    document.getElementById('edit-emergency-name') && (document.getElementById('edit-emergency-name').value = p.emergencyContactName || '');
+    document.getElementById('edit-emergency-phone') && (document.getElementById('edit-emergency-phone').value = p.emergencyContactPhone || '');
+    document.getElementById('edit-emergency-relationship') && (document.getElementById('edit-emergency-relationship').value = p.emergencyContactRelationship || '');
+    document.getElementById('edit-address-line') && (document.getElementById('edit-address-line').value = p.addressLine || '');
+    document.getElementById('edit-address-city') && (document.getElementById('edit-address-city').value = p.addressCity || '');
+    document.getElementById('edit-address-district') && (document.getElementById('edit-address-district').value = p.addressDistrict || '');
+    document.getElementById('edit-address-postal') && (document.getElementById('edit-address-postal').value = p.addressPostalCode || '');
+    document.getElementById('edit-notes') && (document.getElementById('edit-notes').value = p.notes || '');
+    const notesEl = document.getElementById('edit-notes');
+    const counter = document.getElementById('notes-char-count');
+    if (notesEl && counter) counter.textContent = String(notesEl.value.length);
+    if (notesEl && counter) {
+      notesEl.addEventListener('input', () => { counter.textContent = String(notesEl.value.length); });
+    }
+
+    loadingEl.style.display = 'none';
+    contentEl.style.display = 'block';
+  } catch (err) {
+    console.error('Failed to load patient profile', err);
+    loadingEl.innerHTML = `<div class="card" style="border:1px solid var(--m3-error); background:rgba(239,68,68,0.08); padding:16px; text-align:center;">
+      <p style="color:var(--m3-error); font-weight:700;">تعذر تحميل بياناتك الشخصية</p>
+      <p style="font-size:0.82rem; color:var(--m3-on-surface-variant); margin-top:6px;">${err.message || 'حدث خطأ في الاتصال'}</p>
+      <button type="button" class="btn btn-secondary btn-sm" style="margin-top:10px;" onclick="loadPatientProfileTab()">إعادة المحاولة</button>
+    </div>`;
+  }
+}
+
+async function savePatientProfile() {
+  const btn = document.getElementById('btn-save-profile');
+  const statusEl = document.getElementById('profile-edit-status');
+  if (!btn || !statusEl) return;
+
+  const payload = {
+    phone: document.getElementById('edit-phone')?.value.trim(),
+    email: document.getElementById('edit-email')?.value.trim(),
+    preferredFirstName: document.getElementById('edit-preferred-first-name')?.value.trim() || undefined,
+    preferredLastName: document.getElementById('edit-preferred-last-name')?.value.trim() || undefined,
+    preferredLanguage: document.getElementById('edit-preferred-language')?.value,
+    emergencyContactName: document.getElementById('edit-emergency-name')?.value.trim() || undefined,
+    emergencyContactPhone: document.getElementById('edit-emergency-phone')?.value.trim() || undefined,
+    emergencyContactRelationship: document.getElementById('edit-emergency-relationship')?.value || undefined,
+    addressLine: document.getElementById('edit-address-line')?.value.trim() || undefined,
+    addressCity: document.getElementById('edit-address-city')?.value.trim() || undefined,
+    addressDistrict: document.getElementById('edit-address-district')?.value.trim() || undefined,
+    addressPostalCode: document.getElementById('edit-address-postal')?.value.trim() || undefined,
+    notes: document.getElementById('edit-notes')?.value.trim() || undefined
+  };
+  // Remove undefined to avoid sending forbidden empty keys? Keep phone/email as required even if empty? For update, phone is required.
+  // Clean: if value is undefined leave out, if empty string for optional we send null handling – but patch validator treats empty as clear. We'll send only provided.
+  const cleanPayload = {};
+  for (const [k,v] of Object.entries(payload)) {
+    if (v !== undefined) cleanPayload[k] = v;
+    // For optional fields, empty string => send empty to allow clearing, but we already filtered undefined, empty string is already '' and will be validated
+    // Keep empty string explicit for clearing? Normalize: if optional and empty, send '' is handled as null on server, but we want to allow clearing -> we should send '' ? But our loop currently maps empty '' from phone to '' not undefined – phone '' will be caught as error on server (phone required). That's fine.
+    // For optional we already have || undefined => empty becomes undefined => not sent => won't clear. To clear we need to send empty string or null.
+    // Simpler: if optional field originally empty and user cleared it, we want to send null to clear. We'll detect: if original element value is '' and payload[k] is undefined, we should send '' to indicate clear? But that would erase on every save.
+    // Instead, we will send all editable fields as explicit values (allow empty to clear) – so change above to keep '' not undefined except for notes.
+  }
+  // Re-build clean: include even empty strings for clearing optional fields
+  const explicitOptional = ['preferredFirstName','preferredLastName','emergencyContactName','emergencyContactPhone','emergencyContactRelationship','addressLine','addressCity','addressDistrict','addressPostalCode','notes'];
+  for (const k of explicitOptional) {
+    const elIdMap = {
+      preferredFirstName: 'edit-preferred-first-name',
+      preferredLastName: 'edit-preferred-last-name',
+      emergencyContactName: 'edit-emergency-name',
+      emergencyContactPhone: 'edit-emergency-phone',
+      emergencyContactRelationship: 'edit-emergency-relationship',
+      addressLine: 'edit-address-line',
+      addressCity: 'edit-address-city',
+      addressDistrict: 'edit-address-district',
+      addressPostalCode: 'edit-address-postal',
+      notes: 'edit-notes'
+    };
+    const el = document.getElementById(elIdMap[k]);
+    if (el) {
+      const val = el.value.trim();
+      // If empty, we want to clear => send null-like empty string; server will treat '' as null (we normalized to null). So send val (may be '')
+      // But to avoid sending unchanged empty as no-op, we still send '' to allow clearing.
+      // For simplicity, include all optional fields in payload even if empty.
+      cleanPayload[k] = val; // '' allowed
+    }
+  }
+  // Phone and email already set; ensure they are always sent
+  // preferredLanguage already set
+
+  // Client pre-validation mirrors server
+  if (!cleanPayload.phone) {
+    statusEl.style.display = 'block';
+    statusEl.innerHTML = `<div style="background:rgba(239,68,68,0.10); border:1px solid var(--m3-error); color:var(--m3-error); padding:10px 14px; border-radius:6px; font-size:0.85rem;">رقم الجوال مطلوب بصيغة سعودية (05xxxxxxxx)</div>`;
+    return;
+  }
+  const phoneClean = cleanPayload.phone.replace(/[\s\-\(\)]/g,'');
+  if (!/^(?:\+9665\d{8}|9665\d{8}|05\d{8}|5\d{8})$/.test(phoneClean)) {
+    statusEl.style.display = 'block';
+    statusEl.innerHTML = `<div style="background:rgba(239,68,68,0.10); border:1px solid var(--m3-error); color:var(--m3-error); padding:10px 14px; border-radius:6px; font-size:0.85rem;">رقم الجوال غير صحيح</div>`;
+    return;
+  }
+  if (cleanPayload.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanPayload.email)) {
+    statusEl.style.display = 'block';
+    statusEl.innerHTML = `<div style="background:rgba(239,68,68,0.10); border:1px solid var(--m3-error); color:var(--m3-error); padding:10px 14px; border-radius:6px; font-size:0.85rem;">صيغة البريد غير صحيحة</div>`;
+    return;
+  }
+  if (cleanPayload.addressPostalCode && !/^\d{5}$/.test(cleanPayload.addressPostalCode)) {
+    statusEl.style.display = 'block';
+    statusEl.innerHTML = `<div style="background:rgba(239,68,68,0.10); border:1px solid var(--m3-error); color:var(--m3-error); padding:10px 14px; border-radius:6px; font-size:0.85rem;">الرمز البريدي يجب أن يكون 5 أرقام</div>`;
+    return;
+  }
+
+  // Build final payload for server: only include fields that are actually changed or needed? But server validates allowed set, so we can send all editable.
+  // For server validator, empty string for optional will be treated as clearing (null). The validator we wrote expects '' -> null for some fields. It currently handles '' for phone as error, but for optional it maps '' to null. So sending '' is okay.
+  // However our cleanPayload currently has '' for optional empty, the server's validateEditablePayload will treat '' as '' -> then normalize to null via logic (we have || null). Actually we send '' as value, server will see '' and normalize to null. So fine.
+  // But phone '' would be error; we already validated.
+  const serverPayload = {
+    phone: cleanPayload.phone,
+    email: cleanPayload.email || null,
+    preferredFirstName: cleanPayload.preferredFirstName || null,
+    preferredLastName: cleanPayload.preferredLastName || null,
+    preferredLanguage: cleanPayload.preferredLanguage,
+    emergencyContactName: cleanPayload.emergencyContactName || null,
+    emergencyContactPhone: cleanPayload.emergencyContactPhone || null,
+    emergencyContactRelationship: cleanPayload.emergencyContactRelationship || null,
+    addressLine: cleanPayload.addressLine || null,
+    addressCity: cleanPayload.addressCity || null,
+    addressDistrict: cleanPayload.addressDistrict || null,
+    addressPostalCode: cleanPayload.addressPostalCode || null,
+    notes: cleanPayload.notes || null
+  };
+  // Remove null values for fields that are empty to avoid overwriting with null if user didn't intend? But requirement allows clearing.
+  // We'll keep as is; server handles null as clearing.
+
+  const originalText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = `${getSvgIcon('spinner','btn-svg-icon')} <span>جاري الحفظ...</span>`;
+  statusEl.style.display = 'none';
+
+  try {
+    const res = await fetch('/api/patient/me', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(serverPayload)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'فشل الحفظ');
+    statusEl.style.display = 'block';
+    statusEl.innerHTML = `<div style="background:rgba(16,185,129,0.12); border:1px solid var(--m3-primary); color:var(--m3-on-primary-container); padding:12px 14px; border-radius:6px; font-size:0.88rem; display:flex; align-items:center; gap:8px;">
+      ${getSvgIcon('shieldCheck','style="width:18px;height:18px; color:var(--m3-primary);"')}
+      <span>${data.message || 'تم حفظ التغييرات بنجاح'}</span>
+    </div>`;
+    showToast('تم الحفظ', 'تم تحديث بياناتك المصرح بها وتوثيقها في سجل التدقيق', 'success');
+    // Refresh cache and top bar
+    _profileCache = data;
+    // Update global patient name if preferred name changed? Refresh header bar
+    if (typeof fetchAndCachePatients === 'function') await fetchAndCachePatients();
+    // Reload profile to show fresh data after 1s
+    setTimeout(() => { loadPatientProfileTab(); }, 900);
+  } catch (err) {
+    statusEl.style.display = 'block';
+    statusEl.innerHTML = `<div style="background:rgba(239,68,68,0.10); border:1px solid var(--m3-error); color:var(--m3-error); padding:10px 14px; border-radius:6px; font-size:0.85rem;">${err.message}</div>`;
+    showToast('خطأ في الحفظ', err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalText;
   }
 }
 
