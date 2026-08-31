@@ -158,6 +158,8 @@ body.light-theme,
 html {
   font-size: 14.5px;
   background-color: var(--m3-surface);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
@@ -165,11 +167,55 @@ body {
   background-color: var(--m3-surface);
   color: var(--m3-on-surface);
   min-height: 100vh;
+  min-height: -webkit-fill-available;
   line-height: 1.6;
   overflow-x: hidden;
   position: relative;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
   transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Safari: prevent iOS zoom on input focus and fix fill-available */
+@supports (-webkit-touch-callout: none) {
+  body {
+    min-height: -webkit-fill-available;
+  }
+}
+
+/* Safari: reset native form controls that ignore border:none */
+input, textarea, select, button {
+  -webkit-appearance: none;
+  appearance: none;
+  border-radius: 0;
+  font-family: inherit;
+}
+input[type="search"] {
+  -webkit-appearance: none;
+  appearance: none;
+}
+select {
+  background-color: var(--m3-surface-container-low);
+}
+/* Keep native checkbox/radio if any */
+input[type="checkbox"], input[type="radio"] {
+  -webkit-appearance: auto;
+  appearance: auto;
+}
+
+/* Safari SVG fix: prevent flexbox from stretching SVGs */
+svg {
+  overflow: hidden;
+  flex-shrink: 0;
+  -webkit-flex-shrink: 0;
+  display: block;
+  max-width: 100%;
+}
+svg:not([width]):not([height]) {
+  /* Safari fallback when CSS width/height fails */
+  width: 1em;
+  height: 1em;
 }
 
 /* Scrollbar - Minimal Flat & Borderless */
@@ -224,8 +270,17 @@ pre {
    APPLICATION LAYOUT
    ========================================= */
 .app-layout {
+  display: -webkit-box;
+  display: -webkit-flex;
   display: flex;
   min-height: 100vh;
+  min-height: -webkit-fill-available;
+  min-height: 100dvh;
+}
+@supports (-webkit-touch-callout: none) {
+  .app-layout {
+    min-height: -webkit-fill-available;
+  }
 }
 
 /* =========================================
@@ -276,9 +331,15 @@ pre {
 .crescent-icon {
   width: 28px;
   height: 28px;
+  min-width: 28px;
+  min-height: 28px;
   color: #EF4444;
   fill: currentColor;
+  -webkit-filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.45));
   filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.45));
+  flex-shrink: 0;
+  -webkit-flex-shrink: 0;
+  display: block;
 }
 
 .brand-text {
@@ -587,9 +648,15 @@ body.sidebar-collapsed .main-content {
 .header-crescent-svg {
   width: 22px;
   height: 22px;
+  min-width: 22px;
+  min-height: 22px;
   color: #EF4444;
   fill: currentColor;
+  -webkit-filter: drop-shadow(0 0 3px rgba(239, 68, 68, 0.35));
   filter: drop-shadow(0 0 3px rgba(239, 68, 68, 0.35));
+  flex-shrink: 0;
+  -webkit-flex-shrink: 0;
+  display: block;
 }
 
 .header-title-wrap h1 {
@@ -2286,9 +2353,15 @@ body.light-theme .auth-modal,
 .auth-emblem-svg {
   width: 52px;
   height: 52px;
+  min-width: 52px;
+  min-height: 52px;
   color: #EF4444;
   fill: currentColor;
+  -webkit-filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.45));
   filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.45));
+  flex-shrink: 0;
+  -webkit-flex-shrink: 0;
+  display: block;
 }
 
 .auth-header h2 {
@@ -2343,7 +2416,12 @@ body.light-theme .auth-modal,
 .auth-label-svg {
   width: 14px;
   height: 14px;
+  min-width: 14px;
+  min-height: 14px;
   color: var(--m3-on-surface-muted);
+  flex-shrink: 0;
+  -webkit-flex-shrink: 0;
+  display: block;
 }
 
 .auth-input-wrap {
@@ -2362,6 +2440,8 @@ body.light-theme .auth-modal,
   font-size: 0.9rem;
   font-weight: 600;
   outline: none;
+  -webkit-appearance: none;
+  appearance: none;
   transition: background-color 0.15s ease, box-shadow 0.15s ease;
 }
 
@@ -2639,4 +2719,126 @@ body.sidebar-collapsed .logout-btn {
 
 body.sidebar-collapsed .logout-btn .label {
   display: none;
+}
+
+/* ==========================================================================
+   SAFARI COMPATIBILITY FIXES (WebKit-specific)
+   - Fixes huge crescent SVG bug (flex + SVG sizing in WebKit)
+   - Fixes backdrop-filter fallback
+   - Fixes gap fallback for older WebKit
+   - Fixes -webkit-fill-available for iOS viewport
+   ========================================================================== */
+
+/* Safari: ensure fixed SVG sizes are respected inside flex containers */
+@supports (-webkit-touch-callout: none) or (-webkit-backdrop-filter: blur(1px)) {
+  .crescent-icon,
+  .auth-emblem-svg,
+  .header-crescent-svg,
+  .auth-label-svg,
+  .btn-svg-icon,
+  .toggle-icon-svg,
+  .section-svg,
+  .nav-icon-wrap svg,
+  .patient-bar-icon,
+  .dropzone-icon {
+    -webkit-flex-shrink: 0;
+    flex-shrink: 0;
+    -webkit-flex-grow: 0;
+    flex-grow: 0;
+    display: block;
+  }
+  .brand-logo,
+  .header-crescent-badge,
+  .auth-emblem-wrap {
+    -webkit-flex-shrink: 0;
+    flex-shrink: 0;
+  }
+}
+
+/* Safari fallback: if backdrop-filter not supported, use solid background */
+@supports not ((-webkit-backdrop-filter: blur(14px)) or (backdrop-filter: blur(14px))) {
+  .auth-overlay {
+    background: rgba(10, 10, 10, 0.94) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+  .report-preview-modal {
+    background: rgba(15, 23, 42, 0.94) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+}
+
+/* Safari: gap fallback for flex containers (WebKit <14.1) */
+@supports not (gap: 1px) {
+  .brand-main,
+  .header-title-row,
+  .header-live-stats,
+  .header-actions,
+  .nav-menu,
+  .auth-tabs,
+  .auth-form,
+  .auth-form-group,
+  .auth-demo-buttons,
+  .btn,
+  .live-pill,
+  .patient-bar-info,
+  .source-header,
+  .section-title-wrap {
+    gap: 0 !important;
+  }
+  /* Add margins as gap fallback - approximate */
+  .brand-main > * + * { margin-right: 10px; }
+  .header-actions > * + * { margin-right: 8px; }
+  .auth-tabs > * + * { margin-right: 10px; }
+}
+
+/* Safari: fix sticky and fixed positioning quirks */
+.sidebar {
+  /* Safari needs explicit -webkit prefix for fixed on iOS */
+  position: fixed;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+}
+.report-preview-toolbar {
+  position: -webkit-sticky;
+  position: sticky;
+}
+
+/* Safari: fix input zoom on focus (iOS) - ensure 16px minimum to prevent zoom */
+@supports (-webkit-touch-callout: none) {
+  .auth-input,
+  .form-select {
+    font-size: 16px;
+  }
+  @media (min-width: 560px) {
+    .auth-input,
+    .form-select {
+      font-size: 0.9rem;
+    }
+  }
+}
+
+/* Safari: ensure auth-overlay covers viewport correctly on iOS */
+@supports (-webkit-touch-callout: none) {
+  .auth-overlay {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    height: -webkit-fill-available;
+    padding-top: max(24px, env(safe-area-inset-top));
+    padding-bottom: max(24px, env(safe-area-inset-bottom));
+  }
+  .auth-modal {
+    max-height: 90vh;
+    max-height: -webkit-fill-available;
+  }
+}
+
+/* Safari: fix filter drop-shadow that can cause SVG bounding box explosion */
+@media screen and (-webkit-min-device-pixel-ratio: 0) {
+  .crescent-icon,
+  .auth-emblem-svg,
+  .header-crescent-svg {
+    -webkit-filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.45));
+  }
 }

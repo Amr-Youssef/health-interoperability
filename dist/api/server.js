@@ -90,18 +90,22 @@ export function createPlatformApp() {
                 scriptSrcAttr: ["'unsafe-inline'"],
                 styleSrc: ["'self'", "https://fonts.googleapis.com", "'unsafe-inline'"],
                 styleSrcAttr: ["'unsafe-inline'"],
-                fontSrc: ["https://fonts.gstatic.com"],
+                fontSrc: ["https://fonts.gstatic.com", "https://fonts.googleapis.com", "data:"],
                 connectSrc: ["'self'"],
-                imgSrc: ["'self'", "data:"],
+                imgSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
                 baseUri: ["'self'"],
                 formAction: ["'self'"],
-                frameAncestors: ["'none'"]
+                frameAncestors: ["'none'"],
+                upgradeInsecureRequests: null
             }
         },
         hsts: { maxAge: 31536000, includeSubDomains: true },
         noSniff: true,
         frameguard: { action: 'deny' },
-        xssFilter: true
+        xssFilter: true,
+        crossOriginEmbedderPolicy: false,
+        crossOriginResourcePolicy: { policy: "cross-origin" },
+        crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" }
     }));
     app.use(cors({
         origin: process.env.ALLOWED_ORIGIN?.split(',') || true,
