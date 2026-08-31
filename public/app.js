@@ -2869,15 +2869,29 @@ async function showHospGlobalDetail(patientId) {
     const cond = data.conditions || [];
     const obs = data.observations || [];
     const meds = data.medicationRequests || [];
+    const imm = data.immunizations || [];
+    const allergies = data.allergies || [];
+    const diagnosticReports = data.diagnosticReports || [];
+    const coverages = data.coverages || [];
+    const claims = data.claims || [];
     const name = `${p.givenNameAr || p.givenName || ''} ${p.familyNameAr || p.familyName || ''}`.trim() || patientId;
-    const nid = p.identifiers?.find(i=>i.type==='NID'||i.type==='IQAMA')?.value || '—';
+    const patientEnName = `${p.givenName || ''} ${p.familyName || ''}`.trim();
+    const nidObj = p.identifiers?.find(i=>i.type==='NID'||i.type==='IQAMA') || p.identifiers?.[0];
+    const nid = nidObj?.value || '—';
+    const nidType = nidObj?.type === 'IQAMA' ? 'إقامة' : 'هوية وطنية';
+    const nidSystem = nidObj?.system || 'Saudi National Registry';
+    const mrnList = (p.identifiers||[]).filter(i=>i.type==='MRN');
+    const phone = p.phone || '—';
+    const email = p.email || '—';
+    const gender = p.gender === 'male' ? 'ذكر' : p.gender === 'female' ? 'أنثى' : '—';
+    const birthDate = p.birthDate ? new Date(p.birthDate).toLocaleDateString('ar-SA') : '—';
     const isMine = _hospMyIds.has(patientId) || _hospMyIds.has(p.internalId);
     detailEl.innerHTML = `
-      <div class="card mb-6" style="border:1px solid var(--m3-tertiary);">
+      <div class="card mb-6" style="border:1px solid var(--m3-tertiary); overflow:hidden;">
         <div class="card-header" style="background:var(--m3-tertiary-container); border-bottom:1px solid var(--m3-outline-variant);">
           <div class="card-header-title" style="color:var(--m3-on-tertiary-container);">
             <svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-            <h3>السجل الموحد — ${name} <small style="font-weight:400; color:var(--m3-on-surface-variant);">(${nid})</small></h3>
+            <h3>السجل الصحي الموحد الشامل — ${name} ${patientEnName && patientEnName!==name ? `<small style="font-weight:400; color:var(--m3-on-surface-variant);">(${patientEnName})</small>` : ''}</h3>
           </div>
           <div style="display:flex; gap:6px; align-items:center;">
             ${isMine?'<span class="badge badge-success">من مرضى منشأتك</span>':'<span class="badge badge-info" style="background:var(--m3-tertiary); color:var(--m3-on-tertiary);">سجل وطني — قراءة فقط</span>'}
@@ -2885,15 +2899,139 @@ async function showHospGlobalDetail(patientId) {
           </div>
         </div>
         <div class="card-body">
-          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px,1fr)); gap:10px; margin-bottom:14px;">
-            <div style="background:var(--m3-surface-container); padding:10px 12px; border-radius:var(--radius-sharp); border:1px solid var(--m3-outline-variant);"><span style="font-size:0.72rem; color:var(--m3-on-surface-muted);">الزيارات</span><strong style="display:block; font-size:1.1rem;">${enc.length}</strong></div>
-            <div style="background:var(--m3-surface-container); padding:10px 12px; border-radius:var(--radius-sharp); border:1px solid var(--m3-outline-variant);"><span style="font-size:0.72rem; color:var(--m3-on-surface-muted);">التشخيصات</span><strong style="display:block; font-size:1.1rem;">${cond.length}</strong></div>
-            <div style="background:var(--m3-surface-container); padding:10px 12px; border-radius:var(--radius-sharp); border:1px solid var(--m3-outline-variant);"><span style="font-size:0.72rem; color:var(--m3-on-surface-muted);">التحاليل</span><strong style="display:block; font-size:1.1rem;">${obs.length}</strong></div>
-            <div style="background:var(--m3-surface-container); padding:10px 12px; border-radius:var(--radius-sharp); border:1px solid var(--m3-outline-variant);"><span style="font-size:0.72rem; color:var(--m3-on-surface-muted);">الأدوية</span><strong style="display:block; font-size:1.1rem;">${meds.length}</strong></div>
+          <!-- Patient Identity & Demographics (Full) -->
+          <div class="card mb-4" style="border:1px solid var(--m3-outline-variant); background:var(--m3-surface-container-low);">
+            <div class="card-body" style="padding:14px;">
+              <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px;">
+                <div><span style="font-size:0.72rem; color:var(--m3-on-surface-muted); display:block;">${nidType}</span><strong style="font-family:'JetBrains Mono', monospace; font-size:0.92rem;">${nid}</strong><small style="display:block; color:var(--m3-on-surface-muted); font-size:0.68rem;">${nidSystem}</small></div>
+                <div><span style="font-size:0.72rem; color:var(--m3-on-surface-muted); display:block;">الاسم الكامل (عربي/إنجليزي)</span><strong>${name}</strong><small style="display:block; color:var(--m3-on-surface-muted);">${patientEnName || '—'}</small></div>
+                <div><span style="font-size:0.72rem; color:var(--m3-on-surface-muted); display:block;">الجنس / تاريخ الميلاد</span><strong>${gender} • ${birthDate}</strong></div>
+                <div><span style="font-size:0.72rem; color:var(--m3-on-surface-muted); display:block;">التواصل</span><strong style="font-family:'JetBrains Mono', monospace; font-size:0.85rem;" dir="ltr">${phone}</strong><small style="display:block; color:var(--m3-on-surface-muted);">${email}</small></div>
+                <div><span style="font-size:0.72rem; color:var(--m3-on-surface-muted); display:block;">المعرف الداخلي الموحد (MPI)</span><code style="font-size:0.78rem;">${p.internalId}</code></div>
+                <div><span style="font-size:0.72rem; color:var(--m3-on-surface-muted); display:block;">أرقام ملفات المنشآت (MRN)</span>${mrnList.length ? mrnList.map(m=>`<span class="badge badge-info" style="margin:2px; font-size:0.68rem;">${m.sourceSystemId}: ${m.value}</span>`).join('') : '<small style="color:var(--m3-on-surface-muted);">لا يوجد</small>'}</div>
+              </div>
+            </div>
           </div>
-          <p style="font-size:0.78rem; color:var(--m3-on-surface-variant); background:var(--m3-surface-container-low); padding:8px 10px; border-radius:var(--radius-sharp); border:1px solid var(--m3-outline-variant);">هذا العرض <strong>قراءة فقط</strong> ومأخوذ من نفس قاعدة البيانات المتكاملة — لا يمكن لمستشفاك تعديله. مصدر كل سجل محفوظ في <code>Provenance</code> ومرتبط بـ <code>${p.internalId}</code>.</p>
-          ${cond.length?`<div style="margin-top:12px;"><h4 style="font-size:0.88rem; margin-bottom:6px;">التشخيصات (وطني)</h4><table class="data-table"><thead><tr><th>التشخيص</th><th>SNOMED</th><th>ICD</th><th>المصدر</th></tr></thead><tbody>${cond.slice(0,5).map(c=>`<tr><td>${c.code?.sourceDisplay||c.code?.sourceCode}</td><td><code>${c.code?.snomedCode||'—'}</code></td><td>${c.code?.icd10amCode||'—'}</td><td><span class="badge badge-info">${c.provenance?.sourceSystemId||'—'}</span></td></tr>`).join('')}</tbody></table></div>`:''}
-          ${enc.length?`<div style="margin-top:12px;"><h4 style="font-size:0.88rem; margin-bottom:6px;">الزيارات</h4><div style="display:flex; flex-direction:column; gap:6px;">${enc.slice(0,5).map(e=>`<div style="background:var(--m3-surface-container); padding:8px 10px; border-radius:var(--radius-sharp); border:1px solid var(--m3-outline-variant); display:flex; justify-content:space-between; align-items:center;"><span><strong>${e.class||'زيارة'}</strong> — <code>${new Date(e.period?.start||e.createdAt).toLocaleDateString('ar-SA')}</code></span><span class="badge badge-info">${e.provenance?.sourceSystemId||'—'}</span></div>`).join('')}</div></div>`:''}
+
+          <!-- Unified KPIs Grid (All Types) -->
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px,1fr)); gap:10px; margin-bottom:16px;">
+            <div style="background:var(--m3-surface-container); padding:10px 12px; border-radius:var(--radius-sharp); border:1px solid var(--m3-outline-variant);"><span style="font-size:0.72rem; color:var(--m3-on-surface-muted);">الزيارات</span><strong style="display:block; font-size:1.25rem;">${enc.length}</strong></div>
+            <div style="background:var(--m3-surface-container); padding:10px 12px; border-radius:var(--radius-sharp); border:1px solid var(--m3-outline-variant);"><span style="font-size:0.72rem; color:var(--m3-on-surface-muted);">التشخيصات</span><strong style="display:block; font-size:1.25rem;">${cond.length}</strong></div>
+            <div style="background:var(--m3-surface-container); padding:10px 12px; border-radius:var(--radius-sharp); border:1px solid var(--m3-outline-variant);"><span style="font-size:0.72rem; color:var(--m3-on-surface-muted);">التحاليل (LOINC)</span><strong style="display:block; font-size:1.25rem;">${obs.length}</strong></div>
+            <div style="background:var(--m3-surface-container); padding:10px 12px; border-radius:var(--radius-sharp); border:1px solid var(--m3-outline-variant);"><span style="font-size:0.72rem; color:var(--m3-on-surface-muted);">الأدوية (SFDA)</span><strong style="display:block; font-size:1.25rem;">${meds.length}</strong></div>
+            <div style="background:var(--m3-surface-container); padding:10px 12px; border-radius:var(--radius-sharp); border:1px solid var(--m3-outline-variant);"><span style="font-size:0.72rem; color:var(--m3-on-surface-muted);">التطعيمات</span><strong style="display:block; font-size:1.25rem;">${imm.length}</strong></div>
+            <div style="background:var(--m3-surface-container); padding:10px 12px; border-radius:var(--radius-sharp); border:1px solid var(--m3-outline-variant);"><span style="font-size:0.72rem; color:var(--m3-on-surface-muted);">الحساسيات</span><strong style="display:block; font-size:1.25rem;">${allergies.length}</strong></div>
+            <div style="background:var(--m3-surface-container); padding:10px 12px; border-radius:var(--radius-sharp); border:1px solid var(--m3-outline-variant);"><span style="font-size:0.72rem; color:var(--m3-on-surface-muted);">التقارير التشخيصية</span><strong style="display:block; font-size:1.25rem;">${diagnosticReports.length}</strong></div>
+            <div style="background:var(--m3-surface-container); padding:10px 12px; border-radius:var(--radius-sharp); border:1px solid var(--m3-outline-variant);"><span style="font-size:0.72rem; color:var(--m3-on-surface-muted);">وثائق التأمين</span><strong style="display:block; font-size:1.25rem;">${coverages.length}</strong></div>
+            <div style="background:var(--m3-surface-container); padding:10px 12px; border-radius:var(--radius-sharp); border:1px solid var(--m3-outline-variant);"><span style="font-size:0.72rem; color:var(--m3-on-surface-muted);">المطالبات (نفيس)</span><strong style="display:block; font-size:1.25rem;">${claims.length}</strong></div>
+          </div>
+
+          <p style="font-size:0.78rem; color:var(--m3-on-surface-variant); background:var(--m3-surface-container-low); padding:8px 10px; border-radius:var(--radius-sharp); border:1px solid var(--m3-outline-variant);">هذا العرض <strong>قراءة فقط</strong> ومأخوذ من نفس قاعدة البيانات الوطنية المتكاملة — لا يمكن لمستشفاك تعديله. مصدر كل سجل محفوظ في <code>Provenance</code> ومرتبط بـ <code>${p.internalId}</code>. جميع الأقسام أدناه تعكس <strong>السجل الموحد الكامل</strong> بعد التطبيع والربط في <code>MPI</code> وتوثيق سلسلة التدقيق.</p>
+
+          <!-- 1. Medications -->
+          <div class="card mb-4 mt-4" style="border:1px solid var(--m3-outline-variant);">
+            <div class="card-header" style="background:var(--m3-surface-container-high);">
+              <div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg><h3>الوصفات والأدوية المعتمدة (SFDA SDC)</h3></div>
+              <span class="badge badge-info">${meds.length} وصفة</span>
+            </div>
+            <div class="card-body p-0">
+              ${meds.length ? `<table class="data-table"><thead><tr><th>الدواء بالمصدر</th><th>المصدر</th><th>كود SFDA</th><th>ATC / RxNorm</th><th>الجرعة</th><th>الكمية</th><th>التاريخ</th></tr></thead><tbody>${meds.map(m=>`<tr><td><strong>${m.medication?.code?.sourceCode || '—'}</strong><br><small style="color:var(--m3-on-surface-muted);">${m.medication?.code?.sourceDisplay||''}</small></td><td><span class="badge badge-info">${m.provenance?.sourceSystemId||'—'}</span></td><td><code>${m.medication?.code?.sfdaCode||'—'}</code><br><small>${m.medication?.code?.sfdaDisplay||''}</small></td><td><span class="badge badge-purple">${m.medication?.code?.atcCode||'—'}</span><br><small>RxNorm ${m.medication?.code?.rxnormCode||'—'}</small></td><td>${m.dosageInstruction?.[0]?.text||m.dosageInstruction?.[0]?.textAr||'—'}</td><td><strong>${m.dispenseRequest?.quantity?.value||'—'} ${m.dispenseRequest?.quantity?.unit||''}</strong></td><td><code>${m.authoredOn? new Date(m.authoredOn).toLocaleDateString('ar-SA'):'—'}</code></td></tr>`).join('')}</tbody></table>` : '<p class="text-center py-4" style="color:var(--m3-on-surface-muted);">لا توجد وصفات أدوية في السجل الموحد</p>'}
+            </div>
+          </div>
+
+          <!-- 2. Conditions -->
+          <div class="card mb-4" style="border:1px solid var(--m3-outline-variant);">
+            <div class="card-header" style="background:var(--m3-surface-container-high);">
+              <div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"/><path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"/><circle cx="20" cy="10" r="2"/></svg><h3>التشخيصات المعيارية (SNOMED • ICD-10-AM • SBS)</h3></div>
+              <span class="badge badge-info">${cond.length} تشخيص</span>
+            </div>
+            <div class="card-body p-0">
+              ${cond.length ? `<table class="data-table"><thead><tr><th>التشخيص بالمصدر</th><th>المصدر</th><th>SNOMED CT</th><th>ICD-10-AM</th><th>SBS</th><th>التاريخ</th></tr></thead><tbody>${cond.map(c=>`<tr><td><strong>${c.code?.sourceCode||'—'}</strong><br><small style="color:var(--m3-on-surface-muted);">${c.code?.sourceDisplay||''}</small></td><td><span class="badge badge-info">${c.provenance?.sourceSystemId||'—'}</span></td><td><code>${c.code?.snomedCode||'—'}</code><br><small>${c.code?.snomedDisplay||''}</small></td><td><span class="badge badge-purple">${c.code?.icd10amCode||'—'}</span></td><td><span class="badge badge-warning">${c.code?.sbsCode||'—'}</span></td><td><code>${c.recordedDate? new Date(c.recordedDate).toLocaleDateString('ar-SA'):'—'}</code></td></tr>`).join('')}</tbody></table>` : '<p class="text-center py-4" style="color:var(--m3-on-surface-muted);">لا توجد تشخيصات مسجلة</p>'}
+            </div>
+          </div>
+
+          <!-- 3. Observations -->
+          <div class="card mb-4" style="border:1px solid var(--m3-outline-variant);">
+            <div class="card-header" style="background:var(--m3-surface-container-high);">
+              <div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 18h8M3 22h18M14 22a7 7 0 1 0-14 0"/><path d="M9 14h.01M9 10h.01M12 6h.01M12 2h.01M15 10a4 4 0 0 0 4-4V2h-4v4a4 4 0 0 0 4 4"/></svg><h3>النتائج المخبرية المعيارية (LOINC)</h3></div>
+              <span class="badge badge-info">${obs.length} نتيجة</span>
+            </div>
+            <div class="card-body p-0">
+              ${obs.length ? `<table class="data-table"><thead><tr><th>الفحص بالمصدر</th><th>المصدر</th><th>LOINC</th><th>النتيجة</th><th>المرجع</th><th>التاريخ</th></tr></thead><tbody>${obs.map(o=>`<tr><td><strong>${o.code?.sourceCode||'—'}</strong></td><td><span class="badge badge-info">${o.provenance?.sourceSystemId||'—'}</span></td><td><code>LOINC ${o.code?.loincCode||'—'}</code><br><small>${o.code?.loincDisplay||''}</small></td><td><strong style="color:var(--m3-on-primary-container);">${o.valueQuantity?.value ?? o.valueString ?? '—'} ${o.valueQuantity?.unit||''}</strong></td><td>${o.referenceRange?.text||'—'}</td><td><code>${o.effectiveDateTime? new Date(o.effectiveDateTime).toLocaleDateString('ar-SA'):'—'}</code></td></tr>`).join('')}</tbody></table>` : '<p class="text-center py-4" style="color:var(--m3-on-surface-muted);">لا توجد نتائج مخبرية</p>'}
+            </div>
+          </div>
+
+          <!-- 4. Immunizations -->
+          <div class="card mb-4" style="border:1px solid var(--m3-outline-variant);">
+            <div class="card-header" style="background:var(--m3-surface-container-high);">
+              <div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m18 2 4 4-4 4"/><path d="m17 7 3-3"/><path d="M19 9 8.7 19.3c-1 1-2.5 1-3.4 0l-.6-.6c-1-1-1-2.5 0-3.4L15 5"/><path d="m9 11 4 4"/><path d="m5 19-3 3"/></svg><h3>سجل التطعيمات واللقاحات (MOH / CVX)</h3></div>
+              <span class="badge badge-info">${imm.length} تطعيم</span>
+            </div>
+            <div class="card-body p-0">
+              ${imm.length ? `<table class="data-table"><thead><tr><th>اللقاح بالمصدر</th><th>المصدر</th><th>MOH Code</th><th>CVX</th><th>التشغيلة</th><th>التاريخ</th><th>الموقع</th></tr></thead><tbody>${imm.map(i=>`<tr><td><strong>${i.vaccineCode?.sourceCode||'—'}</strong><br><small style="color:var(--m3-on-surface-muted);">${i.vaccineCode?.sourceDisplay||''}</small></td><td><span class="badge badge-info">${i.provenance?.sourceSystemId||'—'}</span></td><td><code>${i.vaccineCode?.sourceCode?.includes('SA-VAX')? i.vaccineCode?.sourceCode : (i.vaccineCode?.sourceCode||'SA-VAX-FLU-01')}</code></td><td><span class="badge badge-purple">CVX ${i.vaccineCode?.cvxCode||'—'}</span></td><td><code>${i.lotNumber||'—'}</code></td><td><code>${i.occurrenceDateTime? new Date(i.occurrenceDateTime).toLocaleDateString('ar-SA'):'—'}</code></td><td>${i.site||'—'}</td></tr>`).join('')}</tbody></table>` : '<p class="text-center py-4" style="color:var(--m3-on-surface-muted);">لا توجد تطعيمات مسجلة</p>'}
+            </div>
+          </div>
+
+          <!-- 5. Allergies -->
+          <div class="card mb-4" style="border:1px solid var(--m3-outline-variant);">
+            <div class="card-header" style="background:var(--m3-surface-container-high);">
+              <div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><circle cx="12" cy="11" r="3"/></svg><h3>سجل الحساسيات والتعارضات</h3></div>
+              <span class="badge ${allergies.some(a=>a.criticality==='high')?'badge-warning':'badge-success'}">${allergies.length} حساسية</span>
+            </div>
+            <div class="card-body p-0">
+              ${allergies.length ? `<table class="data-table"><thead><tr><th>المادة المسببة</th><th>المصدر</th><th>SNOMED</th><th>الخطورة</th><th>التفاعل</th><th>التاريخ</th></tr></thead><tbody>${allergies.map(a=>`<tr><td><strong>${a.substanceTextAr||a.substanceText||'—'}</strong><br><small style="color:var(--m3-on-surface-muted);">${a.substanceText||''}</small></td><td><span class="badge badge-info">${a.provenance?.sourceSystemId||'—'}</span></td><td><code>SNOMED ${a.substanceCode?.snomedCode||'—'}</code></td><td><span class="badge ${a.criticality==='high'?'badge-warning':'badge-info'}">${a.criticality==='high'?'عالية':'منخفضة'}</span></td><td><strong style="color:var(--m3-error);">${a.reactions?.[0]?.manifestationTextAr || a.reactions?.[0]?.manifestationText || '—'}</strong></td><td><code>${a.recordedDate? new Date(a.recordedDate).toLocaleDateString('ar-SA'):'—'}</code></td></tr>`).join('')}</tbody></table>` : '<p class="text-center py-4" style="color:var(--m3-on-surface-muted);">لا توجد حساسيات مسجلة</p>'}
+            </div>
+          </div>
+
+          <!-- 6. Diagnostic Reports -->
+          <div class="card mb-4" style="border:1px solid var(--m3-outline-variant);">
+            <div class="card-header" style="background:var(--m3-surface-container-high);">
+              <div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><h3>التقارير التشخيصية المجمعة (LOINC)</h3></div>
+              <span class="badge badge-info">${diagnosticReports.length} تقرير</span>
+            </div>
+            <div class="card-body p-0">
+              ${diagnosticReports.length ? `<table class="data-table"><thead><tr><th>اسم التقرير</th><th>المصدر</th><th>LOINC</th><th>الحالة</th><th>الخلاصة</th><th>الإصدار</th></tr></thead><tbody>${diagnosticReports.map(d=>`<tr><td><strong>${d.code?.loincDisplay||d.code?.sourceDisplay||'تقرير تشخيصي'}</strong></td><td><span class="badge badge-info">${d.provenance?.sourceSystemId||'—'}</span></td><td><code>LOINC ${d.code?.loincCode||'—'}</code></td><td><span class="badge badge-success">${d.status||'final'}</span></td><td style="max-width:260px; font-size:0.82rem;">${d.conclusionAr||d.conclusion||'—'}</td><td><code>${d.issued? new Date(d.issued).toLocaleDateString('ar-SA'):'—'}</code></td></tr>`).join('')}</tbody></table>` : '<p class="text-center py-4" style="color:var(--m3-on-surface-muted);">لا توجد تقارير تشخيصية مجمعة</p>'}
+            </div>
+          </div>
+
+          <!-- 7. Coverages & Claims (NPHIES) -->
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;" class="mb-4">
+            <div class="card" style="border:1px solid var(--m3-outline-variant);">
+              <div class="card-header" style="background:var(--m3-surface-container-high);"><div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg><h3>وثائق التأمين (Coverage)</h3></div><span class="badge badge-info">${coverages.length}</span></div>
+              <div class="card-body p-0">
+                ${coverages.length ? `<table class="data-table"><thead><tr><th>البوليصة</th><th>شركة التأمين</th><th>العضوية</th><th>الحالة</th></tr></thead><tbody>${coverages.map(c=>`<tr><td><code>${c.policyNumber||c.subscriberId||'—'}</code></td><td>${c.payerNameAr||c.payerName||c.payorId||'—'}</td><td><code>${c.memberId||c.beneficiaryId||'—'}</code></td><td><span class="badge badge-success">${c.status||'active'}</span></td></tr>`).join('')}</tbody></table>` : '<p class="text-center py-4" style="color:var(--m3-on-surface-muted); font-size:0.82rem;">لا توجد وثائق تأمين</p>'}
+              </div>
+            </div>
+            <div class="card" style="border:1px solid var(--m3-outline-variant);">
+              <div class="card-header" style="background:var(--m3-surface-container-high);"><div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg><h3>المطالبات (نفيس)</h3></div><span class="badge badge-info">${claims.length}</span></div>
+              <div class="card-body p-0">
+                ${claims.length ? `<table class="data-table"><thead><tr><th>رقم المطالبة</th><th>المبلغ</th><th>الحالة</th><th>التاريخ</th></tr></thead><tbody>${claims.map(cl=>`<tr><td><code>${(cl.internalId||'').substring(0,12)}...</code></td><td><strong>${cl.totalGrossSAR ?? cl.total?.value ?? 0} ر.س</strong></td><td><span class="badge badge-success">${cl.status||'submitted'}</span></td><td><code>${cl.submissionDate? new Date(cl.submissionDate).toLocaleDateString('ar-SA') : (cl.createdAt? new Date(cl.createdAt).toLocaleDateString('ar-SA'):'—')}</code></td></tr>`).join('')}</tbody></table>` : '<p class="text-center py-4" style="color:var(--m3-on-surface-muted); font-size:0.82rem;">لا توجد مطالبات</p>'}
+              </div>
+            </div>
+          </div>
+
+          <!-- 8. Encounters Timeline (Full) -->
+          <div class="card" style="border:1px solid var(--m3-outline-variant);">
+            <div class="card-header" style="background:var(--m3-surface-container-high);">
+              <div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l8-4v18"/><path d="M9 9h.01M9 13h.01M9 17h.01"/></svg><h3>الخط الزمني الموحد للزيارات (عبر جميع المنشآت)</h3></div>
+              <span class="badge badge-info">${enc.length} زيارة</span>
+            </div>
+            <div class="card-body">
+              ${enc.length ? `<div class="timeline">${enc.map(e=>`
+                <div class="timeline-item">
+                  <div class="timeline-dot"><svg style="width:12px;height:12px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l8-4v18"/></svg></div>
+                  <div class="timeline-card">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                      <strong style="color:var(--m3-on-surface);">زيارة ${e.class||'—'} ${e.departmentAr? '('+e.departmentAr+')':''}</strong>
+                      <span class="badge badge-info">${e.provenance?.sourceSystemId||'—'} • ${e.sourceVisitId||e.internalId.substring(0,8)}</span>
+                    </div>
+                    <p style="font-size:0.82rem; color:var(--m3-on-surface-variant);">التاريخ: <code>${new Date(e.period?.start||e.createdAt||Date.now()).toLocaleString('ar-SA')}</code> ${e.period?.end ? '— انتهاء: <code>'+new Date(e.period.end).toLocaleString('ar-SA')+'</code>' : ''} | الحالة: <strong>${e.status||'finished'}</strong> | السبب: <strong>${e.reasonTextAr||e.reasonText||'متابعة دورية'}</strong></p>
+                  </div>
+                </div>
+              `).join('')}</div>` : '<p class="text-center py-4" style="color:var(--m3-on-surface-muted);">لا توجد زيارات مسجلة</p>'}
+            </div>
+          </div>
+
         </div>
       </div>
     `;
