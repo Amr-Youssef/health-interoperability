@@ -7,4 +7,5 @@ declare global {
         }
     }
 }
+export declare function requireNationalAdmin(req: Request, res: Response, next: NextFunction): Response<any, Record<string, any>>;
 export declare function verifyToken(req: Request, res: Response, next: NextFunction): Promise<Response<any, Record<string, any>>>;

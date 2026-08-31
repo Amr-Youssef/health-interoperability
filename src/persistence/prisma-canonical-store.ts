@@ -180,6 +180,48 @@ export class PrismaCanonicalStore {
     return patients.map(p => this.mapPatientToCanonical(p));
   }
 
+  async searchPatients(params: { q?: string; skip?: number; take?: number; sort?: string }): Promise<{ items: CanonicalPatient[]; total: number }> {
+    const q = (params.q || '').trim();
+    const take = Math.min(Math.max(params.take || 20, 1), 100);
+    const skip = Math.max(params.skip || 0, 0);
+    const hasQuery = q.length >= 2;
+    let where: any = {};
+    if (hasQuery) {
+      const isNumeric = /^[0-9]+$/.test(q);
+      if (isNumeric && q.length >= 6) {
+        where = {
+          OR: [
+            { internal_id: { contains: q } },
+            { identifiers: { some: { value: { contains: q } } } },
+            { phone: { contains: q } }
+          ]
+        };
+      } else {
+        where = {
+          OR: [
+            { internal_id: { contains: q, mode: 'insensitive' } },
+            { first_name: { contains: q, mode: 'insensitive' } },
+            { last_name: { contains: q, mode: 'insensitive' } },
+            { first_name_ar: { contains: q, mode: 'insensitive' } },
+            { last_name_ar: { contains: q, mode: 'insensitive' } },
+            { phone: { contains: q } },
+            { identifiers: { some: { value: { contains: q } } } }
+          ]
+        };
+      }
+    }
+    const orderBy: any = params.sort === 'name' ? [{ first_name_ar: 'asc' }, { first_name: 'asc' }] : { created_at: 'desc' };
+    const [total, rows] = await Promise.all([
+      this.prisma.patient.count({ where }),
+      this.prisma.patient.findMany({ where, include: { identifiers: true }, orderBy, skip, take })
+    ]);
+    return { items: rows.map(p => this.mapPatientToCanonical(p)), total };
+  }
+
+  async countPatients(): Promise<number> {
+    return this.prisma.patient.count();
+  }
+
   // ENCOUNTER
   private mapEncounterToCanonical(e: any): CanonicalEncounter {
     return {

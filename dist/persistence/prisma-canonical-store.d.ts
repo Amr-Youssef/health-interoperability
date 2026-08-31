@@ -31,6 +31,16 @@ export declare class PrismaCanonicalStore {
     findPatientByIdentifier(value: string, sourceSystemId?: string): Promise<CanonicalPatient | null>;
     findPatientBySourceRecordId(sourceSystemId: string, sourceRecordId: string): Promise<CanonicalPatient | null>;
     getAllPatients(): Promise<CanonicalPatient[]>;
+    searchPatients(params: {
+        q?: string;
+        skip?: number;
+        take?: number;
+        sort?: string;
+    }): Promise<{
+        items: CanonicalPatient[];
+        total: number;
+    }>;
+    countPatients(): Promise<number>;
     private mapEncounterToCanonical;
     saveEncounter(enc: CanonicalEncounter): Promise<string>;
     getEncounter(internalId: string): Promise<CanonicalEncounter | null>;

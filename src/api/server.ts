@@ -605,20 +605,23 @@ export function createPlatformApp() {
       const { PrismaClient } = await import('@prisma/client');
       const prisma = new PrismaClient();
       const orgs = await prisma.organization.findMany({
-        where: { organization_type: 'HOSPITAL' }
+        where: { organization_type: { in: ['HOSPITAL', 'CLINIC', 'LABORATORY', 'PHARMACY', 'DAY_SURGERY', 'CENTER', 'MEDICAL_CENTER', 'HOSPITAL_ADMIN'] } }
       });
-      // Map it to what the frontend expects
-      const hospitals = orgs.map(o => ({
+      const fallback = orgs.length === 0 ? await prisma.organization.findMany({ where: { NOT: { organization_type: 'MOH' } } }) : orgs;
+      const hospitals = fallback.map(o => ({
         hospitalId: o.id,
         hospitalName: o.organization_name,
         hospitalNameAr: o.organization_name_ar || o.organization_name,
+        organizationType: o.organization_type,
+        facilityType: o.organization_type,
         region: o.region || 'غير محدد',
-        status: o.status
+        status: o.status,
+        createdAt: o.created_at
       }));
       res.json(hospitals);
     } catch (err) {
       console.error(err);
-      res.json([]); // fallback
+      res.json([]);
     }
   });
 
@@ -874,7 +877,33 @@ export function createPlatformApp() {
     res.json(records);
   });
 
-  // Canonical Patients List (for global patient context bar)
+  // Scalable patient search for millions (debounced, paginated, indexed)
+  app.get('/api/patients/search', async (req: Request, res: Response) => {
+    const user = await extractAuthUser(req);
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+    if (user.role?.role_code === 'PATIENT') {
+      const targetId = await resolvePatientInternalId(user, canonicalStore);
+      if (targetId) {
+        const p = await canonicalStore.getPatient(targetId) || await canonicalStore.findPatientByIdentifier(targetId);
+        return res.json({ items: p ? [p] : [], total: p ? 1 : 0, page: 1, pageSize: 1 });
+      }
+      return res.json({ items: [], total: 0, page: 1, pageSize: 1 });
+    }
+    const q = String(req.query.q || '').trim();
+    const page = Math.max(parseInt(String(req.query.page || '1'), 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(String(req.query.limit || '20'), 10) || 20, 5), 50);
+    const sort = String(req.query.sort || 'recent');
+    const skip = (page - 1) * limit;
+    try {
+      const { items, total } = await (canonicalStore as any).searchPatients({ q, skip, take: limit, sort });
+      res.setHeader('Cache-Control', 'no-cache');
+      res.json({ items, total, page, pageSize: limit, totalPages: Math.ceil(total / limit), query: q });
+    } catch (err: any) {
+      res.status(500).json({ error: 'Search failed', details: err.message });
+    }
+  });
+
+  // Canonical Patients List (for global patient context bar) - kept paginated for backwards compatibility
   app.get('/api/patients', async (req: Request, res: Response) => {
     const user = await extractAuthUser(req);
     if (user && user.role?.role_code === 'PATIENT') {
@@ -885,8 +914,17 @@ export function createPlatformApp() {
       }
       return res.json([]);
     }
-    const patients = await canonicalStore.getAllPatients();
-    res.json(patients);
+    if (req.query.q || req.query.page || req.query.limit) {
+      const q = String(req.query.q || '').trim();
+      const page = Math.max(parseInt(String(req.query.page || '1'), 10) || 1, 1);
+      const limit = Math.min(Math.max(parseInt(String(req.query.limit || '20'), 10) || 20, 5), 50);
+      const skip = (page - 1) * limit;
+      const { items, total } = await (canonicalStore as any).searchPatients({ q, skip, take: limit, sort: String(req.query.sort || 'recent') });
+      return res.json({ items, total, page, pageSize: limit });
+    }
+    const limit = Math.min(parseInt(String(req.query.limit || '100'), 10) || 100, 100);
+    const { items } = await (canonicalStore as any).searchPatients({ q: '', skip: 0, take: limit, sort: 'recent' });
+    res.json(items);
   });
 
   // Canonical Longitudinal Record
@@ -913,8 +951,16 @@ export function createPlatformApp() {
   });
   app.use('/api/patients', patientReportedHealthRoutes);
 
-  // Admin Data Reset (Clean-slate reset)
-  app.post('/api/admin/reset-data', async (_req: Request, res: Response) => {
+  // Admin Data Reset (Clean-slate reset) - National Admin only
+  app.post('/api/admin/reset-data', async (req: Request, res: Response) => {
+    const { verifyToken, requireNationalAdmin } = await import('../security/auth-middleware.js');
+    let authorized = false;
+    await new Promise<void>((resolve) => {
+      (verifyToken as any)(req, res, () => {
+        (requireNationalAdmin as any)(req, res, () => { authorized = true; resolve(); });
+      });
+    });
+    if (!authorized) return;
     try {
       await canonicalStore.clearAll();
       if (rawStore.clearAll) await rawStore.clearAll();

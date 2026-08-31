@@ -72,11 +72,15 @@ function validateHospitalPayload(body: any): { valid: boolean; error?: string; n
   return { valid: true, normalized: norm };
 }
 
-// Middleware: Verify Hospital Admin Role & Organization Scope
-function requireHospitalAdmin(req: Request, res: Response, next: NextFunction) {
+async function requireHospitalAdmin(req: Request, res: Response, next: NextFunction) {
   if (req.user?.role?.role_code !== 'HOSPITAL_ADMIN') {
     return res.status(403).json({ error: 'Access denied: Hospital Admin required' });
   }
+  try {
+    const org = await prisma.organization.findUnique({ where: { id: req.user.organization_id } });
+    if (org && org.status === 'SUSPENDED') return res.status(403).json({ error: 'تم تعليق حساب المنشأة من قبل الأدمن الوطني - تواصل مع وزارة الصحة', status: org.status });
+    if (org && org.status === 'REJECTED') return res.status(403).json({ error: 'تم رفض اعتماد المنشأة', status: org.status });
+  } catch (e) {}
   next();
 }
 
@@ -249,13 +253,15 @@ router.patch('/me', async (req: Request, res: Response) => {
   }
 });
 
-// Hospital dashboard stats (scoped to own organization)
+// Hospital dashboard stats (scoped to own organization) - Single Source of Truth: DB counts, no client-side inference
 router.get('/me/stats', async (req: Request, res: Response) => {
   try {
     const orgId = req.user!.organization_id;
+    const orgWhere = (field: string) => ({ OR: [{ [field]: orgId }, { organization_id: orgId }] } as any);
     const [
       patientLinks,
       patientsBySource,
+      linkedPatientIds,
       encounters,
       conditions,
       observations,
@@ -264,29 +270,34 @@ router.get('/me/stats', async (req: Request, res: Response) => {
       claims,
       coverages,
       recentImports,
-      recentEncounters
+      recentEncounters,
+      rawCount
     ] = await Promise.all([
       prisma.patientOrganization.count({ where: { organization_id: orgId, active: true } }),
       prisma.patient.count({ where: { source_system_id: orgId } }),
-      prisma.encounter.count({ where: { source_system_id: orgId } }),
-      prisma.condition.count({ where: { source_system_id: orgId } }),
-      prisma.observation.count({ where: { source_system_id: orgId } }),
-      prisma.medicationRequest.count({ where: { source_system_id: orgId } }),
-      prisma.immunization.count({ where: { source_system_id: orgId } }),
-      prisma.claim.count({ where: { source_system_id: orgId } }),
-      prisma.coverage.count({ where: { source_system_id: orgId } }),
+      prisma.patientOrganization.findMany({ where: { organization_id: orgId, active: true }, select: { patient_id: true } }),
+      prisma.encounter.count({ where: { OR: [{ source_system_id: orgId }, { organization_id: orgId }] } }),
+      prisma.condition.count({ where: { OR: [{ source_system_id: orgId }, { organization_id: orgId }] } }),
+      prisma.observation.count({ where: { OR: [{ source_system_id: orgId }, { organization_id: orgId }] } }),
+      prisma.medicationRequest.count({ where: { OR: [{ source_system_id: orgId }, { organization_id: orgId }] } }),
+      prisma.immunization.count({ where: { OR: [{ source_system_id: orgId }, { organization_id: orgId }] } }),
+      prisma.claim.count({ where: { OR: [{ source_system_id: orgId }, { organization_id: orgId }] } }),
+      prisma.coverage.count({ where: { OR: [{ source_system_id: orgId }, { organization_id: orgId }] } }),
       prisma.dataImport.findMany({ where: { organization_id: orgId }, orderBy: { started_at: 'desc' }, take: 5 }),
-      prisma.encounter.findMany({ where: { source_system_id: orgId }, orderBy: { created_at: 'desc' }, take: 1 })
+      prisma.encounter.findMany({ where: { OR: [{ source_system_id: orgId }, { organization_id: orgId }] }, orderBy: { created_at: 'desc' }, take: 1 }),
+      prisma.rawRecord.count({ where: { source_system_id: orgId } }).catch(() => 0)
     ]);
 
-    // Also count raw records for this org if source_system_id matches orgId
-    let rawCount = 0;
-    let patientCount = patientLinks;
-    // Fallback to source_system_id count if PatientOrganization is empty (legacy uploads use source_system_id)
-    if (patientCount === 0 && patientsBySource > 0) patientCount = patientsBySource;
-    try {
-      rawCount = await prisma.rawRecord.count({ where: { source_system_id: orgId } });
-    } catch (e) { rawCount = 0; }
+    const linkedIdsSet = new Set(linkedPatientIds.map(r => r.patient_id));
+    let directPatients: any[] = [];
+    if (patientsBySource > 0) {
+      directPatients = await prisma.patient.findMany({ where: { source_system_id: orgId }, select: { id: true } });
+    }
+    let patientCount = linkedIdsSet.size;
+    for (const dp of directPatients) {
+      if (!linkedIdsSet.has(dp.id)) patientCount++;
+    }
+    if (patientCount === 0) patientCount = patientLinks > 0 ? patientLinks : patientsBySource;
 
     res.json({
       organizationId: orgId,
@@ -347,17 +358,23 @@ router.get('/global-patients', async (req: Request, res: Response) => {
   }
 });
 
-// Hospital patients (scoped) - uses PatientOrganization link, fallback to source_system_id for legacy uploads
+// Hospital patients (scoped) - UNION of PatientOrganization links + source_system_id direct records (deduplicated Single Source of Truth)
 router.get('/patients', async (req: Request, res: Response) => {
   try {
     const orgId = req.user!.organization_id;
-    let patients: any[] = [];
     const links = await prisma.patientOrganization.findMany({
       where: { organization_id: orgId, active: true },
       include: { patient: { include: { identifiers: true } } }
     });
-    if (links.length > 0) {
-      patients = links.map((l: any) => ({
+    const directPatients = await prisma.patient.findMany({
+      where: { source_system_id: orgId },
+      include: { identifiers: true },
+      orderBy: { created_at: 'desc' },
+      take: 100
+    });
+    const merged = new Map<string, any>();
+    for (const l of links) {
+      merged.set(l.patient.id, {
         id: l.patient.id,
         internalId: l.patient.internal_id,
         firstName: l.patient.first_name,
@@ -369,32 +386,31 @@ router.get('/patients', async (req: Request, res: Response) => {
         phone: l.patient.phone,
         identifiers: l.patient.identifiers,
         relationshipType: l.relationship_type,
-        assignedAt: l.assigned_at
-      }));
-    } else {
-      // Fallback: patients created via legacy migration where source_system_id == orgId
-      const directPatients = await prisma.patient.findMany({
-        where: { source_system_id: orgId },
-        include: { identifiers: true },
-        orderBy: { created_at: 'desc' },
-        take: 50
+        assignedAt: l.assigned_at,
+        provenance: 'LINKED'
       });
-      patients = directPatients.map((p: any) => ({
-        id: p.id,
-        internalId: p.internal_id,
-        firstName: p.first_name,
-        lastName: p.last_name,
-        firstNameAr: p.first_name_ar,
-        lastNameAr: p.last_name_ar,
-        gender: p.gender,
-        birthDate: p.birth_date ? p.birth_date.toISOString().split('T')[0] : null,
-        phone: p.phone,
-        identifiers: p.identifiers,
-        relationshipType: 'PRIMARY_CARE',
-        assignedAt: p.created_at
-      }));
     }
-    res.json(patients);
+    for (const p of directPatients) {
+      if (!merged.has(p.id)) {
+        merged.set(p.id, {
+          id: p.id,
+          internalId: p.internal_id,
+          firstName: p.first_name,
+          lastName: p.last_name,
+          firstNameAr: p.first_name_ar,
+          lastNameAr: p.last_name_ar,
+          gender: p.gender,
+          birthDate: p.birth_date ? p.birth_date.toISOString().split('T')[0] : null,
+          phone: p.phone,
+          identifiers: p.identifiers,
+          relationshipType: 'PRIMARY_CARE',
+          assignedAt: p.created_at,
+          provenance: 'DIRECT_SOURCE'
+        });
+      }
+    }
+    const patients = Array.from(merged.values()).sort((a, b) => new Date(b.assignedAt).getTime() - new Date(a.assignedAt).getTime());
+    res.json(patients.slice(0, 100));
   } catch (error) {
     console.error('Hospital patients error:', error);
     res.status(500).json({ error: 'Failed to load patients' });

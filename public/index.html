@@ -354,6 +354,13 @@
           <span class="label">لوحة المراقبة والتكامل</span>
         </button>
 
+        <button class="nav-item" data-tab="admin-governance" id="tab-btn-admin-governance" title="الحوكمة الوطنية - إدارة المنشآت والمستخدمين والتحقق">
+          <span class="nav-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/><path d="M12 8v-2"/><path d="M12 18v-2"/></svg>
+          </span>
+          <span class="label">الحوكمة الوطنية</span>
+        </button>
+
         <button class="nav-item" data-tab="onboarding" id="tab-btn-onboarding" title="إضافة وتكامل المستشفيات (Onboarding)">
           <span class="nav-icon-wrap">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
@@ -710,6 +717,56 @@
               <tr><td colspan="5" class="text-center py-4">جاري تحميل سجلات التدقيق...</td></tr>
             </tbody>
           </table>
+        </div>
+      </section>
+
+      <!-- TAB: ADMIN GOVERNANCE (MOH National) -->
+      <section class="tab-pane" id="pane-admin-governance">
+        <div class="banner-info" style="background:linear-gradient(135deg, var(--m3-primary-container), var(--m3-surface-container)); border:1px solid var(--m3-outline-variant);">
+          <div class="banner-icon" style="background:var(--m3-primary); color:var(--m3-on-primary);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg></div>
+          <div class="banner-text">
+            <h4>مركز الحوكمة الوطنية الموحد – ربط الأدمن بالمريض والمستشفى</h4>
+            <p>لوحة واحدة تربط كل المنظومة: اعتماد المنشآت المعلقة، إدارة المستخدمين، طابور التحقق للبيانات المبلغة ذاتياً، وسجل المرضى الوطني – كلها من نفس قاعدة البيانات الموحدة (Single Source of Truth).</p>
+          </div>
+        </div>
+        <div class="metrics-grid" id="admin-governance-metrics" style="margin-top:16px;">
+          <div class="metric-card"><div class="metric-icon bg-amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l8-4v18"/></svg></div><div class="metric-info"><span class="metric-label">منشآت بانتظار الاعتماد</span><h3 class="metric-value" id="gov-pending-hosp">--</h3><span class="metric-sub">PENDING_APPROVAL</span></div></div>
+          <div class="metric-card"><div class="metric-icon bg-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><div class="metric-info"><span class="metric-label">إجمالي المستخدمين</span><h3 class="metric-value" id="gov-users-total">--</h3><span class="metric-sub">مرضى + مستشفيات + أدمن</span></div></div>
+          <div class="metric-card"><div class="metric-icon bg-purple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div class="metric-info"><span class="metric-label">طابور التحقق (UNVERIFIED)</span><h3 class="metric-value" id="gov-verify-queue">--</h3><span class="metric-sub">حساسيات/أدوية/حالات</span></div></div>
+          <div class="metric-card"><div class="metric-icon bg-emerald"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg></div><div class="metric-info"><span class="metric-label">المرضى الوطنيين</span><h3 class="metric-value" id="gov-patients-total">--</h3><span class="metric-sub">من نفس سجل المستشفى/المريض</span></div></div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:16px;">
+          <div class="card">
+            <div class="card-header"><div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l8-4v18"/></svg><h3>المنشآت بانتظار الاعتماد</h3></div><button class="btn btn-secondary btn-sm" onclick="loadAdminGovernance()">تحديث</button></div>
+            <div class="card-body" id="gov-pending-list" style="max-height:360px; overflow:auto;">جاري التحميل...</div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><h3>إنشاء أدمن وطني (Invite-only)</h3></div></div>
+            <div class="card-body">
+              <form id="form-create-moh-admin" style="display:flex; flex-direction:column; gap:8px;">
+                <input type="text" id="moh-admin-username" class="form-select" placeholder="اسم المستخدم" required>
+                <input type="text" id="moh-admin-fullname" class="form-select" placeholder="الاسم الكامل" required>
+                <input type="password" id="moh-admin-password" class="form-select" placeholder="كلمة المرور (8+ حروف وأرقام)" required>
+                <input type="email" id="moh-admin-email" class="form-select" placeholder="البريد (اختياري)">
+                <button type="submit" class="btn btn-primary">إنشاء حساب MOH_ADMIN</button>
+              </form>
+              <div id="moh-admin-create-result" style="margin-top:8px; font-size:0.82rem;"></div>
+            </div>
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:16px;">
+          <div class="card">
+            <div class="card-header"><div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><h3>إدارة المستخدمين (تفعيل/تعطيل)</h3></div></div>
+            <div class="card-body" id="gov-users-list" style="max-height:400px; overflow:auto;">جاري التحميل...</div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><h3>طابور التحقق – بيانات المرضى المبلغة</h3></div><button class="btn btn-secondary btn-sm" onclick="loadVerificationQueue()">تحديث</button></div>
+            <div class="card-body" id="gov-verify-list" style="max-height:400px; overflow:auto;">جاري التحميل...</div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:16px;">
+          <div class="card-header"><div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><h3>السجل الوطني للمرضى (مرتبط بالمستشفى والمريض)</h3></div></div>
+          <div class="card-body" id="gov-patients-list" style="max-height:360px; overflow:auto;">جاري التحميل...</div>
         </div>
       </section>
 
@@ -1358,21 +1415,34 @@
 
       <!-- TAB 3: LONGITUDINAL RECORD -->
       <section class="tab-pane" id="pane-longitudinal">
-        <div class="patient-selector-card">
-          <div class="form-group">
-            <label>
-              <svg class="label-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-              اختر المريض لعرض الملف الصحي الموحد الشامل (Longitudinal Health Record):
-            </label>
-            <select id="select-longitudinal-patient" class="form-select">
-              <option value="">جاري تحميل قائمة المرضى...</option>
-            </select>
+        <div id="longitudinal-search-card" class="card mb-4" style="border:1px solid var(--m3-outline-variant);">
+          <div class="card-body" style="padding:16px;">
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
+              <svg style="width:20px;height:20px; color:var(--m3-primary);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <h3 style="margin:0; font-size:1rem;">اختيار المريض – بحث قابل للتوسع لملايين السجلات</h3>
+              <span id="longitudinal-total-badge" class="badge badge-info" style="margin-right:auto;">—</span>
+            </div>
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+              <div style="flex:1; min-width:260px; position:relative;">
+                <input type="text" id="longitudinal-search-input" class="form-select" placeholder="ابحث بالاسم (عربي/إنجليزي)، الهوية الوطنية/الإقامة، الهاتف أو المعرف الداخلي... (حرفان على الأقل)" autocomplete="off" style="padding-right:40px;">
+                <svg style="position:absolute; right:12px; top:50%; transform:translateY(-50%); width:16px; height:16px; color:var(--m3-on-surface-muted);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <button type="button" id="longitudinal-search-clear" style="position:absolute; left:8px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; display:none; color:var(--m3-on-surface-muted);">✕</button>
+              </div>
+              <select id="longitudinal-sort" class="form-select" style="width:160px;">
+                <option value="recent">الأحدث أولاً</option>
+                <option value="name">الاسم (أ-ي)</option>
+              </select>
+              <button type="button" class="btn btn-secondary btn-sm" id="longitudinal-refresh-btn"><svg class="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg><span>تحديث</span></button>
+            </div>
+            <div id="longitudinal-recent-chips" style="margin-top:10px; display:flex; gap:6px; flex-wrap:wrap;"></div>
+            <div id="longitudinal-results" style="margin-top:14px; display:grid; grid-template-columns:repeat(auto-fill, minmax(280px,1fr)); gap:10px; max-height:380px; overflow:auto; padding:2px;"></div>
+            <div id="longitudinal-pagination" style="margin-top:12px; display:flex; justify-content:space-between; align-items:center; font-size:0.82rem; color:var(--m3-on-surface-variant);"></div>
+            <div id="longitudinal-search-hint" style="margin-top:8px; font-size:0.75rem; color:var(--m3-on-surface-muted);">الخوارزمية: بحث مفهرس على الهوية/الاسم/الهاتف عبر <code>ILIKE</code> مع ترقيم صفحي على الخادم (page/limit) — لا يتم تحميل كل الملايين في المتصفح. اكتب حرفين للبحث أو اتركه فارغاً لعرض الأحدث.</div>
           </div>
         </div>
 
         <div id="patient-self-reported-dashboard" class="mt-4" style="display:none;"></div>
         <div id="longitudinal-content" class="longitudinal-content">
-          <!-- Populated by app.js -->
         </div>
       </section>
 

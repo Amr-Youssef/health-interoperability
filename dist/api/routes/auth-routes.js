@@ -53,38 +53,6 @@ function normalizeGender(g) {
     return null;
 }
 async function ensureDefaultAccounts() {
-    const [sysAdminRole, hospitalAdminRole, patientRole] = await Promise.all([
-        prisma.role.upsert({
-            where: { role_code: 'SYS_ADMIN' },
-            update: {},
-            create: {
-                role_name: 'System Administrator',
-                role_code: 'SYS_ADMIN',
-                description: 'Global system administrator',
-                is_system_role: true
-            }
-        }),
-        prisma.role.upsert({
-            where: { role_code: 'HOSPITAL_ADMIN' },
-            update: {},
-            create: {
-                role_name: 'Hospital Administrator',
-                role_code: 'HOSPITAL_ADMIN',
-                description: 'Hospital level admin',
-                is_system_role: false
-            }
-        }),
-        prisma.role.upsert({
-            where: { role_code: 'PATIENT' },
-            update: {},
-            create: {
-                role_name: 'Patient',
-                role_code: 'PATIENT',
-                description: 'Individual Patient Access',
-                is_system_role: true
-            }
-        })
-    ]);
     let mohOrg = await prisma.organization.findFirst({ where: { organization_type: 'MOH' } });
     if (!mohOrg) {
         mohOrg = await prisma.organization.create({
@@ -97,6 +65,17 @@ async function ensureDefaultAccounts() {
             }
         });
     }
+    const [sysAdminRole, hospitalAdminRole, patientRole, mohAdminRole] = await Promise.all([
+        prisma.role.upsert({ where: { role_code: 'SYS_ADMIN' }, update: {}, create: { role_name: 'System Administrator', role_code: 'SYS_ADMIN', description: 'Global system administrator', is_system_role: true } }),
+        prisma.role.upsert({ where: { role_code: 'HOSPITAL_ADMIN' }, update: {}, create: { role_name: 'Hospital Administrator', role_code: 'HOSPITAL_ADMIN', description: 'Hospital level admin', is_system_role: false } }),
+        prisma.role.upsert({ where: { role_code: 'PATIENT' }, update: {}, create: { role_name: 'Patient', role_code: 'PATIENT', description: 'Individual Patient Access', is_system_role: true } }),
+        prisma.role.upsert({ where: { role_code: 'MOH_ADMIN' }, update: {}, create: { role_name: 'MOH Administrator', role_code: 'MOH_ADMIN', description: 'Ministry of Health National Administrator', is_system_role: true } })
+    ]);
+    await prisma.user.upsert({
+        where: { username: 'moh_admin' },
+        update: { password_hash: await bcrypt.hash('moh123456', 10), role_id: mohAdminRole.id, organization_id: mohOrg.id, is_active: true, full_name: 'MOH National Admin' },
+        create: { username: 'moh_admin', password_hash: await bcrypt.hash('moh123456', 10), full_name: 'MOH National Admin', role_id: mohAdminRole.id, organization_id: mohOrg.id, is_active: true }
+    });
     const hospitalOrg = await prisma.organization.findFirst({ where: { organization_type: 'HOSPITAL' } })
         ?? await prisma.organization.create({
             data: {
@@ -207,6 +186,9 @@ router.post('/register', async (req, res) => {
                 return res.status(400).json({ error: 'البريد الإلكتروني مسجل مسبقاً' });
             }
         }
+        if (roleType === 'MOH_ADMIN' || roleType === 'SYS_ADMIN') {
+            return res.status(403).json({ error: 'إنشاء حساب أدمن وطني متاح فقط من داخل نظام الأدمن (Invite-only)' });
+        }
         // Determine the role
         const roleCode = roleType === 'PATIENT' ? 'PATIENT' : 'HOSPITAL_ADMIN';
         let role = await prisma.role.findUnique({ where: { role_code: roleCode } });
@@ -310,78 +292,25 @@ router.post('/register', async (req, res) => {
                     organization_name_ar: organization_name_ar.trim(),
                     organization_type: orgTypeNorm,
                     region: regionNorm,
-                    status: 'ACTIVE'
+                    status: 'PENDING_APPROVAL'
                 }
             });
             organization_id = org.id;
-            // Auto-onboard into DynamicHospitalRegistry for legacy migration gateway (Hospital HMS view)
+            // Defer DynamicHospital onboarding until MOH approval - only audit pending registration
             try {
-                const facilityForDynamic = (() => {
-                    const ft = orgTypeNorm.toLowerCase();
-                    if (['hospital', 'clinic', 'laboratory', 'pharmacy'].includes(ft))
-                        return ft;
-                    if (ft === 'day_surgery')
-                        return 'day_surgery';
-                    return 'hospital';
-                })();
-                const regionForDynamic = ['Riyadh', 'Makkah', 'Eastern', 'Madinah', 'Asir'].includes(regionNorm) ? regionNorm : 'Riyadh';
-                const mappingConfig = {
-                    id: `map-${org.id}-pt-v1`,
-                    sourceSystemId: org.id,
-                    sourceEntityType: 'client_registry',
-                    targetCanonicalEntity: 'CanonicalPatient',
-                    mappingVersion: '1.0.0',
-                    effectiveDate: '2026-01-01',
-                    status: 'ACTIVE',
-                    author: 'Hospital Gateway Auto-Onboard',
-                    description: `Maps ${organization_name_ar.trim()} records to CanonicalPatient`,
-                    validationState: 'VALIDATED',
-                    fieldMappings: [
-                        { sourceField: 'client_id', targetField: 'mrn', required: true },
-                        { sourceField: 'national_id_num', targetField: 'nationalId', required: true },
-                        { sourceField: 'full_arabic_name', targetField: 'givenNameAr', required: true },
-                        { sourceField: 'sex_code', targetField: 'gender', required: true, transformation: 'gender_normalize' },
-                        { sourceField: 'dob_gregorian', targetField: 'birthDate', required: true, transformation: 'date_normalize' }
-                    ]
-                };
-                const sourceSchemaObj = {
-                    sourceSystemId: org.id,
-                    tables: [{ name: 'client_registry', fields: [
-                                { name: 'client_id', type: 'string', isNullable: false },
-                                { name: 'national_id_num', type: 'string', isNullable: false },
-                                { name: 'full_arabic_name', type: 'string', isNullable: false },
-                                { name: 'dob_gregorian', type: 'string', isNullable: false },
-                                { name: 'sex_code', type: 'string', isNullable: false }
-                            ] }]
-                };
-                await prisma.dynamicHospital.upsert({
-                    where: { hospitalId: org.id },
-                    update: {
-                        hospitalName: organization_name.trim(),
-                        hospitalNameAr: organization_name_ar.trim(),
-                        facilityType: facilityForDynamic,
-                        region: regionForDynamic,
-                        adapterVersion: '1.0.0',
-                        sourceSchema: JSON.stringify(sourceSchemaObj),
-                        defaultMappingConfigs: JSON.stringify([mappingConfig]),
-                        createdAt: new Date().toISOString()
-                    },
-                    create: {
-                        hospitalId: org.id,
-                        hospitalName: organization_name.trim(),
-                        hospitalNameAr: organization_name_ar.trim(),
-                        facilityType: facilityForDynamic,
-                        region: regionForDynamic,
-                        adapterVersion: '1.0.0',
-                        sourceSchema: JSON.stringify(sourceSchemaObj),
-                        defaultMappingConfigs: JSON.stringify([mappingConfig]),
-                        createdAt: new Date().toISOString()
+                await prisma.auditLog.create({
+                    data: {
+                        entity_type: 'Organization',
+                        entity_id: org.id,
+                        action: 'HOSPITAL_REGISTER_PENDING',
+                        actor_id: null,
+                        organization_id: org.id,
+                        new_values: JSON.stringify({ organization_name: org.organization_name, organization_name_ar: org.organization_name_ar, region: org.region, status: org.status }),
+                        details: `Hospital registration pending MOH approval: ${org.organization_name_ar}`
                     }
                 });
             }
-            catch (dynErr) {
-                console.warn('Warning: Failed to auto-onboard dynamic hospital for migration gateway', dynErr);
-            }
+            catch (e) { }
             const password_hash_hosp = await bcrypt.hash(password, 10);
             const userHosp = await prisma.user.create({
                 data: {

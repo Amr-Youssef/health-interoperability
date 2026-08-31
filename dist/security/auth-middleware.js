@@ -20,6 +20,13 @@ export function extractTokenFromRequest(req) {
         return c;
     return null;
 }
+export function requireNationalAdmin(req, res, next) {
+    const role = req.user?.role?.role_code;
+    if (role !== 'MOH_ADMIN' && role !== 'SYS_ADMIN') {
+        return res.status(403).json({ error: 'Access denied: National Admin (MOH/SYS) required' });
+    }
+    next();
+}
 export async function verifyToken(req, res, next) {
     const token = extractTokenFromRequest(req);
     if (!token) {

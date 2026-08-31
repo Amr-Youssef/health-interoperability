@@ -41,6 +41,17 @@ async function main() {
     }
   });
 
+  const mohAdminRole = await prisma.role.upsert({
+    where: { role_code: 'MOH_ADMIN' },
+    update: {},
+    create: {
+      role_name: 'MOH Administrator',
+      role_code: 'MOH_ADMIN',
+      description: 'Ministry of Health National Administrator - full governance',
+      is_system_role: true
+    }
+  });
+
   // 2. Organizations
   const mohOrg = await prisma.organization.create({
     data: {
@@ -89,6 +100,20 @@ async function main() {
       full_name: 'System Admin',
       role_id: adminRole.id,
       organization_id: mohOrg.id
+    }
+  });
+
+  const mohHash = await bcrypt.hash('moh123456', 10);
+  await prisma.user.upsert({
+    where: { username: 'moh_admin' },
+    update: { password_hash: mohHash, role_id: mohAdminRole.id, organization_id: mohOrg.id, is_active: true },
+    create: {
+      username: 'moh_admin',
+      password_hash: mohHash,
+      full_name: 'MOH National Admin',
+      role_id: mohAdminRole.id,
+      organization_id: mohOrg.id,
+      is_active: true
     }
   });
 

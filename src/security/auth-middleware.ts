@@ -29,6 +29,14 @@ declare global {
   }
 }
 
+export function requireNationalAdmin(req: Request, res: Response, next: NextFunction) {
+  const role = req.user?.role?.role_code;
+  if (role !== 'MOH_ADMIN' && role !== 'SYS_ADMIN') {
+    return res.status(403).json({ error: 'Access denied: National Admin (MOH/SYS) required' });
+  }
+  next();
+}
+
 export async function verifyToken(req: Request, res: Response, next: NextFunction) {
   const token = extractTokenFromRequest(req);
   if (!token) {
