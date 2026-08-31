@@ -1185,6 +1185,11 @@ body.light-theme .bg-cyan,
   color: var(--m3-on-tertiary-container);
 }
 
+.badge-error {
+  background: var(--m3-error-container);
+  color: var(--m3-on-error-container);
+}
+
 /* =========================================
    BANNER INFO (BORDERLESS)
    ========================================= */
@@ -1793,7 +1798,7 @@ body.light-theme .toast,
   max-width: 860px;
   min-height: 1100px;
   padding: 36px 42px;
-  border-radius: 4px;
+  border-radius:var(--radius-sharp);
   box-shadow: 0 12px 48px rgba(0, 0, 0, 0.45);
   font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif;
   position: relative;
@@ -1864,7 +1869,7 @@ body.light-theme .toast,
   border: 1px solid #c8e6c9;
   background: #f1f8e9;
   padding: 8px 12px;
-  border-radius: 4px;
+  border-radius:var(--radius-sharp);
   line-height: 1.5;
 }
 
@@ -1873,7 +1878,7 @@ body.light-theme .toast,
   background: #f0f7f2;
   border: 1px solid #c8e6c9;
   padding: 10px;
-  border-radius: 4px;
+  border-radius:var(--radius-sharp);
   margin-bottom: 16px;
 }
 
@@ -1898,7 +1903,7 @@ body.light-theme .toast,
   background: #f8fafc;
   border: 1px solid #e2e8f0;
   padding: 12px 16px;
-  border-radius: 4px;
+  border-radius:var(--radius-sharp);
   margin-bottom: 16px;
   font-size: 0.82rem;
 }
@@ -1986,7 +1991,7 @@ body.light-theme .toast,
   border-top: 3px solid #1b5e20;
   padding: 10px 12px;
   text-align: center;
-  border-radius: 4px;
+  border-radius:var(--radius-sharp);
 }
 
 .pdf-kpi-box.warning {
@@ -2031,7 +2036,7 @@ body.light-theme .toast,
   border: 1px dashed #22c55e;
   background: #f0fdf4;
   padding: 8px 12px;
-  border-radius: 4px;
+  border-radius:var(--radius-sharp);
 }
 
 .pdf-qr-box {
@@ -2495,7 +2500,7 @@ body.light-theme .auth-submit-btn:hover,
 .auth-tab-btn {
   flex: 1;
   padding: 10px;
-  border-radius: 4px;
+  border-radius:var(--radius-sharp);
   border: none;
   cursor: pointer;
   font-family: inherit;
@@ -2505,13 +2510,13 @@ body.light-theme .auth-submit-btn:hover,
 }
 
 .auth-tab-btn.active {
-  background: #2d3748 !important;
-  color: white !important;
+  background: var(--m3-primary) !important;
+  color: var(--m3-on-primary) !important;
 }
 
 .auth-tab-btn:not(.active) {
-  background: #1a202c !important;
-  color: #a0aec0 !important;
+  background: var(--m3-surface-container-low) !important;
+  color: var(--m3-on-surface-variant) !important;
 }
 
 .auth-demo-links {

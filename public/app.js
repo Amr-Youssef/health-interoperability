@@ -42,13 +42,13 @@ const appAuth = {
     if (tab === 'login') {
       if (loginForm) loginForm.style.display = 'flex';
       if (registerForm) registerForm.style.display = 'none';
-      if (btnLogin) { btnLogin.style.background = '#2d3748'; btnLogin.style.color = 'white'; btnLogin.classList.add('active'); }
-      if (btnRegister) { btnRegister.style.background = '#1a202c'; btnRegister.style.color = '#a0aec0'; btnRegister.classList.remove('active'); }
+      if (btnLogin) { btnLogin.style.background = ''; btnLogin.style.color = ''; btnLogin.classList.add('active'); }
+      if (btnRegister) { btnRegister.style.background = ''; btnRegister.style.color = ''; btnRegister.classList.remove('active'); }
     } else {
       if (loginForm) loginForm.style.display = 'none';
       if (registerForm) registerForm.style.display = 'flex';
-      if (btnRegister) { btnRegister.style.background = '#2d3748'; btnRegister.style.color = 'white'; btnRegister.classList.add('active'); }
-      if (btnLogin) { btnLogin.style.background = '#1a202c'; btnLogin.style.color = '#a0aec0'; btnLogin.classList.remove('active'); }
+      if (btnRegister) { btnRegister.style.background = ''; btnRegister.style.color = ''; btnRegister.classList.add('active'); }
+      if (btnLogin) { btnLogin.style.background = ''; btnLogin.style.color = ''; btnLogin.classList.remove('active'); }
       // Ensure correct subgroup visibility for default PATIENT and reset scroll to top
       try { this.toggleRegisterRole(); } catch(e) {}
       if (authModal) authModal.scrollTop = 0;
@@ -1722,7 +1722,7 @@ async function loadCdsAndAnalyticsTab() {
       const cdsData = await resCds.json();
 
       if (container && cdsData.cards) {
-        const patientHeader = `<div style="padding:10px 14px; background:var(--m3-primary-container); border:1px solid rgba(16,185,129,0.3); border-radius:var(--radius-xs); margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+        const patientHeader = `<div style="padding:10px 14px; background:var(--m3-primary-container); border:1px solid var(--m3-primary); border-radius:var(--radius-xs); margin-bottom:12px; display:flex; align-items:center; gap:8px;">
           <strong style="color:var(--m3-on-primary-container); font-size:0.88rem;">تقييم السلامة الدوائية للمريض: ${patientLabel}</strong>
           <span class="badge badge-info">${cdsData.cards.length} تنبيه</span>
         </div>`;
@@ -1733,7 +1733,7 @@ async function loadCdsAndAnalyticsTab() {
         }
 
         container.innerHTML = patientHeader + cdsData.cards.map((c) => {
-          const indicatorBadge = c.indicator === 'critical' ? '<span class="badge badge-warning" style="background:#B91C1C; color:#fff;">حرج - تدقيق فوري</span>' :
+          const indicatorBadge = c.indicator === 'critical' ? '<span class="badge badge-error">حرج - تدقيق فوري</span>' :
                                  c.indicator === 'warning' ? '<span class="badge badge-warning">تحذير سريري</span>' :
                                  '<span class="badge badge-success">إرشادي معتمد</span>';
 
@@ -1775,7 +1775,7 @@ async function loadWeqaaSurveillanceCases() {
     }
 
     weqaaTbody.innerHTML = cases.map((c) => {
-      const urgencyBadge = c.urgency === 'IMMEDIATE_6H' ? '<span class="badge badge-warning" style="background:#B91C1C; color:#fff;">فوري (خلال 6 ساعات)</span>' :
+      const urgencyBadge = c.urgency === 'IMMEDIATE_6H' ? '<span class="badge badge-error">فوري (خلال 6 ساعات)</span>' :
                             c.urgency === 'URGENT_24H' ? '<span class="badge badge-warning">عاجل (خلال 24 ساعة)</span>' :
                             '<span class="badge badge-info">روتيني أسبوعي</span>';
       
@@ -1847,7 +1847,7 @@ async function previewWeqaaBundle(caseId) {
             <strong style="color:var(--m3-on-surface);">معاينة حزمة البلاغ الوبائي (HL7 FHIR R4 Message Bundle):</strong>
             <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('weqaa-action-result-container').innerHTML=''">إغلاق المعاينة</button>
           </div>
-          <pre style="direction:ltr; text-align:left; background:#0f172a; color:#38bdf8; padding:12px; border-radius:4px; font-size:0.75rem; max-height:280px; overflow:auto;">${JSON.stringify(bundle, null, 2)}</pre>
+          <pre style="direction:ltr; text-align:left; background:var(--m3-surface-container-high); color:var(--m3-on-surface); padding:12px; border-radius:var(--radius-sharp); font-size:0.75rem; max-height:280px; overflow:auto;">${JSON.stringify(bundle, null, 2)}</pre>
         </div>
       `;
     }
@@ -1869,7 +1869,7 @@ async function loadNphiesTab() {
         const linkedPatient = cachedPatients.find(p => p.id === c.patientId);
         const patientName = linkedPatient ? (linkedPatient.nameAr || linkedPatient.name) : (c.subscriberNameAr || 'مريض مسجل');
         const isCurrent = c.patientId === currentPatientId;
-        const rowStyle = isCurrent ? 'background:rgba(16, 185, 129, 0.05);' : '';
+        const rowStyle = isCurrent ? 'background:var(--m3-primary-container);' : '';
         return `
         <tr style="${rowStyle}">
           <td><code>${c.policyNumber}</code></td>
@@ -1893,7 +1893,7 @@ async function loadNphiesTab() {
         const linkedPatient = cachedPatients.find(p => p.id === clm.patientId);
         const patientName = linkedPatient ? (linkedPatient.nameAr || linkedPatient.name) : 'مريض مسجل';
         const isCurrent = clm.patientId === currentPatientId;
-        const rowStyle = isCurrent ? 'background:rgba(16, 185, 129, 0.05);' : '';
+        const rowStyle = isCurrent ? 'background:var(--m3-primary-container);' : '';
         const txId = resp?.nphiesTransactionId || `NPHIES-TX-${clm.internalId.substring(0, 8)}`;
 
         return `
@@ -1932,7 +1932,7 @@ async function loadMedicationsTab() {
         const linkedPatient = cachedPatients.find(p => p.id === m.patientId);
         const patientName = linkedPatient ? (linkedPatient.nameAr || linkedPatient.name) : 'مريض مسجل';
         const isCurrentPatient = m.patientId === currentPatientId;
-        const rowStyle = isCurrentPatient ? 'background:rgba(16, 185, 129, 0.05);' : '';
+        const rowStyle = isCurrentPatient ? 'background:var(--m3-primary-container);' : '';
 
         return `
         <tr style="${rowStyle}">
@@ -1961,7 +1961,7 @@ async function loadMedicationsTab() {
         const linkedPatient = cachedPatients.find(p => p.id === v.patientId);
         const patientName = linkedPatient ? (linkedPatient.nameAr || linkedPatient.name) : 'مريض مسجل';
         const isCurrentPatient = v.patientId === currentPatientId;
-        const rowStyle = isCurrentPatient ? 'background:rgba(16, 185, 129, 0.05);' : '';
+        const rowStyle = isCurrentPatient ? 'background:var(--m3-primary-container);' : '';
 
         return `
         <tr style="${rowStyle}">
@@ -2037,7 +2037,7 @@ async function loadMpiIdentities() {
             </div>
             <div style="display:flex; gap:8px; align-items:center;">
               ${isMerged 
-                ? `<span class="badge badge-warning" style="background:#B45309; color:#fff;">هوية مدمجة (Merged Into: ${id.mergedInto?.substring(0, 8)}...)</span>
+                ? `<span class="badge badge-warning">هوية مدمجة (Merged Into: ${id.mergedInto?.substring(0, 8)}...)</span>
                    <button type="button" class="btn btn-secondary btn-sm" onclick="unmergeMpiIdentity('${id.mergedInto}', '${id.internalPatientId}')">
                      <span>فصل الهوية (Unmerge)</span>
                    </button>`
@@ -2308,7 +2308,7 @@ async function loadPatientProfileTab() {
     contentEl.style.display = 'block';
   } catch (err) {
     console.error('Failed to load patient profile', err);
-    loadingEl.innerHTML = `<div class="card" style="border:1px solid var(--m3-error); background:rgba(239,68,68,0.08); padding:16px; text-align:center;">
+    loadingEl.innerHTML = `<div class="card" style="border:1px solid var(--m3-error); background:var(--m3-error-container); padding:16px; text-align:center;">
       <p style="color:var(--m3-error); font-weight:700;">تعذر تحميل بياناتك الشخصية</p>
       <p style="font-size:0.82rem; color:var(--m3-on-surface-variant); margin-top:6px;">${err.message || 'حدث خطأ في الاتصال'}</p>
       <button type="button" class="btn btn-secondary btn-sm" style="margin-top:10px;" onclick="loadPatientProfileTab()">إعادة المحاولة</button>
@@ -2377,23 +2377,23 @@ async function savePatientProfile() {
   // Client pre-validation mirrors server
   if (!cleanPayload.phone) {
     statusEl.style.display = 'block';
-    statusEl.innerHTML = `<div style="background:rgba(239,68,68,0.10); border:1px solid var(--m3-error); color:var(--m3-error); padding:10px 14px; border-radius:6px; font-size:0.85rem;">رقم الجوال مطلوب بصيغة سعودية (05xxxxxxxx)</div>`;
+    statusEl.innerHTML = `<div style="background:var(--m3-error-container); border:1px solid var(--m3-error); color:var(--m3-error); padding:10px 14px; border-radius:var(--radius-sharp); font-size:0.85rem;">رقم الجوال مطلوب بصيغة سعودية (05xxxxxxxx)</div>`;
     return;
   }
   const phoneClean = cleanPayload.phone.replace(/[\s\-\(\)]/g,'');
   if (!/^(?:\+9665\d{8}|9665\d{8}|05\d{8}|5\d{8})$/.test(phoneClean)) {
     statusEl.style.display = 'block';
-    statusEl.innerHTML = `<div style="background:rgba(239,68,68,0.10); border:1px solid var(--m3-error); color:var(--m3-error); padding:10px 14px; border-radius:6px; font-size:0.85rem;">رقم الجوال غير صحيح</div>`;
+    statusEl.innerHTML = `<div style="background:var(--m3-error-container); border:1px solid var(--m3-error); color:var(--m3-error); padding:10px 14px; border-radius:var(--radius-sharp); font-size:0.85rem;">رقم الجوال غير صحيح</div>`;
     return;
   }
   if (cleanPayload.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanPayload.email)) {
     statusEl.style.display = 'block';
-    statusEl.innerHTML = `<div style="background:rgba(239,68,68,0.10); border:1px solid var(--m3-error); color:var(--m3-error); padding:10px 14px; border-radius:6px; font-size:0.85rem;">صيغة البريد غير صحيحة</div>`;
+    statusEl.innerHTML = `<div style="background:var(--m3-error-container); border:1px solid var(--m3-error); color:var(--m3-error); padding:10px 14px; border-radius:var(--radius-sharp); font-size:0.85rem;">صيغة البريد غير صحيحة</div>`;
     return;
   }
   if (cleanPayload.addressPostalCode && !/^\d{5}$/.test(cleanPayload.addressPostalCode)) {
     statusEl.style.display = 'block';
-    statusEl.innerHTML = `<div style="background:rgba(239,68,68,0.10); border:1px solid var(--m3-error); color:var(--m3-error); padding:10px 14px; border-radius:6px; font-size:0.85rem;">الرمز البريدي يجب أن يكون 5 أرقام</div>`;
+    statusEl.innerHTML = `<div style="background:var(--m3-error-container); border:1px solid var(--m3-error); color:var(--m3-error); padding:10px 14px; border-radius:var(--radius-sharp); font-size:0.85rem;">الرمز البريدي يجب أن يكون 5 أرقام</div>`;
     return;
   }
 
@@ -2433,7 +2433,7 @@ async function savePatientProfile() {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'فشل الحفظ');
     statusEl.style.display = 'block';
-    statusEl.innerHTML = `<div style="background:rgba(16,185,129,0.12); border:1px solid var(--m3-primary); color:var(--m3-on-primary-container); padding:12px 14px; border-radius:6px; font-size:0.88rem; display:flex; align-items:center; gap:8px;">
+    statusEl.innerHTML = `<div style="background:var(--m3-primary-container); border:1px solid var(--m3-primary); color:var(--m3-on-primary-container); padding:12px 14px; border-radius:var(--radius-sharp); font-size:0.88rem; display:flex; align-items:center; gap:8px;">
       ${getSvgIcon('shieldCheck','style="width:18px;height:18px; color:var(--m3-primary);"')}
       <span>${data.message || 'تم حفظ التغييرات بنجاح'}</span>
     </div>`;
@@ -2446,7 +2446,7 @@ async function savePatientProfile() {
     setTimeout(() => { loadPatientProfileTab(); }, 900);
   } catch (err) {
     statusEl.style.display = 'block';
-    statusEl.innerHTML = `<div style="background:rgba(239,68,68,0.10); border:1px solid var(--m3-error); color:var(--m3-error); padding:10px 14px; border-radius:6px; font-size:0.85rem;">${err.message}</div>`;
+    statusEl.innerHTML = `<div style="background:var(--m3-error-container); border:1px solid var(--m3-error); color:var(--m3-error); padding:10px 14px; border-radius:var(--radius-sharp); font-size:0.85rem;">${err.message}</div>`;
     showToast('خطأ في الحفظ', err.message, 'error');
   } finally {
     btn.disabled = false;
@@ -2495,7 +2495,7 @@ async function loadHospitalProfileTab() {
     contentEl.style.display = 'block';
   } catch (err) {
     console.error('Failed to load hospital profile', err);
-    loadingEl.innerHTML = `<div class="card" style="border:1px solid var(--m3-error); background:rgba(239,68,68,0.08); padding:16px; text-align:center;">
+    loadingEl.innerHTML = `<div class="card" style="border:1px solid var(--m3-error); background:var(--m3-error-container); padding:16px; text-align:center;">
       <p style="color:var(--m3-error); font-weight:700;">تعذر تحميل بيانات المنشأة</p>
       <p style="font-size:0.82rem; color:var(--m3-on-surface-variant); margin-top:6px;">${err.message || 'حدث خطأ في الاتصال'}</p>
       <button type="button" class="btn btn-secondary btn-sm" style="margin-top:10px;" onclick="loadHospitalProfileTab()">إعادة المحاولة</button>
@@ -2520,43 +2520,43 @@ async function saveHospitalProfile() {
   // Client validation
   if (!payload.organizationName || payload.organizationName.length < 3) {
     statusEl.style.display = 'block';
-    statusEl.innerHTML = `<div style="background:rgba(239,68,68,0.10); border:1px solid var(--m3-error); color:var(--m3-error); padding:10px 14px; border-radius:6px; font-size:0.85rem;">اسم المنشأة بالإنجليزية مطلوب</div>`;
+    statusEl.innerHTML = `<div style="background:var(--m3-error-container); border:1px solid var(--m3-error); color:var(--m3-error); padding:10px 14px; border-radius:var(--radius-sharp); font-size:0.85rem;">اسم المنشأة بالإنجليزية مطلوب</div>`;
     return;
   }
   if (!payload.organizationNameAr || payload.organizationNameAr.length < 3) {
     statusEl.style.display = 'block';
-    statusEl.innerHTML = `<div style="background:rgba(239,68,68,0.10); border:1px solid var(--m3-error); color:var(--m3-error); padding:10px 14px; border-radius:6px; font-size:0.85rem;">اسم المنشأة بالعربية مطلوب</div>`;
+    statusEl.innerHTML = `<div style="background:var(--m3-error-container); border:1px solid var(--m3-error); color:var(--m3-error); padding:10px 14px; border-radius:var(--radius-sharp); font-size:0.85rem;">اسم المنشأة بالعربية مطلوب</div>`;
     return;
   }
   if (!/[\u0600-\u06FF]/.test(payload.organizationNameAr)) {
     statusEl.style.display = 'block';
-    statusEl.innerHTML = `<div style="background:rgba(239,68,68,0.10); border:1px solid var(--m3-error); color:var(--m3-error); padding:10px 14px; border-radius:6px; font-size:0.85rem;">اسم المنشأة بالعربية يجب أن يحتوي على حروف عربية</div>`;
+    statusEl.innerHTML = `<div style="background:var(--m3-error-container); border:1px solid var(--m3-error); color:var(--m3-error); padding:10px 14px; border-radius:var(--radius-sharp); font-size:0.85rem;">اسم المنشأة بالعربية يجب أن يحتوي على حروف عربية</div>`;
     return;
   }
   if (!payload.region) {
     statusEl.style.display = 'block';
-    statusEl.innerHTML = `<div style="background:rgba(239,68,68,0.10); border:1px solid var(--m3-error); color:var(--m3-error); padding:10px 14px; border-radius:6px; font-size:0.85rem;">المنطقة مطلوبة</div>`;
+    statusEl.innerHTML = `<div style="background:var(--m3-error-container); border:1px solid var(--m3-error); color:var(--m3-error); padding:10px 14px; border-radius:var(--radius-sharp); font-size:0.85rem;">المنطقة مطلوبة</div>`;
     return;
   }
   if (!payload.phone) {
     statusEl.style.display = 'block';
-    statusEl.innerHTML = `<div style="background:rgba(239,68,68,0.10); border:1px solid var(--m3-error); color:var(--m3-error); padding:10px 14px; border-radius:6px; font-size:0.85rem;">رقم الجوال مطلوب</div>`;
+    statusEl.innerHTML = `<div style="background:var(--m3-error-container); border:1px solid var(--m3-error); color:var(--m3-error); padding:10px 14px; border-radius:var(--radius-sharp); font-size:0.85rem;">رقم الجوال مطلوب</div>`;
     return;
   }
   const phoneClean = payload.phone.replace(/[\s\-\(\)]/g,'');
   if (!/^(?:\+9665\d{8}|9665\d{8}|05\d{8}|5\d{8})$/.test(phoneClean)) {
     statusEl.style.display = 'block';
-    statusEl.innerHTML = `<div style="background:rgba(239,68,68,0.10); border:1px solid var(--m3-error); color:var(--m3-error); padding:10px 14px; border-radius:6px; font-size:0.85rem;">رقم الجوال غير صحيح (05xxxxxxxx)</div>`;
+    statusEl.innerHTML = `<div style="background:var(--m3-error-container); border:1px solid var(--m3-error); color:var(--m3-error); padding:10px 14px; border-radius:var(--radius-sharp); font-size:0.85rem;">رقم الجوال غير صحيح (05xxxxxxxx)</div>`;
     return;
   }
   if (!payload.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)) {
     statusEl.style.display = 'block';
-    statusEl.innerHTML = `<div style="background:rgba(239,68,68,0.10); border:1px solid var(--m3-error); color:var(--m3-error); padding:10px 14px; border-radius:6px; font-size:0.85rem;">البريد الرسمي مطلوب وصيغته يجب أن تكون صحيحة</div>`;
+    statusEl.innerHTML = `<div style="background:var(--m3-error-container); border:1px solid var(--m3-error); color:var(--m3-error); padding:10px 14px; border-radius:var(--radius-sharp); font-size:0.85rem;">البريد الرسمي مطلوب وصيغته يجب أن تكون صحيحة</div>`;
     return;
   }
   if (!payload.fullName || payload.fullName.split(/\s+/).length < 2) {
     statusEl.style.display = 'block';
-    statusEl.innerHTML = `<div style="background:rgba(239,68,68,0.10); border:1px solid var(--m3-error); color:var(--m3-error); padding:10px 14px; border-radius:6px; font-size:0.85rem;">الاسم الكامل للمسؤول مطلوب</div>`;
+    statusEl.innerHTML = `<div style="background:var(--m3-error-container); border:1px solid var(--m3-error); color:var(--m3-error); padding:10px 14px; border-radius:var(--radius-sharp); font-size:0.85rem;">الاسم الكامل للمسؤول مطلوب</div>`;
     return;
   }
 
@@ -2574,7 +2574,7 @@ async function saveHospitalProfile() {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'فشل الحفظ');
     statusEl.style.display = 'block';
-    statusEl.innerHTML = `<div style="background:rgba(16,185,129,0.12); border:1px solid var(--m3-primary); color:var(--m3-on-primary-container); padding:12px 14px; border-radius:6px; font-size:0.88rem; display:flex; align-items:center; gap:8px;">
+    statusEl.innerHTML = `<div style="background:var(--m3-primary-container); border:1px solid var(--m3-primary); color:var(--m3-on-primary-container); padding:12px 14px; border-radius:var(--radius-sharp); font-size:0.88rem; display:flex; align-items:center; gap:8px;">
       ${getSvgIcon('shieldCheck','style="width:18px;height:18px; color:var(--m3-primary);"')}
       <span>${data.message || 'تم حفظ التغييرات بنجاح'}</span>
     </div>`;
@@ -2582,7 +2582,7 @@ async function saveHospitalProfile() {
     setTimeout(() => loadHospitalProfileTab(), 900);
   } catch (err) {
     statusEl.style.display = 'block';
-    statusEl.innerHTML = `<div style="background:rgba(239,68,68,0.10); border:1px solid var(--m3-error); color:var(--m3-error); padding:10px 14px; border-radius:6px; font-size:0.85rem;">${err.message}</div>`;
+    statusEl.innerHTML = `<div style="background:var(--m3-error-container); border:1px solid var(--m3-error); color:var(--m3-error); padding:10px 14px; border-radius:var(--radius-sharp); font-size:0.85rem;">${err.message}</div>`;
     showToast('خطأ في الحفظ', err.message, 'error');
   } finally {
     btn.disabled = false;
@@ -2743,7 +2743,7 @@ function initHospitalMigrationDropzone() {
     if (!resultContainer) return;
     const orgId = getHospOrgId();
     resultContainer.style.display='block';
-    resultContainer.innerHTML=`<div class="ingestion-result-box" style="display:flex; align-items:center; gap:10px;">${getSvgIcon('spinner','style="width:20px; height:20px; color:#0284c7;"')}<div><strong style="color:var(--m3-on-surface); font-size:0.9rem;">جاري ترحيل وتطبيع ملف منشأتك: <code>${fileName}</code>...</strong><p style="font-size:0.78rem; color:var(--m3-on-surface-muted);">المنشأة: <code>${orgId.substring(0,8)}</code> • فحص البنية وربط MPI...</p></div></div>`;
+    resultContainer.innerHTML=`<div class="ingestion-result-box" style="display:flex; align-items:center; gap:10px;">${getSvgIcon('spinner','style="width:20px; height:20px; color:var(--m3-secondary);"')}<div><strong style="color:var(--m3-on-surface); font-size:0.9rem;">جاري ترحيل وتطبيع ملف منشأتك: <code>${fileName}</code>...</strong><p style="font-size:0.78rem; color:var(--m3-on-surface-muted);">المنشأة: <code>${orgId.substring(0,8)}</code> • فحص البنية وربط MPI...</p></div></div>`;
     try {
       const res = await fetch('/api/ingest/file', {
         method:'POST',
@@ -2754,7 +2754,7 @@ function initHospitalMigrationDropzone() {
       if (data.success && data.result) {
         const r=data.result;
         const badge = r.format==='hl7v2'?'<span class="badge badge-warning">HL7 v2.5</span>': r.format==='fhir-bundle'?'<span class="badge badge-success">FHIR R4</span>':'<span class="badge badge-info">CSV</span>';
-        resultContainer.innerHTML=`<div class="ingestion-result-box success"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;"><div style="display:flex; align-items:center; gap:8px;">${getSvgIcon('shieldCheck','style="width:20px; height:20px; color:#0284c7;"')}<strong style="color:var(--m3-on-surface); font-size:0.96rem;">تم ترحيل وتطبيع ملف منشأتك بنجاح: <code>${r.fileName}</code></strong></div>${badge}</div><p style="font-size:0.82rem; color:var(--m3-on-surface-variant); margin-bottom:10px;">تم استيعاب <strong>${r.totalIngested}</strong> سجل باسم منشأتك وربطها في السجل الوطني مع حفظ المصدر.</p><div style="display:flex; gap:8px;"><span class="badge badge-success">جودة 100/100</span><button type="button" class="btn btn-secondary btn-sm" onclick="loadHospitalMigrationTab()">تحديث الإحصائيات</button></div></div>`;
+        resultContainer.innerHTML=`<div class="ingestion-result-box success"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;"><div style="display:flex; align-items:center; gap:8px;">${getSvgIcon('shieldCheck','style="width:20px; height:20px; color:var(--m3-secondary);"')}<strong style="color:var(--m3-on-surface); font-size:0.96rem;">تم ترحيل وتطبيع ملف منشأتك بنجاح: <code>${r.fileName}</code></strong></div>${badge}</div><p style="font-size:0.82rem; color:var(--m3-on-surface-variant); margin-bottom:10px;">تم استيعاب <strong>${r.totalIngested}</strong> سجل باسم منشأتك وربطها في السجل الوطني مع حفظ المصدر.</p><div style="display:flex; gap:8px;"><span class="badge badge-success">جودة 100/100</span><button type="button" class="btn btn-secondary btn-sm" onclick="loadHospitalMigrationTab()">تحديث الإحصائيات</button></div></div>`;
         showToast('تم الترحيل بنجاح', `تم ترحيل ${r.totalIngested} سجل لمنشأتك`, 'success');
         loadHospitalScopedStats(); loadHospitalImports(); loadHospitalPatientsList();
       } else {
@@ -2842,8 +2842,8 @@ function renderHospGlobalTable(filter) {
     const nidObj = p.identifiers?.find(i=>i.type==='NID'||i.type==='IQAMA');
     const nid = nidObj?.value || p._nid || '—';
     const isMine = _hospMyIds.has(p.internalId) || _hospMyIds.has(p.id);
-    const badge = isMine ? '<span class="badge badge-success" style="font-size:0.68rem;">مرتبط بمنشأتي</span>' : '<span class="badge badge-info" style="font-size:0.68rem; background:#e0e7ff; color:#4338ca;">وطني فقط</span>';
-    return `<tr style="${isMine?'background:rgba(99,102,241,0.06);':''}">
+    const badge = isMine ? '<span class="badge badge-success" style="font-size:0.68rem;">مرتبط بمنشأتي</span>' : '<span class="badge badge-info" style="font-size:0.68rem;">وطني فقط</span>';
+    return `<tr style="${isMine?'background:var(--m3-tertiary-container);':''}">
       <td><strong>${name}</strong><br><small style="color:var(--m3-on-surface-muted);">${p.internalId.substring(0,8)}…</small></td>
       <td><code>${nid}</code></td>
       <td>${p.gender==='male'?'ذكر':p.gender==='female'?'أنثى':'—'}<br><small>${p.birthDate? new Date(p.birthDate).toLocaleDateString('ar-SA'): '—'}</small></td>
@@ -2873,32 +2873,32 @@ async function showHospGlobalDetail(patientId) {
     const nid = p.identifiers?.find(i=>i.type==='NID'||i.type==='IQAMA')?.value || '—';
     const isMine = _hospMyIds.has(patientId) || _hospMyIds.has(p.internalId);
     detailEl.innerHTML = `
-      <div class="card mb-6" style="border:1px solid #6366f1;">
-        <div class="card-header" style="background:#eef2ff; border-bottom:1px solid #c7d2fe;">
-          <div class="card-header-title" style="color:#4338ca;">
+      <div class="card mb-6" style="border:1px solid var(--m3-tertiary);">
+        <div class="card-header" style="background:var(--m3-tertiary-container); border-bottom:1px solid var(--m3-outline-variant);">
+          <div class="card-header-title" style="color:var(--m3-on-tertiary-container);">
             <svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
             <h3>السجل الموحد — ${name} <small style="font-weight:400; color:var(--m3-on-surface-variant);">(${nid})</small></h3>
           </div>
           <div style="display:flex; gap:6px; align-items:center;">
-            ${isMine?'<span class="badge badge-success">من مرضى منشأتك</span>':'<span class="badge badge-info" style="background:#6366f1; color:#fff;">سجل وطني — قراءة فقط</span>'}
+            ${isMine?'<span class="badge badge-success">من مرضى منشأتك</span>':'<span class="badge badge-info" style="background:var(--m3-tertiary); color:var(--m3-on-tertiary);">سجل وطني — قراءة فقط</span>'}
             <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('hosp-global-detail').style.display='none'">إغلاق</button>
           </div>
         </div>
         <div class="card-body">
           <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px,1fr)); gap:10px; margin-bottom:14px;">
-            <div style="background:var(--m3-surface-container); padding:10px 12px; border-radius:6px; border:1px solid var(--m3-outline-variant);"><span style="font-size:0.72rem; color:var(--m3-on-surface-muted);">الزيارات</span><strong style="display:block; font-size:1.1rem;">${enc.length}</strong></div>
-            <div style="background:var(--m3-surface-container); padding:10px 12px; border-radius:6px; border:1px solid var(--m3-outline-variant);"><span style="font-size:0.72rem; color:var(--m3-on-surface-muted);">التشخيصات</span><strong style="display:block; font-size:1.1rem;">${cond.length}</strong></div>
-            <div style="background:var(--m3-surface-container); padding:10px 12px; border-radius:6px; border:1px solid var(--m3-outline-variant);"><span style="font-size:0.72rem; color:var(--m3-on-surface-muted);">التحاليل</span><strong style="display:block; font-size:1.1rem;">${obs.length}</strong></div>
-            <div style="background:var(--m3-surface-container); padding:10px 12px; border-radius:6px; border:1px solid var(--m3-outline-variant);"><span style="font-size:0.72rem; color:var(--m3-on-surface-muted);">الأدوية</span><strong style="display:block; font-size:1.1rem;">${meds.length}</strong></div>
+            <div style="background:var(--m3-surface-container); padding:10px 12px; border-radius:var(--radius-sharp); border:1px solid var(--m3-outline-variant);"><span style="font-size:0.72rem; color:var(--m3-on-surface-muted);">الزيارات</span><strong style="display:block; font-size:1.1rem;">${enc.length}</strong></div>
+            <div style="background:var(--m3-surface-container); padding:10px 12px; border-radius:var(--radius-sharp); border:1px solid var(--m3-outline-variant);"><span style="font-size:0.72rem; color:var(--m3-on-surface-muted);">التشخيصات</span><strong style="display:block; font-size:1.1rem;">${cond.length}</strong></div>
+            <div style="background:var(--m3-surface-container); padding:10px 12px; border-radius:var(--radius-sharp); border:1px solid var(--m3-outline-variant);"><span style="font-size:0.72rem; color:var(--m3-on-surface-muted);">التحاليل</span><strong style="display:block; font-size:1.1rem;">${obs.length}</strong></div>
+            <div style="background:var(--m3-surface-container); padding:10px 12px; border-radius:var(--radius-sharp); border:1px solid var(--m3-outline-variant);"><span style="font-size:0.72rem; color:var(--m3-on-surface-muted);">الأدوية</span><strong style="display:block; font-size:1.1rem;">${meds.length}</strong></div>
           </div>
-          <p style="font-size:0.78rem; color:var(--m3-on-surface-variant); background:#f5f3ff; padding:8px 10px; border-radius:6px; border:1px solid #ddd6fe;">هذا العرض <strong>قراءة فقط</strong> ومأخوذ من نفس قاعدة البيانات المتكاملة — لا يمكن لمستشفاك تعديله. مصدر كل سجل محفوظ في <code>Provenance</code> ومرتبط بـ <code>${p.internalId}</code>.</p>
+          <p style="font-size:0.78rem; color:var(--m3-on-surface-variant); background:var(--m3-surface-container-low); padding:8px 10px; border-radius:var(--radius-sharp); border:1px solid var(--m3-outline-variant);">هذا العرض <strong>قراءة فقط</strong> ومأخوذ من نفس قاعدة البيانات المتكاملة — لا يمكن لمستشفاك تعديله. مصدر كل سجل محفوظ في <code>Provenance</code> ومرتبط بـ <code>${p.internalId}</code>.</p>
           ${cond.length?`<div style="margin-top:12px;"><h4 style="font-size:0.88rem; margin-bottom:6px;">التشخيصات (وطني)</h4><table class="data-table"><thead><tr><th>التشخيص</th><th>SNOMED</th><th>ICD</th><th>المصدر</th></tr></thead><tbody>${cond.slice(0,5).map(c=>`<tr><td>${c.code?.sourceDisplay||c.code?.sourceCode}</td><td><code>${c.code?.snomedCode||'—'}</code></td><td>${c.code?.icd10amCode||'—'}</td><td><span class="badge badge-info">${c.provenance?.sourceSystemId||'—'}</span></td></tr>`).join('')}</tbody></table></div>`:''}
-          ${enc.length?`<div style="margin-top:12px;"><h4 style="font-size:0.88rem; margin-bottom:6px;">الزيارات</h4><div style="display:flex; flex-direction:column; gap:6px;">${enc.slice(0,5).map(e=>`<div style="background:var(--m3-surface-container); padding:8px 10px; border-radius:6px; border:1px solid var(--m3-outline-variant); display:flex; justify-content:space-between; align-items:center;"><span><strong>${e.class||'زيارة'}</strong> — <code>${new Date(e.period?.start||e.createdAt).toLocaleDateString('ar-SA')}</code></span><span class="badge badge-info">${e.provenance?.sourceSystemId||'—'}</span></div>`).join('')}</div></div>`:''}
+          ${enc.length?`<div style="margin-top:12px;"><h4 style="font-size:0.88rem; margin-bottom:6px;">الزيارات</h4><div style="display:flex; flex-direction:column; gap:6px;">${enc.slice(0,5).map(e=>`<div style="background:var(--m3-surface-container); padding:8px 10px; border-radius:var(--radius-sharp); border:1px solid var(--m3-outline-variant); display:flex; justify-content:space-between; align-items:center;"><span><strong>${e.class||'زيارة'}</strong> — <code>${new Date(e.period?.start||e.createdAt).toLocaleDateString('ar-SA')}</code></span><span class="badge badge-info">${e.provenance?.sourceSystemId||'—'}</span></div>`).join('')}</div></div>`:''}
         </div>
       </div>
     `;
   } catch (err) {
-    detailEl.innerHTML = `<div class="card" style="border:1px solid var(--m3-error); background:rgba(239,68,68,0.06); padding:16px; text-align:center;"><p style="color:var(--m3-error);">تعذر تحميل السجل: ${err.message}</p></div>`;
+    detailEl.innerHTML = `<div class="card" style="border:1px solid var(--m3-error); background:var(--m3-error-container); padding:16px; text-align:center;"><p style="color:var(--m3-error);">تعذر تحميل السجل: ${err.message}</p></div>`;
   }
 }
 
@@ -2938,14 +2938,14 @@ async function loadLongitudinalRecord(patientId) {
       <!-- Official Printable Document Header (MOH / Saudi Health Council) -->
       <div class="print-only-header">
         <div style="text-align:right;">
-          <h3 style="margin:0; font-size:1.1rem; color:#1b5e20;">المملكة العربية السعودية • وزارة الصحة</h3>
-          <h4 style="margin:2px 0; font-size:0.9rem; color:#222;">المنصة الوطنية للربط والتشغيل الصحي البيني (Saudi Interoperability Engine)</h4>
-          <span style="font-size:0.75rem; color:#555;">التقرير السريري التتابعي الموحد المعتمد (Certified Longitudinal Health Summary)</span>
+          <h3 style="margin:0; font-size:1.1rem; color:var(--m3-primary);">المملكة العربية السعودية • وزارة الصحة</h3>
+          <h4 style="margin:2px 0; font-size:0.9rem; color:var(--m3-on-surface);">المنصة الوطنية للربط والتشغيل الصحي البيني (Saudi Interoperability Engine)</h4>
+          <span style="font-size:0.75rem; color:var(--m3-on-surface-variant);">التقرير السريري التتابعي الموحد المعتمد (Certified Longitudinal Health Summary)</span>
         </div>
-        <div style="text-align:left; font-size:0.75rem; color:#333;">
+        <div style="text-align:left; font-size:0.75rem; color:var(--m3-on-surface);">
           <div><strong>تاريخ الإصدار:</strong> ${new Date().toLocaleDateString('ar-SA')}</div>
           <div><strong>${idLabel}:</strong> <code>${nid}</code></div>
-          <div><strong>التوثيق الرقمي:</strong> <span style="color:#1b5e20; font-weight:700;">سجل معتمد (NCA Verified)</span></div>
+          <div><strong>التوثيق الرقمي:</strong> <span style="color:var(--m3-primary); font-weight:700;">سجل معتمد (NCA Verified)</span></div>
         </div>
       </div>
 
@@ -3320,11 +3320,11 @@ function openMedicalReportPreview(patientId) {
           <!-- Document Header -->
           <div class="pdf-doc-header">
             <div class="pdf-header-emblem">
-              <svg class="pdf-emblem-svg" viewBox="0 0 100 100" fill="none" stroke="#1b5e20" stroke-width="3">
-                <circle cx="50" cy="50" r="44" stroke="#1b5e20" stroke-width="2"/>
-                <circle cx="50" cy="50" r="40" stroke="#b8860b" stroke-width="1.2" stroke-dasharray="3 2"/>
-                <path d="M50 18 L50 82 M28 36 L72 64 M72 36 L28 64" stroke="#1b5e20" stroke-width="2.5"/>
-                <circle cx="50" cy="50" r="9" fill="#1b5e20"/>
+              <svg class="pdf-emblem-svg" viewBox="0 0 100 100" fill="none" stroke="var(--m3-primary)" stroke-width="3">
+                <circle cx="50" cy="50" r="44" stroke="var(--m3-primary)" stroke-width="2"/>
+                <circle cx="50" cy="50" r="40" stroke="var(--m3-warning)" stroke-width="1.2" stroke-dasharray="3 2"/>
+                <path d="M50 18 L50 82 M28 36 L72 64 M72 36 L28 64" stroke="var(--m3-primary)" stroke-width="2.5"/>
+                <circle cx="50" cy="50" r="9" fill="var(--m3-primary)"/>
               </svg>
               <div class="pdf-header-titles">
                 <h2>المملكة العربية السعودية • وزارة الصحة</h2>
@@ -3335,7 +3335,7 @@ function openMedicalReportPreview(patientId) {
             <div class="pdf-header-meta">
               <div><strong>الرقم المرجعي:</strong> <code>${docSerial}</code></div>
               <div><strong>تاريخ الإصدار:</strong> ${new Date().toLocaleDateString('ar-SA')}</div>
-              <div><strong>حالة الوثيقة:</strong> <span style="color:#1b5e20; font-weight:700;">موثقة ومعتمدة رقمياً</span></div>
+              <div><strong>حالة الوثيقة:</strong> <span style="color:var(--m3-primary); font-weight:700;">موثقة ومعتمدة رقمياً</span></div>
               <div><strong>التصنيف الأمني:</strong> طبي سري (PDPL Protected)</div>
             </div>
           </div>
@@ -3387,22 +3387,22 @@ function openMedicalReportPreview(patientId) {
             <div class="pdf-kpi-box ${isDiabetic ? 'warning' : ''}">
               <div class="kpi-title">السكر التراكمي (HbA1c)</div>
               <div class="kpi-num">${hba1cVal}%</div>
-              <small style="font-size:0.68rem; color:#666;">LOINC 4548-4 (الهدف: &lt; 7.0%)</small>
+              <small style="font-size:0.68rem; color:var(--m3-on-surface-variant);">LOINC 4548-4 (الهدف: &lt; 7.0%)</small>
             </div>
             <div class="pdf-kpi-box">
               <div class="kpi-title">سكر الدم الصائم (Glucose)</div>
               <div class="kpi-num">${isDiabetic ? '142' : '94'} mg/dL</div>
-              <small style="font-size:0.68rem; color:#666;">LOINC 1558-6 (المرجع: 70 - 99)</small>
+              <small style="font-size:0.68rem; color:var(--m3-on-surface-variant);">LOINC 1558-6 (المرجع: 70 - 99)</small>
             </div>
             <div class="pdf-kpi-box">
               <div class="kpi-title">الأدوية الفعالة المصروفة</div>
               <div class="kpi-num">${medications.length} أدوية</div>
-              <small style="font-size:0.68rem; color:#666;">مسجلة بترميز هيئة الغذاء والدواء SFDA</small>
+              <small style="font-size:0.68rem; color:var(--m3-on-surface-variant);">مسجلة بترميز هيئة الغذاء والدواء SFDA</small>
             </div>
             <div class="pdf-kpi-box">
               <div class="kpi-title">سجل الزيارات والمنشآت</div>
               <div class="kpi-num">${encounters.length} زيارات</div>
-              <small style="font-size:0.68rem; color:#666;">عبر ${new Set(encounters.map(e => e.provenance?.sourceSystemId)).size || 1} منشآت صحية</small>
+              <small style="font-size:0.68rem; color:var(--m3-on-surface-variant);">عبر ${new Set(encounters.map(e => e.provenance?.sourceSystemId)).size || 1} منشآت صحية</small>
             </div>
           </div>
 
@@ -3410,7 +3410,7 @@ function openMedicalReportPreview(patientId) {
           <div class="pdf-section">
             <div class="pdf-section-header">
               <h4>1. قائمة الأدوية والوصفات الطبية المعتمدة (Active ePrescriptions - SFDA SDC)</h4>
-              <span style="font-size:0.72rem; color:#666;">مطابقة لدليل هيئة الغذاء والدواء (SFDA)</span>
+              <span style="font-size:0.72rem; color:var(--m3-on-surface-variant);">مطابقة لدليل هيئة الغذاء والدواء (SFDA)</span>
             </div>
             <table class="pdf-table">
               <thead>
@@ -3425,7 +3425,7 @@ function openMedicalReportPreview(patientId) {
               <tbody>
                 ${medications.map(m => `
                   <tr>
-                    <td><strong>${m.medication?.code?.sourceCode || 'دواء معتمد'}</strong><br><small style="color:#666;">${m.medication?.code?.sfdaDisplay || ''}</small></td>
+                    <td><strong>${m.medication?.code?.sourceCode || 'دواء معتمد'}</strong><br><small style="color:var(--m3-on-surface-variant);">${m.medication?.code?.sfdaDisplay || ''}</small></td>
                     <td><code>SFDA ${m.medication?.code?.sfdaCode || '0628500100101'}</code></td>
                     <td>${m.dosageInstruction?.[0]?.textAr || m.dosageInstruction?.[0]?.text || 'حبة واحدة يومياً عن طريق الفم'}</td>
                     <td><strong>${m.dispenseRequest?.quantity?.value || 60} ${m.dispenseRequest?.quantity?.unit || 'قرص'}</strong></td>
@@ -3440,7 +3440,7 @@ function openMedicalReportPreview(patientId) {
           <div class="pdf-section">
             <div class="pdf-section-header">
               <h4>2. التشخيصات السريرية المعيارية الموحدة (Certified Diagnoses & Conditions)</h4>
-              <span style="font-size:0.72rem; color:#666;">ترميز SNOMED CT السريري و ICD-10-AM الإحصائي</span>
+              <span style="font-size:0.72rem; color:var(--m3-on-surface-variant);">ترميز SNOMED CT السريري و ICD-10-AM الإحصائي</span>
             </div>
             <table class="pdf-table">
               <thead>
@@ -3455,10 +3455,10 @@ function openMedicalReportPreview(patientId) {
               <tbody>
                 ${conditions.map(c => `
                   <tr>
-                    <td><strong>${c.code?.sourceCode || 'تشخيص سريري'}</strong><br><small style="color:#666;">${c.code?.sourceDisplay || ''}</small></td>
+                    <td><strong>${c.code?.sourceCode || 'تشخيص سريري'}</strong><br><small style="color:var(--m3-on-surface-variant);">${c.code?.sourceDisplay || ''}</small></td>
                     <td><code>SNOMED ${c.code?.snomedCode || 'N/A'}</code><br><small>${c.code?.snomedDisplay || ''}</small></td>
-                    <td><span style="background:#f3e5f5; padding:2px 6px; border-radius:3px; font-weight:700;">${c.code?.icd10amCode || 'N/A'}</span></td>
-                    <td><span style="background:#fff3e0; padding:2px 6px; border-radius:3px; font-weight:700;">${c.code?.sbsCode || 'N/A'}</span></td>
+                    <td><span style="background:var(--m3-tertiary-container); padding:2px 6px; border-radius:var(--radius-sharp); font-weight:700;">${c.code?.icd10amCode || 'N/A'}</span></td>
+                    <td><span style="background:var(--m3-warning-container); padding:2px 6px; border-radius:var(--radius-sharp); font-weight:700;">${c.code?.sbsCode || 'N/A'}</span></td>
                     <td>${c.provenance?.sourceSystemId || 'المستشفى'}<br><small><code>${new Date(c.recordedDate).toLocaleDateString('ar-SA')}</code></small></td>
                   </tr>
                 `).join('') || '<tr><td colspan="5" style="text-align:center; padding:10px;">لا توجد تشخيصات مسجلة.</td></tr>'}
@@ -3470,7 +3470,7 @@ function openMedicalReportPreview(patientId) {
           <div class="pdf-section">
             <div class="pdf-section-header">
               <h4>3. النتائج المخبرية القياسية (Standardized Laboratory Results - LOINC)</h4>
-              <span style="font-size:0.72rem; color:#666;">ترميز LOINC العالمي للتحاليل المخبرية</span>
+              <span style="font-size:0.72rem; color:var(--m3-on-surface-variant);">ترميز LOINC العالمي للتحاليل المخبرية</span>
             </div>
             <table class="pdf-table">
               <thead>
@@ -3487,7 +3487,7 @@ function openMedicalReportPreview(patientId) {
                   <tr>
                     <td><strong>${o.code?.sourceCode || 'تحليل مخبري'}</strong></td>
                     <td><code>LOINC ${o.code?.loincCode || 'N/A'}</code></td>
-                    <td><strong style="color:#1b5e20; font-size:0.9rem;">${o.valueQuantity?.value} ${o.valueQuantity?.unit || ''}</strong></td>
+                    <td><strong style="color:var(--m3-primary); font-size:0.9rem;">${o.valueQuantity?.value} ${o.valueQuantity?.unit || ''}</strong></td>
                     <td>${o.referenceRange?.text || '4.0 - 5.6 %'}</td>
                     <td>${o.provenance?.sourceSystemId || 'المختبر'}<br><small><code>${new Date(o.effectiveDateTime).toLocaleDateString('ar-SA')}</code></small></td>
                   </tr>
@@ -3500,7 +3500,7 @@ function openMedicalReportPreview(patientId) {
           <div class="pdf-section">
             <div class="pdf-section-header">
               <h4>4. سجل التطعيمات واللقاحات الوطنية (National Immunization Registry - MOH)</h4>
-              <span style="font-size:0.72rem; color:#666;">ترميز وزارة الصحة (MOH) ومعيار CVX العالمي</span>
+              <span style="font-size:0.72rem; color:var(--m3-on-surface-variant);">ترميز وزارة الصحة (MOH) ومعيار CVX العالمي</span>
             </div>
             <table class="pdf-table">
               <thead>
@@ -3517,7 +3517,7 @@ function openMedicalReportPreview(patientId) {
                   <tr>
                     <td><strong>${i.vaccineCode?.sourceCode || 'لقاح معتمد'}</strong></td>
                     <td><code>${i.vaccineCode?.sourceCode?.includes('SA-VAX') ? i.vaccineCode?.sourceCode : 'SA-VAX-FLU-01'}</code></td>
-                    <td><span style="background:#e8eaf6; padding:2px 6px; border-radius:3px; font-weight:700;">CVX ${i.vaccineCode?.cvxCode || '158'}</span></td>
+                    <td><span style="background:var(--m3-tertiary-container); padding:2px 6px; border-radius:var(--radius-sharp); font-weight:700;">CVX ${i.vaccineCode?.cvxCode || '158'}</span></td>
                     <td><code>${i.lotNumber || 'LOT-2026-X'}</code></td>
                     <td>${i.provenance?.sourceSystemId || 'المركز'}<br><small><code>${new Date(i.occurrenceDateTime).toLocaleDateString('ar-SA')}</code></small></td>
                   </tr>
@@ -3530,7 +3530,7 @@ function openMedicalReportPreview(patientId) {
           <div class="pdf-section">
             <div class="pdf-section-header">
               <h4>5. سجل الحساسيات والتعارضات السريرية (Allergies & Adverse Reactions)</h4>
-              <span style="font-size:0.72rem; color:#666;">ترميز SNOMED CT وتصنيف الخطورة الإكلينيكية</span>
+              <span style="font-size:0.72rem; color:var(--m3-on-surface-variant);">ترميز SNOMED CT وتصنيف الخطورة الإكلينيكية</span>
             </div>
             <table class="pdf-table">
               <thead>
@@ -3545,10 +3545,10 @@ function openMedicalReportPreview(patientId) {
               <tbody>
                 ${allergies.map(a => `
                   <tr>
-                    <td><strong>${a.substanceTextAr || a.substanceText}</strong><br><small style="color:#666;">${a.substanceText}</small></td>
+                    <td><strong>${a.substanceTextAr || a.substanceText}</strong><br><small style="color:var(--m3-on-surface-variant);">${a.substanceText}</small></td>
                     <td><code>SNOMED ${a.substanceCode?.snomedCode || '764146007'}</code></td>
-                    <td><span style="background:${a.criticality === 'high' ? '#ffebee' : '#e8f5e9'}; color:${a.criticality === 'high' ? '#c62828' : '#2e7d32'}; padding:2px 6px; border-radius:3px; font-weight:700;">${a.criticality === 'high' ? 'عالية الخطورة' : 'منخفضة'}</span></td>
-                    <td><strong style="color:#c62828;">${a.reactions?.[0]?.manifestationTextAr || a.reactions?.[0]?.manifestationText || 'صدمة تحسسية'}</strong></td>
+                    <td><span style="background:${a.criticality === 'high' ? 'var(--m3-error-container)' : 'var(--m3-primary-container)'}; color:${a.criticality === 'high' ? 'var(--m3-error)' : 'var(--m3-primary)'}; padding:2px 6px; border-radius:var(--radius-sharp); font-weight:700;">${a.criticality === 'high' ? 'عالية الخطورة' : 'منخفضة'}</span></td>
+                    <td><strong style="color:var(--m3-error);">${a.reactions?.[0]?.manifestationTextAr || a.reactions?.[0]?.manifestationText || 'صدمة تحسسية'}</strong></td>
                     <td>${a.provenance?.sourceSystemId || 'المستشفى'}<br><small><code>${new Date(a.recordedDate).toLocaleDateString('ar-SA')}</code></small></td>
                   </tr>
                 `).join('') || '<tr><td colspan="5" style="text-align:center; padding:10px;">لا توجد حساسيات مسجلة.</td></tr>'}
@@ -3560,7 +3560,7 @@ function openMedicalReportPreview(patientId) {
           <div class="pdf-section">
             <div class="pdf-section-header">
               <h4>6. التقارير التشخيصية والمخبرية المجمعة (Standard Diagnostic Reports - LOINC)</h4>
-              <span style="font-size:0.72rem; color:#666;">تقارير لوحات الفحص الشاملة</span>
+              <span style="font-size:0.72rem; color:var(--m3-on-surface-variant);">تقارير لوحات الفحص الشاملة</span>
             </div>
             <table class="pdf-table">
               <thead>
@@ -3577,7 +3577,7 @@ function openMedicalReportPreview(patientId) {
                   <tr>
                     <td><strong>${d.code?.loincDisplay || 'Comprehensive Metabolic 2000 Panel'}</strong></td>
                     <td><code>LOINC ${d.code?.loincCode || '24323-8'}</code></td>
-                    <td><span style="background:#e8f5e9; color:#2e7d32; padding:2px 6px; border-radius:3px; font-weight:700;">${d.status}</span></td>
+                    <td><span style="background:var(--m3-primary-container); color:var(--m3-primary); padding:2px 6px; border-radius:var(--radius-sharp); font-weight:700;">${d.status}</span></td>
                     <td style="font-size:0.75rem;">${d.conclusionAr || d.conclusion || 'نتائج ضمن المعدل المطلوب'}</td>
                     <td>${d.provenance?.sourceSystemId || 'المختبر'}<br><small><code>${new Date(d.issued).toLocaleDateString('ar-SA')}</code></small></td>
                   </tr>
@@ -3590,7 +3590,7 @@ function openMedicalReportPreview(patientId) {
           <div class="pdf-section">
             <div class="pdf-section-header">
               <h4>7. السجل الزمني للزيارات والتنويم عبر المستشفيات (Encounters Timeline)</h4>
-              <span style="font-size:0.72rem; color:#666;">سجل زيارات موحد متعدد المنشآت</span>
+              <span style="font-size:0.72rem; color:var(--m3-on-surface-variant);">سجل زيارات موحد متعدد المنشآت</span>
             </div>
 
             <table class="pdf-table">
@@ -3621,7 +3621,7 @@ function openMedicalReportPreview(patientId) {
           <div class="pdf-doc-footer">
             <div class="pdf-auth-seal">
               <div class="pdf-qr-box">
-                <svg viewBox="0 0 24 24" width="50" height="50" fill="#1b5e20">
+                <svg viewBox="0 0 24 24" width="50" height="50" fill="var(--m3-primary)">
                   <path d="M2 2h8v8H2zM4 4v4h4V4zM14 2h8v8h-8zM16 4v4h4V4zM2 14h8v8H2zM4 16v4h4v-4zM14 14h2v2h-2zM18 14h4v2h-4zM14 18h4v4h-4zM20 18h2v4h-2z"/>
                 </svg>
               </div>
@@ -3633,9 +3633,9 @@ function openMedicalReportPreview(patientId) {
             </div>
 
             <div style="text-align:left; line-height:1.5;">
-              <div style="font-weight:700; color:#1b5e20;">ختم المركز الوطني للمعلومات الصحية (NHIC)</div>
-              <div style="font-size:0.7rem; color:#666;">المملكة العربية السعودية • تم التوليد سحابياً عبر خط الأنابيب الوطني الموحد</div>
-              <div style="font-size:0.68rem; color:#888;">وثيقة رسمية خاضعة لأحكام نظام حماية البيانات الشخصية ولائحة التشغيل البيني</div>
+              <div style="font-weight:700; color:var(--m3-primary);">ختم المركز الوطني للمعلومات الصحية (NHIC)</div>
+              <div style="font-size:0.7rem; color:var(--m3-on-surface-variant);">المملكة العربية السعودية • تم التوليد سحابياً عبر خط الأنابيب الوطني الموحد</div>
+              <div style="font-size:0.68rem; color:var(--m3-on-surface-muted);">وثيقة رسمية خاضعة لأحكام نظام حماية البيانات الشخصية ولائحة التشغيل البيني</div>
             </div>
           </div>
         </div>
@@ -3815,10 +3815,10 @@ async function loadSecurityAuditChain() {
     if (statusEl) {
       if (verification.isValid) {
         statusEl.textContent = '100% موثوقة ونزيهة';
-        statusEl.style.color = '#10B981';
+        statusEl.style.color = 'var(--m3-primary)';
       } else {
         statusEl.textContent = `انكسار في السلسلة عند كتلة #${verification.brokenAtIndex}`;
-        statusEl.style.color = '#EF4444';
+        statusEl.style.color = 'var(--m3-error)';
       }
     }
 
@@ -3831,7 +3831,7 @@ async function loadSecurityAuditChain() {
           <td>${b.entityType} <code>${b.entityId?.substring(0, 10)}...</code></td>
           <td><code>${new Date(b.timestamp).toLocaleTimeString('ar-SA')}</code></td>
           <td title="${b.previousHash}"><code>${b.previousHash.substring(0, 14)}...</code></td>
-          <td title="${b.currentHash}"><strong style="color:#6366F1;">${b.currentHash.substring(0, 14)}...</strong></td>
+          <td title="${b.currentHash}"><strong style="color:var(--m3-tertiary);">${b.currentHash.substring(0, 14)}...</strong></td>
         </tr>
       `).join('') || '<tr><td colspan="7" class="text-center py-4">لا توجد كتل تدقيق.</td></tr>';
     }
@@ -3867,7 +3867,7 @@ async function triggerBulkExport(anonymize) {
 
     if (summaryEl) {
       summaryEl.innerHTML = `
-        <div style="color:#10B981; font-weight:bold; margin-bottom:8px;">✅ تم تجهيز الحزم بنجاح (Bulk Export Ready)</div>
+        <div style="color:var(--m3-primary); font-weight:bold; margin-bottom:8px;">✅ تم تجهيز الحزم بنجاح (Bulk Export Ready)</div>
         <div>• نوع التصدير: <strong>${data.isAnonymized ? 'مجهّل للأبحاث (PDPL De-identified)' : 'قياسي كامل (Standard Full Export)'}</strong></div>
         <div>• إجمالي الموارد المصدرة: <strong>${data.totalResourcesExported} مورد</strong></div>
         <div>• توقيت المعاملة: <code>${data.transactionTime}</code></div>
