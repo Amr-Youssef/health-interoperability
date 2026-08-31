@@ -7,7 +7,25 @@ import { v4 as uuidv4 } from 'uuid';
 
 const router = Router();
 const prisma = new PrismaClient();
-const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-national-health-key-2026';
+function getJwtSecret(): string {
+  const s = process.env.JWT_SECRET;
+  if (s && s.length >= 32) return s;
+  if (process.env.NODE_ENV === 'production') throw new Error('JWT_SECRET missing or too weak (min 32 chars)');
+  console.warn('[SECURITY] JWT_SECRET not set or weak - using dev fallback. Set JWT_SECRET in .env for production');
+  return s && s.length >= 8 ? s : 'dev-only-super-secret-national-health-key-2026-not-for-prod';
+}
+const JWT_SECRET = getJwtSecret();
+
+function setAuthCookie(res: Response, token: string) {
+  const isProd = process.env.NODE_ENV === 'production';
+  res.cookie('shiep_token', token, {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: 'strict',
+    maxAge: 8 * 60 * 60 * 1000,
+    path: '/'
+  });
+}
 
 // ---------------- Validation helpers for trusted patient data ----------------
 function isValidSaudiNationalId(id: string): boolean {
@@ -413,6 +431,7 @@ router.post('/register', async (req: Request, res: Response) => {
         JWT_SECRET,
         { expiresIn: '8h' }
       );
+      setAuthCookie(res, tokenHosp);
       return res.json({
         token: tokenHosp,
         user: {
@@ -628,7 +647,7 @@ router.post('/register', async (req: Request, res: Response) => {
         JWT_SECRET,
         { expiresIn: '8h' }
       );
-
+      setAuthCookie(res, token);
       return res.json({
         token,
         user: {
@@ -691,7 +710,7 @@ router.post('/login', async (req: Request, res: Response) => {
       JWT_SECRET,
       { expiresIn: '8h' }
     );
-
+    setAuthCookie(res, token);
     res.json({
       token,
       user: {
@@ -708,6 +727,11 @@ router.post('/login', async (req: Request, res: Response) => {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Internal server error during login' });
   }
+});
+
+router.post('/logout', (req: Request, res: Response) => {
+  res.clearCookie('shiep_token', { path: '/' });
+  res.json({ success: true });
 });
 
 router.get('/me', verifyToken, (req: Request, res: Response) => {

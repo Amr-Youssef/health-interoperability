@@ -1,5 +1,8 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import cookieParser from 'cookie-parser';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import jwt from 'jsonwebtoken';
@@ -21,13 +24,27 @@ import { patientReportedHealthRoutes } from './routes/patient-reported-health-ro
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-national-health-key-2026';
+function getJwtSecret(): string {
+  const s = process.env.JWT_SECRET;
+  if (s && s.length >= 32) return s;
+  if (process.env.NODE_ENV === 'production') throw new Error('JWT_SECRET missing or too weak (min 32 chars) - configure .env');
+  console.warn('[SECURITY] JWT_SECRET not set or weak - using dev fallback. Set JWT_SECRET in .env for production');
+  return s && s.length >= 8 ? s : 'dev-only-super-secret-national-health-key-2026-not-for-prod';
+}
+const JWT_SECRET = getJwtSecret();
 const prismaInstance = new PrismaClient();
 
+function extractTokenFromReq(req: Request): string | null {
+  const h = req.headers.authorization;
+  if (h && h.startsWith('Bearer ')) return h.split(' ')[1] || null;
+  const c = (req as any).cookies?.shiep_token;
+  if (c) return c;
+  return null;
+}
+
 async function extractAuthUser(req: Request) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
-  const token = authHeader.split(' ')[1];
+  const token = extractTokenFromReq(req);
+  if (!token) return null;
   try {
     const decoded: any = jwt.verify(token, JWT_SECRET);
     const user = await prismaInstance.user.findUnique({
@@ -59,8 +76,47 @@ async function resolvePatientInternalId(user: any, canonicalStore: any): Promise
 
 export function createPlatformApp() {
   const app = express();
+  app.use(cookieParser());
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "https://fonts.googleapis.com", "'unsafe-inline'"],
+        fontSrc: ["https://fonts.gstatic.com"],
+        connectSrc: ["'self'"],
+        imgSrc: ["'self'", "data:"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+        frameAncestors: ["'none'"]
+      }
+    },
+    hsts: { maxAge: 31536000, includeSubDomains: true },
+    noSniff: true,
+    frameguard: { action: 'deny' },
+    xssFilter: true
+  }));
+  app.use(cors({
+    origin: process.env.ALLOWED_ORIGIN?.split(',') || true,
+    credentials: true
+  }));
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+  const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'محاولات كثيرة - حاول بعد 15 دقيقة' }
+  });
+  const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'محاولات دخول كثيرة - حاول بعد 15 دقيقة' }
+  });
 
   // Initialize Core Services
   const rawStore = new PrismaRawStore();
@@ -79,12 +135,20 @@ export function createPlatformApp() {
 
   const fhirSerializer = new FhirR4Serializer();
 
-  // Serve static UI from public directory
-  const publicDir = path.join(__dirname, '../../public');
-  app.use(express.static(publicDir));
-
-  // Role-based API Routes (V2 Database Schema)
+  // Role-based API Routes (V2 Database Schema) - rate limited
+  app.use('/api/auth/register', authLimiter);
+  app.use('/api/auth/login', loginLimiter);
   app.use('/api/auth', authRoutes);
+
+  // Serve static UI - auth pages are public, app shell is protected
+  const publicDir = path.join(__dirname, '../../public');
+  app.use('/auth', express.static(path.join(publicDir, 'auth')));
+  app.get(['/', '/index.html'], async (req: Request, res: Response, next) => {
+    const user = await extractAuthUser(req);
+    if (!user) return res.redirect('/auth/login.html');
+    return res.sendFile(path.join(publicDir, 'index.html'));
+  });
+  app.use(express.static(publicDir, { index: false }));
   app.use('/api/hospital', hospitalRoutes);
   app.use('/api/moh', mohRoutes);
   app.use('/api/patient', patientRoutes);

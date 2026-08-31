@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+export declare function extractTokenFromRequest(req: Request): string | null;
 declare global {
     namespace Express {
         interface Request {

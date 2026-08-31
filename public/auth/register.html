@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>إنشاء حساب - المنصة الوطنية</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; img-src 'self' data:; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&family=Tajawal:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="./auth.css">
+</head>
+<body class="auth-isolated-body">
+<div id="toast-container" class="toast-container"></div>
+<main class="auth-isolated-wrap">
+  <div class="auth-isolated-card" style="max-width:620px">
+    <div class="auth-isolated-head">
+      <div class="auth-emblem-wrap"><svg class="auth-emblem-svg" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2.5C7.2 2.5 2.5 7.2 2.5 13S7.2 23.5 13 23.5c3.3 0 6.2-1.5 8.2-3.9-.4-.1-.8-.2-1.2-.2-4.4 0-8-3.6-8-8s3.6-8 8-8c.4 0 .8-.1 1.2-.2C19.2 4 16.3 2.5 13 2.5z"/></svg></div>
+      <h1>إنشاء حساب جديد</h1>
+      <p>التسجيل خاضع للتحقق • كلمة المرور 8+ أحرف</p>
+    </div>
+    <div class="auth-isolated-tabs">
+      <a href="./login.html" class="auth-tab">تسجيل الدخول</a>
+      <a href="./register.html" class="auth-tab active">إنشاء حساب</a>
+    </div>
+    <form id="register-form" class="auth-form">
+      <div class="auth-form-group"><label for="register-fullname">الاسم الكامل</label><div class="auth-input-wrap"><input id="register-fullname" required class="auth-input" placeholder="الاسم الكامل"></div></div>
+      <div class="auth-form-group"><label for="register-username">اسم المستخدم / الهوية</label><div class="auth-input-wrap"><input id="register-username" required class="auth-input" autocomplete="username"></div></div>
+      <div class="auth-form-group"><label for="register-password">كلمة المرور (8 أحرف على الأقل، حرف كبير/صغير ورقم)</label><div class="auth-input-wrap"><input id="register-password" type="password" required class="auth-input" autocomplete="new-password"></div></div>
+      <div class="auth-form-group"><label for="register-role">نوع الحساب</label><div class="auth-input-wrap"><select id="register-role" class="auth-input"><option value="PATIENT">فرد / مريض</option><option value="HOSPITAL_ADMIN">منشأة صحية (يخضع لموافقة الوزارة)</option></select></div></div>
+      <div class="auth-form-group" id="register-org-group" style="display:none"><label for="register-org">اسم المنشأة</label><div class="auth-input-wrap"><input id="register-org" class="auth-input"></div><small style="color:var(--m3-on-surface-muted);font-size:0.75rem">سيتم إنشاء طلب موافقة ومراجعته من قبل مسؤول الوزارة</small></div>
+      <div id="patient-extra" style="display:block;border-top:1px solid var(--m3-outline-variant);padding-top:14px;margin-top:8px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="auth-form-group"><label for="register-preferred-first-name">الاسم الأول المفضل</label><div class="auth-input-wrap"><input id="register-preferred-first-name" class="auth-input"></div></div>
+          <div class="auth-form-group"><label for="register-preferred-last-name">الاسم الأخير</label><div class="auth-input-wrap"><input id="register-preferred-last-name" class="auth-input"></div></div>
+        </div>
+        <div class="auth-form-group"><label for="register-preferred-language">اللغة</label><div class="auth-input-wrap"><select id="register-preferred-language" class="auth-input"><option value="ar">العربية</option><option value="en">English</option></select></div></div>
+      </div>
+      <div id="register-error" class="auth-error-box" style="display:none"><span id="register-error-text"></span></div>
+      <button type="submit" class="auth-submit-btn"><span>إنشاء الحساب والمتابعة للمنصة</span></button>
+    </form>
+  </div>
+</main>
+<script src="./auth.js"></script>
+</body>
+</html>

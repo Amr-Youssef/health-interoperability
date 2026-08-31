@@ -3,7 +3,22 @@ import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
-const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-national-health-key-2026';
+function getJwtSecret(): string {
+  const s = process.env.JWT_SECRET;
+  if (s && s.length >= 32) return s;
+  if (process.env.NODE_ENV === 'production') throw new Error('JWT_SECRET missing or too weak (min 32 chars) - set it in .env');
+  console.warn('[SECURITY] JWT_SECRET not set or weak - using dev fallback. Set JWT_SECRET in .env for production');
+  return s && s.length >= 8 ? s : 'dev-only-super-secret-national-health-key-2026-not-for-prod';
+}
+const JWT_SECRET = getJwtSecret();
+
+export function extractTokenFromRequest(req: Request): string | null {
+  const h = req.headers.authorization;
+  if (h && h.startsWith('Bearer ')) return h.split(' ')[1] || null;
+  const c = (req as any).cookies?.shiep_token;
+  if (c) return c;
+  return null;
+}
 
 // Extend Express Request to hold our user
 declare global {
@@ -15,12 +30,10 @@ declare global {
 }
 
 export async function verifyToken(req: Request, res: Response, next: NextFunction) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  const token = extractTokenFromRequest(req);
+  if (!token) {
     return res.status(401).json({ error: 'Unauthorized: Missing or invalid token' });
   }
-
-  const token = authHeader.split(' ')[1];
 
   try {
     const decoded: any = jwt.verify(token, JWT_SECRET);

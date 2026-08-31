@@ -17,9 +17,15 @@ const appAuth = {
   user: JSON.parse(localStorage.getItem('shiep_user') || 'null'),
 
   init() {
+    if (!this.token) {
+      const onAuthPage = location.pathname.startsWith('/auth/');
+      if (!onAuthPage) { location.replace('/auth/login.html'); return; }
+    } else {
+      fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + this.token }, credentials: 'include' }).then(r=>{
+        if(!r.ok){ this.logout(); location.replace('/auth/login.html'); }
+      }).catch(()=>{});
+    }
     this.updateUI();
-    // Ensure registration fields visibility matches default role (PATIENT) on load
-    // Use timeout to ensure DOM is ready when init called from DOMContentLoaded
     setTimeout(() => {
       try { this.toggleRegisterRole(); } catch(e) {}
     }, 0);
@@ -313,7 +319,8 @@ const appAuth = {
     }
   },
 
-  logout() {
+  async logout() {
+    try { await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }); } catch(e) {}
     this.currentRole = null;
     this.token = null;
     this.user = null;
@@ -322,7 +329,7 @@ const appAuth = {
     localStorage.removeItem('shiep_role');
     localStorage.removeItem('shiep_token');
     localStorage.removeItem('shiep_user');
-    this.updateUI();
+    location.replace('/auth/login.html');
   },
 
   updateUI() {
@@ -414,23 +421,28 @@ function getAllowedTabsForRole(role) {
 const originalFetch = window.fetch;
 window.fetch = function(url, options = {}) {
   options = options || {};
-  if (appAuth.token && typeof url === 'string' && (url.startsWith('/api') || url.startsWith('/fhir'))) {
-    if (!options.headers) {
-      options.headers = {};
-    }
-    if (options.headers instanceof Headers) {
-      if (!options.headers.has('Authorization')) {
-        options.headers.set('Authorization', `Bearer ${appAuth.token}`);
-      }
-    } else if (Array.isArray(options.headers)) {
-      options.headers.push(['Authorization', `Bearer ${appAuth.token}`]);
-    } else {
-      if (!options.headers['Authorization']) {
-        options.headers['Authorization'] = `Bearer ${appAuth.token}`;
+  if (typeof url === 'string' && (url.startsWith('/api') || url.startsWith('/fhir'))) {
+    options.credentials = options.credentials || 'include';
+    if (appAuth.token) {
+      if (!options.headers) options.headers = {};
+      if (options.headers instanceof Headers) {
+        if (!options.headers.has('Authorization')) options.headers.set('Authorization', `Bearer ${appAuth.token}`);
+      } else if (Array.isArray(options.headers)) {
+        options.headers.push(['Authorization', `Bearer ${appAuth.token}`]);
+      } else {
+        if (!options.headers['Authorization']) options.headers['Authorization'] = `Bearer ${appAuth.token}`;
       }
     }
   }
-  return originalFetch(url, options);
+  return originalFetch(url, options).then(res=>{
+    if(res.status===401 && typeof url==='string' && (url.startsWith('/api')||url.startsWith('/fhir'))){
+      const isAuthCall = url.includes('/api/auth/');
+      if(!isAuthCall && appAuth.token){
+        appAuth.logout();
+      }
+    }
+    return res;
+  });
 };
 
 // === GLOBAL PATIENT CONTEXT ===
