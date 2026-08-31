@@ -329,6 +329,7 @@ const appAuth = {
     localStorage.removeItem('shiep_role');
     localStorage.removeItem('shiep_token');
     localStorage.removeItem('shiep_user');
+    document.cookie = 'shiep_token=; Max-Age=0; path=/; SameSite=Strict';
     location.replace('/auth/login.html');
   },
 
@@ -435,10 +436,10 @@ window.fetch = function(url, options = {}) {
     }
   }
   return originalFetch(url, options).then(res=>{
-    if(res.status===401 && typeof url==='string' && (url.startsWith('/api')||url.startsWith('/fhir'))){
+    if((res.status===401||res.status===403) && typeof url==='string' && (url.startsWith('/api')||url.startsWith('/fhir'))){
       const isAuthCall = url.includes('/api/auth/');
       if(!isAuthCall && appAuth.token){
-        appAuth.logout();
+        try{ const ct=res.headers.get('content-type')||''; if(ct.includes('json')) res.clone().json().then(j=>{ if(j.error&&j.error.includes('Invalid')) appAuth.logout(); }).catch(()=>{}); } catch(e){}
       }
     }
     return res;
@@ -527,12 +528,13 @@ async function switchActivePatient(patientId) {
 
 async function fetchAndCachePatients() {
   try {
-    // Fetch canonical patients for proper Arabic names
     const canRes = await fetch('/api/patients');
     let canonicalPatients = [];
     try {
-      canonicalPatients = await canRes.json();
-    } catch(e) { /* fallback to FHIR */ }
+      const j = await canRes.json();
+      canonicalPatients = Array.isArray(j) ? j : [];
+      if (!canRes.ok) canonicalPatients = [];
+    } catch(e) { canonicalPatients = []; }
 
     if (appAuth.currentRole === 'PATIENT') {
       cachedPatients = canonicalPatients.map(cp => ({

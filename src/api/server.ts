@@ -82,7 +82,9 @@ export function createPlatformApp() {
       directives: {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrcAttr: ["'unsafe-inline'"],
         styleSrc: ["'self'", "https://fonts.googleapis.com", "'unsafe-inline'"],
+        styleSrcAttr: ["'unsafe-inline'"],
         fontSrc: ["https://fonts.gstatic.com"],
         connectSrc: ["'self'"],
         imgSrc: ["'self'", "data:"],
@@ -152,7 +154,6 @@ export function createPlatformApp() {
   app.use('/api/hospital', hospitalRoutes);
   app.use('/api/moh', mohRoutes);
   app.use('/api/patient', patientRoutes);
-  app.use('/api/patients', patientReportedHealthRoutes);
 
   // ==========================================
   // 1. SMART ON FHIR OAUTH2 & DISCOVERY
@@ -910,6 +911,7 @@ export function createPlatformApp() {
     if (!record) return res.status(404).json({ error: 'Patient not found' });
     res.json(record);
   });
+  app.use('/api/patients', patientReportedHealthRoutes);
 
   // Admin Data Reset (Clean-slate reset)
   app.post('/api/admin/reset-data', async (_req: Request, res: Response) => {

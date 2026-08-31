@@ -690,8 +690,12 @@ router.post('/logout', (req, res) => {
     res.clearCookie('shiep_token', { path: '/' });
     res.json({ success: true });
 });
+router.post('/logout', (req, res) => {
+    const isProd = process.env.NODE_ENV === 'production';
+    res.clearCookie('shiep_token', { httpOnly: true, secure: isProd, sameSite: 'strict', path: '/' });
+    res.json({ success: true });
+});
 router.get('/me', verifyToken, (req, res) => {
-    // req.user is injected by verifyToken middleware
     const user = req.user;
     res.json({
         id: user.id,
