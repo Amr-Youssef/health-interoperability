@@ -4,7 +4,9 @@
  */
 export type OrganizationType = 'ministry' | 'hospital' | 'medical_center' | 'day_surgery' | 'clinic' | 'laboratory' | 'pharmacy';
 export type OrganizationStatus = 'active' | 'suspended' | 'pending_approval';
-export type SystemRoleCode = 'MOH_ADMIN' | 'HOSPITAL_ADMIN' | 'PATIENT';
+export type SystemRoleCode = 'SYS_ADMIN' | 'MOH_ADMIN' | 'MOH_AUDITOR' | 'HOSPITAL_ADMIN' | 'CLINICIAN' | 'PATIENT';
+export declare const ALL_ROLES: SystemRoleCode[];
+export type PermissionCode = 'ORG_MANAGE_ALL' | 'ORG_APPROVE' | 'POLICY_MANAGE' | 'QUALITY_MONITOR' | 'AUDIT_READ_CENTRAL' | 'AUDIT_READ_ORG' | 'ANALYTICS_READ_NATIONAL' | 'ANALYTICS_READ_ORG' | 'USER_MANAGE_NATIONAL' | 'USER_MANAGE_ORG' | 'ROLE_ASSIGN_NATIONAL' | 'ROLE_ASSIGN_ORG' | 'PATIENT_READ_SELF' | 'PATIENT_READ_ORG' | 'PATIENT_READ_ALL' | 'PATIENT_MANAGE_ORG' | 'ENCOUNTER_CREATE_ORG' | 'CLINICAL_WRITE_ORG' | 'CLINICAL_READ_ORG' | 'CLINICAL_READ_ALL' | 'CLAIM_MANAGE_ORG' | 'IMPORT_EXECUTE_ORG' | 'CONSENT_MANAGE_SELF' | 'CONSENT_OVERRIDE' | 'BREAK_GLASS_EXECUTE' | 'EXPORT_BULK_ANONYMIZED' | 'EXPORT_BULK_IDENTIFIED' | 'FHIR_READ_SELF' | 'FHIR_READ_ORG' | 'FHIR_READ_ALL' | 'ACCESS_HISTORY_READ_SELF';
 export type GenderType = 'male' | 'female' | 'other' | 'unknown';
 export type PatientStatus = 'active' | 'inactive' | 'deceased';
 export type ConsentStatusType = 'CONSENT_GRANTED' | 'CONSENT_DENIED' | 'CONSENT_PARTIAL' | 'CONSENT_EXPLICIT_REQUIRED';

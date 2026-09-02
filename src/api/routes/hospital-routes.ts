@@ -72,20 +72,28 @@ function validateHospitalPayload(body: any): { valid: boolean; error?: string; n
   return { valid: true, normalized: norm };
 }
 
-async function requireHospitalAdmin(req: Request, res: Response, next: NextFunction) {
-  if (req.user?.role?.role_code !== 'HOSPITAL_ADMIN') {
-    return res.status(403).json({ error: 'Access denied: Hospital Admin required' });
+async function requireHospitalStaff(req: Request, res: Response, next: NextFunction) {
+  const role = req.user?.role?.role_code;
+  if (role !== 'HOSPITAL_ADMIN' && role !== 'CLINICIAN') {
+    return res.status(403).json({ error: 'Access denied: Hospital staff required' });
   }
   try {
     const org = await prisma.organization.findUnique({ where: { id: req.user.organization_id } });
+    if (org && org.status === 'PENDING_APPROVAL') return res.status(403).json({ error: 'حساب المنشأة قيد المراجعة لدى وزارة الصحة - لا يمكن الوصول حتى الاعتماد', status: org.status });
     if (org && org.status === 'SUSPENDED') return res.status(403).json({ error: 'تم تعليق حساب المنشأة من قبل الأدمن الوطني - تواصل مع وزارة الصحة', status: org.status });
     if (org && org.status === 'REJECTED') return res.status(403).json({ error: 'تم رفض اعتماد المنشأة', status: org.status });
   } catch (e) {}
   next();
 }
+async function requireHospitalAdmin(req: Request, res: Response, next: NextFunction) {
+  if (req.user?.role?.role_code !== 'HOSPITAL_ADMIN') {
+    return res.status(403).json({ error: 'Access denied: Hospital Admin required' });
+  }
+  return requireHospitalStaff(req, res, next);
+}
 
 router.use(verifyToken);
-router.use(requireHospitalAdmin);
+router.use(requireHospitalStaff);
 
 // ============================================================================
 // Hospital self-service: editable contact + organization public info
@@ -328,13 +336,14 @@ router.get('/me/stats', async (req: Request, res: Response) => {
   }
 });
 
-// Global unified registry (read-only) for hospital - all patients nationally, separate from hospital's own but same DB (integrated)
+// Global unified registry (read-only) for hospital - scoped, requires BREAK_GLASS outside org
 router.get('/global-patients', async (req: Request, res: Response) => {
   try {
+    if (req.user?.role?.role_code === 'CLINICIAN') return res.status(403).json({ error: 'CLINICIAN cannot access global registry - use /patients (org-scoped) or break-glass' });
     const patients = await prisma.patient.findMany({
       include: { identifiers: true },
       orderBy: { created_at: 'desc' },
-      take: 100
+      take: 20
     });
     res.json(patients.map((p: any) => ({
       id: p.id,
@@ -417,10 +426,23 @@ router.get('/patients', async (req: Request, res: Response) => {
   }
 });
 
-// Hospital view of global longitudinal record (read-only, separate but integrated)
+// Hospital view of longitudinal record - enforces org linkage + consent
 router.get('/patients/:id/longitudinal', async (req: Request, res: Response) => {
   try {
     const patientId = req.params.id as string;
+    const orgId = req.user!.organization_id;
+    const role = req.user!.role?.role_code;
+    if (role === 'CLINICIAN' || role === 'HOSPITAL_ADMIN') {
+      const link = await prisma.patientOrganization.findFirst({ where: { patient_id: patientId, organization_id: orgId, active: true } });
+      const direct = await prisma.patient.findFirst({ where: { id: patientId, source_system_id: orgId } });
+      const internal = await prisma.patient.findFirst({ where: { internal_id: patientId } });
+      const pid = internal?.id || patientId;
+      const link2 = !link ? await prisma.patientOrganization.findFirst({ where: { patient_id: pid, organization_id: orgId, active: true } }) : link;
+      if (!link && !direct && !link2) {
+        const consent = await prisma.consent.findFirst({ where: { patient_id: pid, organization_id: orgId, granted: true } });
+        if (!consent) return res.status(403).json({ error: 'Patient not linked to your organization and no consent granted - use break-glass for emergency' });
+      }
+    }
     const record = await canonicalStore.getLongitudinalRecord(patientId);
     if (!record) return res.status(404).json({ error: 'Patient not found' });
     // Audit hospital viewing global record (read-only)
@@ -470,18 +492,18 @@ router.get('/imports', async (req: Request, res: Response) => {
 });
 
 // Get hospital details
-router.get('/info', requireHospitalAdmin, async (req, res) => {
+router.get('/info', requireHospitalStaff as any, async (req, res) => {
   // TODO: Implement via Prisma
   res.json({ message: 'Hospital details' });
 });
 
 // Upload patient records
-router.post('/patients', requireHospitalAdmin, async (req, res) => {
+router.post('/patients', requireHospitalAdmin as any, async (req, res) => {
   res.json({ message: 'Patient registered successfully' });
 });
 
 // Upload encounters (visits)
-router.post('/encounters', requireHospitalAdmin, async (req, res) => {
+router.post('/encounters', requireHospitalStaff as any, async (req, res) => {
   res.json({ message: 'Encounter registered successfully' });
 });
 

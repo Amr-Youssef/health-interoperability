@@ -37,6 +37,22 @@ export function requireNationalAdmin(req: Request, res: Response, next: NextFunc
   next();
 }
 
+export function requireSysAdmin(req: Request, res: Response, next: NextFunction) {
+  const role = req.user?.role?.role_code;
+  if (role !== 'SYS_ADMIN') {
+    return res.status(403).json({ error: 'Access denied: System Admin only' });
+  }
+  next();
+}
+
+export function requireMohAdmin(req: Request, res: Response, next: NextFunction) {
+  const role = req.user?.role?.role_code;
+  if (role !== 'MOH_ADMIN' && role !== 'SYS_ADMIN') {
+    return res.status(403).json({ error: 'Access denied: MOH Admin required' });
+  }
+  next();
+}
+
 export async function verifyToken(req: Request, res: Response, next: NextFunction) {
   const token = extractTokenFromRequest(req);
   if (!token) {

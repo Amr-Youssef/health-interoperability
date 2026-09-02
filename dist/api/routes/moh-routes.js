@@ -133,6 +133,8 @@ router.get('/hospitals', async (req, res) => {
     }
 });
 router.post('/hospitals/:id/approve', async (req, res) => {
+    if (req.user.role?.role_code === 'MOH_AUDITOR')
+        return res.status(403).json({ error: 'MOH_AUDITOR cannot approve' });
     try {
         const id = req.params.id;
         const org = await prisma.organization.findUnique({ where: { id } });
@@ -206,6 +208,8 @@ router.post('/hospitals/:id/approve', async (req, res) => {
     }
 });
 router.post('/hospitals/:id/reject', async (req, res) => {
+    if (req.user.role?.role_code === 'MOH_AUDITOR')
+        return res.status(403).json({ error: 'MOH_AUDITOR cannot reject' });
     try {
         const id = req.params.id;
         const { reason } = req.body || {};
@@ -221,6 +225,8 @@ router.post('/hospitals/:id/reject', async (req, res) => {
     }
 });
 router.post('/hospitals/:id/suspend', async (req, res) => {
+    if (req.user.role?.role_code === 'MOH_AUDITOR')
+        return res.status(403).json({ error: 'MOH_AUDITOR cannot suspend' });
     try {
         const id = req.params.id;
         const org = await prisma.organization.findUnique({ where: { id } });
@@ -258,6 +264,8 @@ router.get('/users', async (req, res) => {
     }
 });
 router.post('/users/create-admin', async (req, res) => {
+    if (req.user.role?.role_code === 'MOH_AUDITOR')
+        return res.status(403).json({ error: 'MOH_AUDITOR cannot create users' });
     try {
         const { username, password, full_name, email, phone } = req.body;
         if (!username || !password || !full_name)
@@ -310,6 +318,8 @@ router.post('/users/create-admin', async (req, res) => {
     }
 });
 router.patch('/users/:id/status', async (req, res) => {
+    if (req.user.role?.role_code === 'MOH_AUDITOR')
+        return res.status(403).json({ error: 'MOH_AUDITOR read-only' });
     try {
         const id = req.params.id;
         const { is_active } = req.body;
@@ -332,14 +342,31 @@ router.patch('/users/:id/role', async (req, res) => {
     try {
         const id = req.params.id;
         const { role_code } = req.body;
-        const allowed = ['MOH_ADMIN', 'SYS_ADMIN', 'HOSPITAL_ADMIN', 'PATIENT'];
+        const actorRole = req.user.role?.role_code;
+        const allowedByMoh = ['HOSPITAL_ADMIN', 'CLINICIAN', 'PATIENT', 'MOH_AUDITOR'];
+        const allowedBySys = ['MOH_ADMIN', 'SYS_ADMIN', 'HOSPITAL_ADMIN', 'CLINICIAN', 'PATIENT', 'MOH_AUDITOR'];
+        const allowed = actorRole === 'SYS_ADMIN' ? allowedBySys : allowedByMoh;
         if (!allowed.includes(role_code))
-            return res.status(400).json({ error: 'role_code غير صالح' });
+            return res.status(403).json({ error: actorRole === 'SYS_ADMIN' ? 'role_code غير صالح' : 'MOH_ADMIN لا يمكنه منح SYS_ADMIN/MOH_ADMIN - يتطلب SYS_ADMIN' });
+        if (role_code === 'SYS_ADMIN' && actorRole !== 'SYS_ADMIN')
+            return res.status(403).json({ error: 'Only SYS_ADMIN can assign SYS_ADMIN' });
+        if (role_code === 'MOH_ADMIN' && actorRole !== 'SYS_ADMIN')
+            return res.status(403).json({ error: 'Only SYS_ADMIN can assign MOH_ADMIN' });
+        if (id === req.user.id)
+            return res.status(400).json({ error: 'لا يمكنك تغيير دورك بنفسك' });
+        const target = await prisma.user.findUnique({ where: { id } });
+        if (!target)
+            return res.status(404).json({ error: 'User not found' });
+        if (target.role_id && actorRole !== 'SYS_ADMIN') {
+            const targetRole = await prisma.role.findUnique({ where: { id: target.role_id } });
+            if (targetRole?.role_code === 'SYS_ADMIN' || targetRole?.role_code === 'MOH_ADMIN')
+                return res.status(403).json({ error: 'لا يمكنك تعديل مستخدم بدرجة MOH_ADMIN/SYS_ADMIN' });
+        }
         const role = await prisma.role.findUnique({ where: { role_code } });
         if (!role)
             return res.status(404).json({ error: 'Role not found' });
         const updated = await prisma.user.update({ where: { id }, data: { role_id: role.id } });
-        await prisma.auditLog.create({ data: { entity_type: 'User', entity_id: id, action: 'USER_ROLE_CHANGED', actor_id: req.user.id, organization_id: req.user.organization_id, new_values: JSON.stringify({ role_code }), details: `Changed role for ${updated.username} to ${role_code}` } }).catch(() => { });
+        await prisma.auditLog.create({ data: { entity_type: 'User', entity_id: id, action: 'USER_ROLE_CHANGED', actor_id: req.user.id, organization_id: req.user.organization_id, old_values: JSON.stringify({ old_role: (await prisma.role.findUnique({ where: { id: target.role_id } }))?.role_code }), new_values: JSON.stringify({ role_code }), details: `Changed role for ${updated.username} to ${role_code} by ${actorRole}` } }).catch(() => { });
         res.json({ success: true });
     }
     catch (e) {
@@ -385,10 +412,13 @@ router.get('/patients', async (req, res) => {
 router.get('/patients/:id/longitudinal', async (req, res) => {
     try {
         const id = req.params.id;
+        const actorRole = req.user.role?.role_code;
+        if (actorRole === 'MOH_AUDITOR')
+            return res.status(403).json({ error: 'MOH_AUDITOR read-only: use anonymized analytics only' });
         const record = await canonicalStore.getLongitudinalRecord(id);
         if (!record)
             return res.status(404).json({ error: 'Patient not found' });
-        await prisma.auditLog.create({ data: { entity_type: 'Patient', entity_id: id, action: 'MOH_VIEW_LONGITUDINAL', actor_id: req.user.id, organization_id: req.user.organization_id, details: `MOH viewed longitudinal for ${id}` } }).catch(() => { });
+        await prisma.auditLog.create({ data: { entity_type: 'Patient', entity_id: id, action: 'MOH_VIEW_LONGITUDINAL', actor_id: req.user.id, organization_id: req.user.organization_id, details: `MOH ${actorRole} viewed longitudinal for ${id}` } }).catch(() => { });
         res.json(record);
     }
     catch (e) {
@@ -421,6 +451,8 @@ router.get('/verification-queue', async (req, res) => {
     }
 });
 router.post('/verification/:type/:id/verify', async (req, res) => {
+    if (req.user.role?.role_code === 'MOH_AUDITOR')
+        return res.status(403).json({ error: 'MOH_AUDITOR read-only' });
     try {
         const type = req.params.type;
         const id = req.params.id;
@@ -449,6 +481,8 @@ router.post('/verification/:type/:id/verify', async (req, res) => {
     }
 });
 router.patch('/patients/:id/identity', async (req, res) => {
+    if (req.user.role?.role_code === 'MOH_AUDITOR')
+        return res.status(403).json({ error: 'MOH_AUDITOR cannot modify identity' });
     try {
         const id = req.params.id;
         const { first_name, last_name, first_name_ar, last_name_ar, birth_date, gender, phone } = req.body;

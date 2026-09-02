@@ -1,1 +1,1 @@
-{"version":3,"file":"schema.js","sourceRoot":"","sources":["../../src/database/schema.ts"],"names":[],"mappings":"AAAA;;;GAGG"}
+{"version":3,"file":"schema.js","sourceRoot":"","sources":["../../src/database/schema.ts"],"names":[],"mappings":"AAAA;;;GAGG;AAMH,MAAM,CAAC,MAAM,SAAS,GAAqB,CAAC,WAAW,EAAC,WAAW,EAAC,aAAa,EAAC,gBAAgB,EAAC,WAAW,EAAC,SAAS,CAAC,CAAC"}

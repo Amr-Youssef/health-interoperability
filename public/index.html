@@ -89,9 +89,12 @@
         <div class="auth-demo-links">
           <span>دخول سريع للمطورين:</span>
           <div class="auth-demo-buttons">
-            <button type="button" onclick="appAuth.fillCredentials('admin', 'admin123')">وزارة الصحة (Admin)</button>
-            <button type="button" onclick="appAuth.fillCredentials('hospital_a', 'pass123')">مستشفى (Hospital)</button>
-            <button type="button" onclick="appAuth.fillCredentials('patient', 'patient123')">مريض (Patient)</button>
+            <button type="button" onclick="appAuth.fillCredentials('admin', 'admin123')" title="admin / admin123">النظام SYS_ADMIN</button>
+            <button type="button" onclick="appAuth.fillCredentials('moh_admin', 'moh123456')" title="moh_admin / moh123456">الوزارة MOH_ADMIN</button>
+            <button type="button" onclick="appAuth.fillCredentials('moh_auditor', 'auditor123')" title="moh_auditor / auditor123">مدقق MOH_AUDITOR</button>
+            <button type="button" onclick="appAuth.fillCredentials('hospital_a', 'pass123')" title="hospital_a / pass123">مستشفى HOSPITAL</button>
+            <button type="button" onclick="appAuth.fillCredentials('clinician', 'clinician123')" title="clinician / clinician123">طبيب CLINICIAN</button>
+            <button type="button" onclick="appAuth.fillCredentials('patient', 'patient123')" title="patient / patient123">مريض PATIENT</button>
           </div>
         </div>
 

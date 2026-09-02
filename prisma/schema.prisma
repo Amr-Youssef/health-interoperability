@@ -55,11 +55,54 @@ model Organization {
   data_imports           DataImport[]
 }
 
+enum RoleCode {
+  SYS_ADMIN
+  MOH_ADMIN
+  MOH_AUDITOR
+  HOSPITAL_ADMIN
+  CLINICIAN
+  PATIENT
+}
+
+enum PermissionCode {
+  ORG_MANAGE_ALL
+  ORG_APPROVE
+  POLICY_MANAGE
+  QUALITY_MONITOR
+  AUDIT_READ_CENTRAL
+  AUDIT_READ_ORG
+  ANALYTICS_READ_NATIONAL
+  ANALYTICS_READ_ORG
+  USER_MANAGE_NATIONAL
+  USER_MANAGE_ORG
+  ROLE_ASSIGN_NATIONAL
+  ROLE_ASSIGN_ORG
+  PATIENT_READ_SELF
+  PATIENT_READ_ORG
+  PATIENT_READ_ALL
+  PATIENT_MANAGE_ORG
+  ENCOUNTER_CREATE_ORG
+  CLINICAL_WRITE_ORG
+  CLINICAL_READ_ORG
+  CLINICAL_READ_ALL
+  CLAIM_MANAGE_ORG
+  IMPORT_EXECUTE_ORG
+  CONSENT_MANAGE_SELF
+  CONSENT_OVERRIDE
+  BREAK_GLASS_EXECUTE
+  EXPORT_BULK_ANONYMIZED
+  EXPORT_BULK_IDENTIFIED
+  FHIR_READ_SELF
+  FHIR_READ_ORG
+  FHIR_READ_ALL
+  ACCESS_HISTORY_READ_SELF
+}
+
 // 4.3 Roles
 model Role {
   id             String           @id @default(uuid())
   role_name      String
-  role_code      String           @unique // e.g., 'HOSPITAL_ADMIN', 'MOH_ADMIN', 'PATIENT'
+  role_code      RoleCode         @unique
   description    String?
   is_system_role Boolean          @default(false)
   users          User[]
@@ -68,21 +111,23 @@ model Role {
 
 // 4.4 RolePermissions
 model RolePermission {
-  id              String   @id @default(uuid())
+  id              String         @id @default(uuid())
   role_id         String
-  role            Role     @relation(fields: [role_id], references: [id])
-  permission_code String
-  granted         Boolean  @default(true)
-  created_at      DateTime @default(now())
+  role            Role           @relation(fields: [role_id], references: [id], onDelete: Cascade)
+  permission_code PermissionCode
+  granted         Boolean        @default(true)
+  created_at      DateTime       @default(now())
+
+  @@unique([role_id, permission_code])
 }
 
 // 4.5 UserPermissions
 model UserPermission {
-  id              String   @id @default(uuid())
+  id              String         @id @default(uuid())
   user_id         String
-  user            User     @relation(fields: [user_id], references: [id])
-  permission_code String
-  granted         Boolean  @default(true)
+  user            User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  permission_code PermissionCode
+  granted         Boolean        @default(true)
   created_at      DateTime @default(now())
 }
 

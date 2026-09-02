@@ -65,11 +65,13 @@ async function ensureDefaultAccounts() {
             }
         });
     }
-    const [sysAdminRole, hospitalAdminRole, patientRole, mohAdminRole] = await Promise.all([
-        prisma.role.upsert({ where: { role_code: 'SYS_ADMIN' }, update: {}, create: { role_name: 'System Administrator', role_code: 'SYS_ADMIN', description: 'Global system administrator', is_system_role: true } }),
+    const [sysAdminRole, hospitalAdminRole, patientRole, mohAdminRole, mohAuditorRole, clinicianRole] = await Promise.all([
+        prisma.role.upsert({ where: { role_code: 'SYS_ADMIN' }, update: {}, create: { role_name: 'System Administrator', role_code: 'SYS_ADMIN', description: 'Global system administrator - infra only', is_system_role: true } }),
         prisma.role.upsert({ where: { role_code: 'HOSPITAL_ADMIN' }, update: {}, create: { role_name: 'Hospital Administrator', role_code: 'HOSPITAL_ADMIN', description: 'Hospital level admin', is_system_role: false } }),
         prisma.role.upsert({ where: { role_code: 'PATIENT' }, update: {}, create: { role_name: 'Patient', role_code: 'PATIENT', description: 'Individual Patient Access', is_system_role: true } }),
-        prisma.role.upsert({ where: { role_code: 'MOH_ADMIN' }, update: {}, create: { role_name: 'MOH Administrator', role_code: 'MOH_ADMIN', description: 'Ministry of Health National Administrator', is_system_role: true } })
+        prisma.role.upsert({ where: { role_code: 'MOH_ADMIN' }, update: {}, create: { role_name: 'MOH Administrator', role_code: 'MOH_ADMIN', description: 'Ministry of Health National Administrator', is_system_role: true } }),
+        prisma.role.upsert({ where: { role_code: 'MOH_AUDITOR' }, update: {}, create: { role_name: 'MOH Auditor', role_code: 'MOH_AUDITOR', description: 'Read-only auditor', is_system_role: true } }),
+        prisma.role.upsert({ where: { role_code: 'CLINICIAN' }, update: {}, create: { role_name: 'Clinician', role_code: 'CLINICIAN', description: 'Hospital clinician', is_system_role: false } })
     ]);
     await prisma.user.upsert({
         where: { username: 'moh_admin' },
@@ -86,6 +88,16 @@ async function ensureDefaultAccounts() {
                 status: 'ACTIVE'
             }
         });
+    await prisma.user.upsert({
+        where: { username: 'moh_auditor' },
+        update: { password_hash: await bcrypt.hash('auditor123', 10), role_id: mohAuditorRole.id, organization_id: mohOrg.id, is_active: true, full_name: 'MOH Auditor' },
+        create: { username: 'moh_auditor', password_hash: await bcrypt.hash('auditor123', 10), full_name: 'MOH Auditor', role_id: mohAuditorRole.id, organization_id: mohOrg.id, is_active: true }
+    });
+    await prisma.user.upsert({
+        where: { username: 'clinician' },
+        update: { password_hash: await bcrypt.hash('clinician123', 10), role_id: clinicianRole.id, organization_id: hospitalOrg.id, is_active: true, full_name: 'Hospital Clinician' },
+        create: { username: 'clinician', password_hash: await bcrypt.hash('clinician123', 10), full_name: 'Hospital Clinician', role_id: clinicianRole.id, organization_id: hospitalOrg.id, is_active: true }
+    });
     const adminHash = await bcrypt.hash('admin123', 10);
     await prisma.user.upsert({
         where: { username: 'admin' },
@@ -186,13 +198,14 @@ router.post('/register', async (req, res) => {
                 return res.status(400).json({ error: 'البريد الإلكتروني مسجل مسبقاً' });
             }
         }
-        if (roleType === 'MOH_ADMIN' || roleType === 'SYS_ADMIN') {
-            return res.status(403).json({ error: 'إنشاء حساب أدمن وطني متاح فقط من داخل نظام الأدمن (Invite-only)' });
+        if (['MOH_ADMIN', 'SYS_ADMIN', 'MOH_AUDITOR'].includes(roleType)) {
+            return res.status(403).json({ error: 'إنشاء حساب أدمن/مدقق وطني متاح فقط من داخل نظام الأدمن (Invite-only)' });
         }
-        // Determine the role
-        const roleCode = roleType === 'PATIENT' ? 'PATIENT' : 'HOSPITAL_ADMIN';
+        const allowedPublic = ['PATIENT', 'HOSPITAL_ADMIN', 'CLINICIAN'];
+        if (!allowedPublic.includes(roleType))
+            return res.status(400).json({ error: 'roleType غير صالح' });
+        const roleCode = roleType;
         let role = await prisma.role.findUnique({ where: { role_code: roleCode } });
-        // If role doesn't exist (seed missing), create it
         if (!role) {
             role = await prisma.role.create({
                 data: {
@@ -455,7 +468,7 @@ router.post('/register', async (req, res) => {
                     first_name: hasArabic ? null : firstName,
                     last_name: hasArabic ? null : lastName,
                     first_name_ar: hasArabic ? firstName : null,
-                    last_name_ar: hasArabic ? lastName : lastName,
+                    last_name_ar: hasArabic ? lastName : null,
                     birth_date: dob,
                     gender: genderNorm,
                     phone: normalizedPhone,

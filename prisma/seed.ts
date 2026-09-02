@@ -52,6 +52,28 @@ async function main() {
     }
   });
 
+  const mohAuditorRole = await prisma.role.upsert({
+    where: { role_code: 'MOH_AUDITOR' },
+    update: {},
+    create: {
+      role_name: 'MOH Auditor',
+      role_code: 'MOH_AUDITOR',
+      description: 'Read-only national auditor - no write/approve',
+      is_system_role: true
+    }
+  });
+
+  const clinicianRole = await prisma.role.upsert({
+    where: { role_code: 'CLINICIAN' },
+    update: {},
+    create: {
+      role_name: 'Clinician',
+      role_code: 'CLINICIAN',
+      description: 'Hospital clinician - clinical read/write within own org only',
+      is_system_role: false
+    }
+  });
+
   // 2. Organizations
   const mohOrg = await prisma.organization.create({
     data: {
@@ -129,6 +151,35 @@ async function main() {
       organization_id: hospA.id
     }
   });
+
+  const auditorHash = await bcrypt.hash('auditor123', 10);
+  await prisma.user.upsert({
+    where: { username: 'moh_auditor' },
+    update: { password_hash: auditorHash, role_id: mohAuditorRole.id, organization_id: mohOrg.id, is_active: true },
+    create: { username: 'moh_auditor', password_hash: auditorHash, full_name: 'MOH Auditor (Read-Only)', role_id: mohAuditorRole.id, organization_id: mohOrg.id, is_active: true }
+  });
+
+  const clinicianHash = await bcrypt.hash('clinician123', 10);
+  await prisma.user.upsert({
+    where: { username: 'clinician' },
+    update: { password_hash: clinicianHash, role_id: clinicianRole.id, organization_id: hospA.id, is_active: true },
+    create: { username: 'clinician', password_hash: clinicianHash, full_name: 'Hospital Clinician', role_id: clinicianRole.id, organization_id: hospA.id, is_active: true }
+  });
+
+  async function seedPerms(roleId: string, codes: string[]) {
+    for (const c of codes) {
+      await prisma.rolePermission.upsert({ where: { role_id_permission_code: { role_id: roleId, permission_code: c as any } }, update: {}, create: { role_id: roleId, permission_code: c as any } }).catch(async () => {
+        const exists = await prisma.rolePermission.findFirst({ where: { role_id: roleId, permission_code: c as any } });
+        if (!exists) await prisma.rolePermission.create({ data: { role_id: roleId, permission_code: c as any } });
+      });
+    }
+  }
+  await seedPerms(adminRole.id, ['ORG_MANAGE_ALL','USER_MANAGE_NATIONAL','ROLE_ASSIGN_NATIONAL','AUDIT_READ_CENTRAL','ANALYTICS_READ_NATIONAL','EXPORT_BULK_IDENTIFIED','FHIR_READ_ALL','BREAK_GLASS_EXECUTE']);
+  await seedPerms(mohAdminRole.id, ['ORG_APPROVE','POLICY_MANAGE','QUALITY_MONITOR','USER_MANAGE_NATIONAL','ROLE_ASSIGN_NATIONAL','AUDIT_READ_CENTRAL','ANALYTICS_READ_NATIONAL','CLINICAL_READ_ALL','FHIR_READ_ALL','CONSENT_OVERRIDE','BREAK_GLASS_EXECUTE','EXPORT_BULK_ANONYMIZED','PATIENT_READ_ALL']);
+  await seedPerms(mohAuditorRole.id, ['AUDIT_READ_CENTRAL','ANALYTICS_READ_NATIONAL','CLINICAL_READ_ALL','FHIR_READ_ALL','ACCESS_HISTORY_READ_SELF']);
+  await seedPerms(hospitalAdminRole.id, ['USER_MANAGE_ORG','ROLE_ASSIGN_ORG','PATIENT_MANAGE_ORG','PATIENT_READ_ORG','ENCOUNTER_CREATE_ORG','CLINICAL_WRITE_ORG','CLINICAL_READ_ORG','CLAIM_MANAGE_ORG','IMPORT_EXECUTE_ORG','AUDIT_READ_ORG','ANALYTICS_READ_ORG','FHIR_READ_ORG','BREAK_GLASS_EXECUTE','EXPORT_BULK_ANONYMIZED']);
+  await seedPerms(clinicianRole.id, ['PATIENT_READ_ORG','CLINICAL_READ_ORG','CLINICAL_WRITE_ORG','ENCOUNTER_CREATE_ORG','FHIR_READ_ORG','BREAK_GLASS_EXECUTE']);
+  await seedPerms(patientRole.id, ['PATIENT_READ_SELF','FHIR_READ_SELF','CONSENT_MANAGE_SELF','ACCESS_HISTORY_READ_SELF','EXPORT_BULK_ANONYMIZED']);
 
   const patientPasswordHash = await bcrypt.hash('patient123', 10);
   

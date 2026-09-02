@@ -21,6 +21,8 @@ import { hospitalRoutes } from './routes/hospital-routes.js';
 import { mohRoutes } from './routes/moh-routes.js';
 import { patientRoutes } from './routes/patient-routes.js';
 import { patientReportedHealthRoutes } from './routes/patient-reported-health-routes.js';
+import { verifyToken } from '../security/auth-middleware.js';
+import { requirePermission } from '../security/authorize.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -205,7 +207,7 @@ export function createPlatformApp() {
   // 2. HL7 v2.x MLLP / TCP INGESTION ENDPOINT
   // ==========================================
 
-  app.post('/api/hl7v2/ingest', async (req: Request, res: Response) => {
+  app.post('/api/hl7v2/ingest', verifyToken as any, requirePermission('IMPORT_EXECUTE_ORG') as any, async (req: Request, res: Response) => {
     try {
       const rawHl7 = typeof req.body === 'string' ? req.body : req.body.message || req.body.rawHl7;
       if (!rawHl7) {
@@ -263,7 +265,7 @@ export function createPlatformApp() {
   });
 
   // FHIR Bulk Data Export ($export)
-  app.get(['/fhir/\\$export', '/fhir/Patient/\\$export'], async (req: Request, res: Response) => {
+  app.get(['/fhir/\\$export', '/fhir/Patient/\\$export'], verifyToken as any, requirePermission('EXPORT_BULK_ANONYMIZED','EXPORT_BULK_IDENTIFIED') as any, async (req: Request, res: Response) => {
     try {
       const anonymize = getQueryString(req.query.anonymize as any) === 'true' || getQueryString(req.query.deidentify as any) === 'true';
       const typesStr = getQueryString(req.query._type as any);
@@ -288,7 +290,7 @@ export function createPlatformApp() {
   });
 
   // Patient Search / Read
-  app.get('/fhir/Patient', async (req: Request, res: Response) => {
+  app.get('/fhir/Patient', verifyToken as any, requirePermission('FHIR_READ_SELF','FHIR_READ_ORG','FHIR_READ_ALL') as any, async (req: Request, res: Response) => {
     const identifier = getQueryString(req.query.identifier as any);
     let patients = await canonicalStore.getAllPatients();
 
@@ -308,8 +310,13 @@ export function createPlatformApp() {
     res.json(bundle);
   });
 
-  app.get('/fhir/Patient/:id', async (req: Request, res: Response) => {
+  app.get('/fhir/Patient/:id', verifyToken as any, requirePermission('FHIR_READ_SELF','FHIR_READ_ORG','FHIR_READ_ALL') as any, async (req: Request, res: Response) => {
     const patientId = req.params.id as string;
+    const user: any = await extractAuthUser(req);
+    if (user?.role?.role_code === 'PATIENT') {
+      const target = await resolvePatientInternalId(user, canonicalStore);
+      if (target !== patientId) return res.status(403).json({ resourceType: 'OperationOutcome', issue: [{ severity: 'error', code: 'forbidden', diagnostics: 'Patients can only read own record' }] });
+    }
     const patient = await canonicalStore.getPatient(patientId);
     if (!patient) {
       return res.status(404).json({ resourceType: 'OperationOutcome', issue: [{ severity: 'error', code: 'not-found', diagnostics: 'Patient not found' }] });
@@ -318,7 +325,7 @@ export function createPlatformApp() {
   });
 
   // Patient $everything (Longitudinal Record in FHIR Bundle)
-  app.get('/fhir/Patient/:id/\\$everything', async (req: Request, res: Response) => {
+  app.get('/fhir/Patient/:id/\\$everything', verifyToken as any, requirePermission('FHIR_READ_SELF','FHIR_READ_ORG','FHIR_READ_ALL') as any, async (req: Request, res: Response) => {
     const patientId = req.params.id as string;
     const record = await canonicalStore.getLongitudinalRecord(patientId);
     if (!record) {
@@ -329,7 +336,7 @@ export function createPlatformApp() {
   });
 
   // Encounter Search
-  app.get('/fhir/Encounter', async (req: Request, res: Response) => {
+  app.get('/fhir/Encounter', verifyToken as any, requirePermission('FHIR_READ_SELF','FHIR_READ_ORG','FHIR_READ_ALL') as any, async (req: Request, res: Response) => {
     const patientId = getQueryString(req.query.patient as any);
     let encounters = await canonicalStore.getAllEncounters();
     if (patientId) {
@@ -347,7 +354,7 @@ export function createPlatformApp() {
   });
 
   // Condition Search
-  app.get('/fhir/Condition', async (req: Request, res: Response) => {
+  app.get('/fhir/Condition', verifyToken as any, requirePermission('FHIR_READ_SELF','FHIR_READ_ORG','FHIR_READ_ALL') as any, async (req: Request, res: Response) => {
     const patientId = getQueryString(req.query.patient as any);
     let conditions = await canonicalStore.getAllConditions();
     if (patientId) {
@@ -365,7 +372,7 @@ export function createPlatformApp() {
   });
 
   // Observation Search
-  app.get('/fhir/Observation', async (req: Request, res: Response) => {
+  app.get('/fhir/Observation', verifyToken as any, requirePermission('FHIR_READ_SELF','FHIR_READ_ORG','FHIR_READ_ALL') as any, async (req: Request, res: Response) => {
     const patientId = getQueryString(req.query.patient as any);
     let observations = await canonicalStore.getAllObservations();
     if (patientId) {
@@ -383,7 +390,7 @@ export function createPlatformApp() {
   });
 
   // Coverage Search (FHIR NPHIES)
-  app.get('/fhir/Coverage', async (req: Request, res: Response) => {
+  app.get('/fhir/Coverage', verifyToken as any, requirePermission('FHIR_READ_SELF','FHIR_READ_ORG','FHIR_READ_ALL') as any, async (req: Request, res: Response) => {
     const patientId = getQueryString(req.query.patient as any);
     let coverages = await canonicalStore.getAllCoverages();
     if (patientId) {
@@ -401,7 +408,7 @@ export function createPlatformApp() {
   });
 
   // Claim Search (FHIR NPHIES)
-  app.get('/fhir/Claim', async (req: Request, res: Response) => {
+  app.get('/fhir/Claim', verifyToken as any, requirePermission('FHIR_READ_SELF','FHIR_READ_ORG','FHIR_READ_ALL') as any, async (req: Request, res: Response) => {
     const patientId = getQueryString(req.query.patient as any);
     let claims = await canonicalStore.getAllClaims();
     if (patientId) {
@@ -419,7 +426,7 @@ export function createPlatformApp() {
   });
 
   // ClaimResponse Search (FHIR NPHIES)
-  app.get('/fhir/ClaimResponse', async (_req: Request, res: Response) => {
+  app.get('/fhir/ClaimResponse', verifyToken as any, requirePermission('FHIR_READ_SELF','FHIR_READ_ORG','FHIR_READ_ALL') as any, async (_req: Request, res: Response) => {
     const claims = await canonicalStore.getAllClaims();
     const responses: any[] = [];
     for (const c of claims) {
@@ -440,7 +447,7 @@ export function createPlatformApp() {
   });
 
   // MedicationRequest Search (FHIR SFDA SDC)
-  app.get('/fhir/MedicationRequest', async (req: Request, res: Response) => {
+  app.get('/fhir/MedicationRequest', verifyToken as any, requirePermission('FHIR_READ_SELF','FHIR_READ_ORG','FHIR_READ_ALL') as any, async (req: Request, res: Response) => {
     const patientId = getQueryString(req.query.patient as any);
     let rxList = await canonicalStore.getAllMedicationRequests();
     if (patientId) {
@@ -458,7 +465,7 @@ export function createPlatformApp() {
   });
 
   // Immunization Search (FHIR Saudi MOH Vaccines)
-  app.get('/fhir/Immunization', async (req: Request, res: Response) => {
+  app.get('/fhir/Immunization', verifyToken as any, requirePermission('FHIR_READ_SELF','FHIR_READ_ORG','FHIR_READ_ALL') as any, async (req: Request, res: Response) => {
     const patientId = getQueryString(req.query.patient as any);
     let immList = await canonicalStore.getAllImmunizations();
     if (patientId) {
@@ -476,7 +483,7 @@ export function createPlatformApp() {
   });
 
   // AllergyIntolerance Search (FHIR R4)
-  app.get('/fhir/AllergyIntolerance', async (req: Request, res: Response) => {
+  app.get('/fhir/AllergyIntolerance', verifyToken as any, requirePermission('FHIR_READ_SELF','FHIR_READ_ORG','FHIR_READ_ALL') as any, async (req: Request, res: Response) => {
     const patientId = getQueryString(req.query.patient as any);
     let allergies = await canonicalStore.getAllAllergies();
     if (patientId) {
@@ -494,7 +501,7 @@ export function createPlatformApp() {
   });
 
   // DiagnosticReport Search (FHIR R4)
-  app.get('/fhir/DiagnosticReport', async (req: Request, res: Response) => {
+  app.get('/fhir/DiagnosticReport', verifyToken as any, requirePermission('FHIR_READ_SELF','FHIR_READ_ORG','FHIR_READ_ALL') as any, async (req: Request, res: Response) => {
     const patientId = getQueryString(req.query.patient as any);
     let reports = await canonicalStore.getAllDiagnosticReports();
     if (patientId) {
@@ -512,7 +519,7 @@ export function createPlatformApp() {
   });
 
   // Consent Search (FHIR R4 - Saudi PDPL)
-  app.get('/fhir/Consent', async (req: Request, res: Response) => {
+  app.get('/fhir/Consent', verifyToken as any, requirePermission('FHIR_READ_SELF','FHIR_READ_ORG','FHIR_READ_ALL') as any, async (req: Request, res: Response) => {
     const patientId = getQueryString(req.query.patient as any);
     const patients = await canonicalStore.getAllPatients();
     const targetPatients = patientId ? patients.filter(p => p.internalId === patientId) : patients;
@@ -533,7 +540,7 @@ export function createPlatformApp() {
   // ==========================================
 
   // Execute Full Ingestion & Normalization
-  app.post('/api/pipeline/run', async (req: Request, res: Response) => {
+  app.post('/api/pipeline/run', verifyToken as any, requirePermission('ORG_MANAGE_ALL','POLICY_MANAGE') as any, async (req: Request, res: Response) => {
     try {
       const result = await engine.runFullIngestionPipeline();
       res.json({
@@ -547,13 +554,13 @@ export function createPlatformApp() {
   });
 
   // Integration Monitoring Stats
-  app.get('/api/monitoring/stats', async (req: Request, res: Response) => {
+  app.get('/api/monitoring/stats', verifyToken as any, requirePermission('ANALYTICS_READ_NATIONAL','ANALYTICS_READ_ORG','AUDIT_READ_CENTRAL','AUDIT_READ_ORG') as any, async (req: Request, res: Response) => {
     const stats = await engine.getIntegrationMonitoringStats();
     res.json(stats);
   });
 
   // NPHIES Financial Overview & Eligibility Check
-  app.get('/api/nphies/financial-summary', async (req: Request, res: Response) => {
+  app.get('/api/nphies/financial-summary', verifyToken as any, requirePermission('CLAIM_MANAGE_ORG','ANALYTICS_READ_NATIONAL') as any, async (req: Request, res: Response) => {
     const coverages = await canonicalStore.getAllCoverages();
     const claims = await canonicalStore.getAllClaims();
     const responses = [];
@@ -568,7 +575,7 @@ export function createPlatformApp() {
     });
   });
 
-  app.post('/api/nphies/eligibility/:patientId', async (req: Request, res: Response) => {
+  app.post('/api/nphies/eligibility/:patientId', verifyToken as any, requirePermission('CLAIM_MANAGE_ORG','PATIENT_READ_ORG','PATIENT_READ_ALL') as any, async (req: Request, res: Response) => {
     const eligibility = await engine.checkPatientEligibility(req.params.patientId as string);
     if (!eligibility) {
       return res.status(404).json({ error: 'No active insurance coverage found for this patient.' });
@@ -604,7 +611,7 @@ export function createPlatformApp() {
   });
 
   // Dynamic Hospital Registry & Onboarding
-  app.get('/api/hospitals', async (req: Request, res: Response) => {
+  app.get('/api/hospitals', verifyToken as any, async (req: Request, res: Response) => {
     try {
       const { PrismaClient } = await import('@prisma/client');
       const prisma = new PrismaClient();
@@ -629,7 +636,7 @@ export function createPlatformApp() {
     }
   });
 
-  app.post('/api/hospitals/onboard', (req: Request, res: Response) => {
+  app.post('/api/hospitals/onboard', verifyToken as any, requirePermission('ORG_MANAGE_ALL') as any, (req: Request, res: Response) => {
     try {
       const def = req.body;
       if (!def.hospitalId || !def.hospitalName || !def.hospitalNameAr) {
@@ -645,7 +652,7 @@ export function createPlatformApp() {
     }
   });
 
-  app.post('/api/hospitals/:id/ingest', async (req: Request, res: Response) => {
+  app.post('/api/hospitals/:id/ingest', verifyToken as any, requirePermission('IMPORT_EXECUTE_ORG') as any, async (req: Request, res: Response) => {
     try {
       const { entityType, sourceRecordId, payload } = req.body;
       const result = await engine.ingestDynamicPayload(req.params.id as string, entityType, sourceRecordId, payload);
@@ -656,7 +663,7 @@ export function createPlatformApp() {
   });
 
   // Direct Clinical File Ingestion (HL7 v2, FHIR Bundle, CSV)
-  app.post('/api/ingest/file', async (req: Request, res: Response) => {
+  app.post('/api/ingest/file', verifyToken as any, requirePermission('IMPORT_EXECUTE_ORG') as any, async (req: Request, res: Response) => {
     try {
       const { fileName, fileContent, sourceSystemId } = req.body;
       if (!fileName || !fileContent) {
@@ -670,7 +677,7 @@ export function createPlatformApp() {
   });
 
   // Clinical Decision Support (CDS Hooks)
-  app.get('/api/cds/patient/:id/safety-alerts', async (req: Request, res: Response) => {
+  app.get('/api/cds/patient/:id/safety-alerts', verifyToken as any, requirePermission('CLINICAL_READ_ORG','CLINICAL_READ_ALL') as any, async (req: Request, res: Response) => {
     try {
       const result = await engine.cdsEngine.evaluateMedicationSafety(req.params.id as string);
       res.json(result);
@@ -679,7 +686,7 @@ export function createPlatformApp() {
     }
   });
 
-  app.post('/api/cds/evaluate-draft-prescription', async (req: Request, res: Response) => {
+  app.post('/api/cds/evaluate-draft-prescription', verifyToken as any, requirePermission('CLINICAL_WRITE_ORG','CLINICAL_READ_ORG') as any, async (req: Request, res: Response) => {
     try {
       const draft = req.body;
       const result = await engine.cdsEngine.evaluateDraftPrescription(draft);
@@ -690,12 +697,12 @@ export function createPlatformApp() {
   });
 
   // Patient Privacy & Emergency Break-the-Glass
-  app.get('/api/security/consent/:patientId', async (req: Request, res: Response) => {
+  app.get('/api/security/consent/:patientId', verifyToken as any, requirePermission('CONSENT_MANAGE_SELF','CONSENT_OVERRIDE','PATIENT_READ_ORG','PATIENT_READ_ALL') as any, async (req: Request, res: Response) => {
     const consent = await engine.consentManager.getConsent(req.params.patientId as string);
     res.json(consent);
   });
 
-  app.post('/api/security/break-glass', async (req: Request, res: Response) => {
+  app.post('/api/security/break-glass', verifyToken as any, requirePermission('BREAK_GLASS_EXECUTE') as any, async (req: Request, res: Response) => {
     const { patientId, practitionerId, requestingOrgId, emergencyReason } = req.body;
     if (!patientId || !practitionerId || !emergencyReason) {
       return res.status(400).json({ error: 'Patient ID, Practitioner ID, and Emergency Reason are mandatory.' });
@@ -705,22 +712,22 @@ export function createPlatformApp() {
     res.json({ success: true, event });
   });
 
-  app.get('/api/security/break-glass/logs', async (req: Request, res: Response) => {
+  app.get('/api/security/break-glass/logs', verifyToken as any, requirePermission('AUDIT_READ_CENTRAL','AUDIT_READ_ORG') as any, async (req: Request, res: Response) => {
     res.json(await engine.consentManager.getAllBreakGlassEvents());
   });
 
   // Cryptographic Audit Chain (NCA Compliance)
-  app.get('/api/security/audit-chain', async (req: Request, res: Response) => {
+  app.get('/api/security/audit-chain', verifyToken as any, requirePermission('AUDIT_READ_CENTRAL','AUDIT_READ_ORG') as any, async (req: Request, res: Response) => {
     res.json(await engine.auditChain.getRecentEvents(50));
   });
 
-  app.get('/api/security/audit-chain/verify', async (req: Request, res: Response) => {
+  app.get('/api/security/audit-chain/verify', verifyToken as any, requirePermission('AUDIT_READ_CENTRAL','AUDIT_READ_ORG') as any, async (req: Request, res: Response) => {
     const result = await engine.auditChain.verifyChainIntegrity();
     res.json(result);
   });
 
   // Population Health & National Clinical Analytics
-  app.get('/api/analytics/population-health', async (req: Request, res: Response) => {
+  app.get('/api/analytics/population-health', verifyToken as any, requirePermission('ANALYTICS_READ_NATIONAL','ANALYTICS_READ_ORG') as any, async (req: Request, res: Response) => {
     try {
       const metrics = await engine.populationHealth.calculateMetrics();
       res.json(metrics);
@@ -730,7 +737,7 @@ export function createPlatformApp() {
   });
 
   // Weqaa (Saudi CDC) Communicable Disease Surveillance & Notification
-  app.get('/api/analytics/weqaa/reportable-cases', async (req: Request, res: Response) => {
+  app.get('/api/analytics/weqaa/reportable-cases', verifyToken as any, requirePermission('ANALYTICS_READ_NATIONAL','ANALYTICS_READ_ORG') as any, async (req: Request, res: Response) => {
     try {
       const cases = await engine.weqaaSurveillance.detectReportableCases();
       res.json(cases);
@@ -739,7 +746,7 @@ export function createPlatformApp() {
     }
   });
 
-  app.get('/api/analytics/weqaa/bundle/:caseId', async (req: Request, res: Response) => {
+  app.get('/api/analytics/weqaa/bundle/:caseId', verifyToken as any, requirePermission('ANALYTICS_READ_NATIONAL','ANALYTICS_READ_ORG') as any, async (req: Request, res: Response) => {
     try {
       const bundle = await engine.weqaaSurveillance.generateWeqaaNotificationBundle(req.params.caseId as string);
       res.json(bundle);
@@ -748,7 +755,7 @@ export function createPlatformApp() {
     }
   });
 
-  app.post('/api/analytics/weqaa/dispatch/:caseId', async (req: Request, res: Response) => {
+  app.post('/api/analytics/weqaa/dispatch/:caseId', verifyToken as any, requirePermission('ANALYTICS_READ_NATIONAL') as any, async (req: Request, res: Response) => {
     try {
       const result = await engine.weqaaSurveillance.dispatchCaseNotification(req.params.caseId as string);
       
@@ -771,13 +778,13 @@ export function createPlatformApp() {
     }
   });
 
-  app.get('/api/raw-store', async (req: Request, res: Response) => {
+  app.get('/api/raw-store', verifyToken as any, requirePermission('AUDIT_READ_CENTRAL','AUDIT_READ_ORG') as any, async (req: Request, res: Response) => {
     const records = await rawStore.getAll();
     res.json(records);
   });
 
   // Reprocess Raw Record
-  app.post('/api/raw-store/:id/reprocess', async (req: Request, res: Response) => {
+  app.post('/api/raw-store/:id/reprocess', verifyToken as any, requirePermission('ORG_MANAGE_ALL','IMPORT_EXECUTE_ORG') as any, async (req: Request, res: Response) => {
     try {
       const result = await engine.reprocessRecord(req.params.id as string, req.body.customConfig);
       res.json({ success: true, result });
@@ -787,13 +794,13 @@ export function createPlatformApp() {
   });
 
   // MPI Master Identities
-  app.get('/api/mpi/identities', async (req: Request, res: Response) => {
+  app.get('/api/mpi/identities', verifyToken as any, requirePermission('PATIENT_READ_ALL','PATIENT_READ_ORG','AUDIT_READ_CENTRAL') as any, async (req: Request, res: Response) => {
     const identities = await mpi.getAllIdentities();
     res.json(identities);
   });
 
   // MPI Duplicate Candidates Detection
-  app.get('/api/mpi/duplicate-candidates', async (req: Request, res: Response) => {
+  app.get('/api/mpi/duplicate-candidates', verifyToken as any, requirePermission('PATIENT_READ_ALL','PATIENT_READ_ORG') as any, async (req: Request, res: Response) => {
     try {
       const candidates = await mpi.findDuplicateCandidates();
       res.json(candidates);
@@ -802,7 +809,7 @@ export function createPlatformApp() {
     }
   });
   // MPI Identity Merge Endpoint
-  app.post('/api/mpi/merge', async (req: Request, res: Response) => {
+  app.post('/api/mpi/merge', verifyToken as any, requirePermission('PATIENT_READ_ALL','ORG_MANAGE_ALL') as any, async (req: Request, res: Response) => {
     try {
       const { survivorId, obsoleteId, reason, adminUser } = req.body;
       if (!survivorId || !obsoleteId) {
@@ -835,7 +842,7 @@ export function createPlatformApp() {
   });
 
   // MPI Identity Unmerge Endpoint
-  app.post('/api/mpi/unmerge', async (req: Request, res: Response) => {
+  app.post('/api/mpi/unmerge', verifyToken as any, requirePermission('PATIENT_READ_ALL','ORG_MANAGE_ALL') as any, async (req: Request, res: Response) => {
     try {
       const { survivorId, obsoleteId, reason, adminUser } = req.body;
       if (!survivorId || !obsoleteId) {
@@ -864,19 +871,19 @@ export function createPlatformApp() {
   });
 
   // Terminology Concepts & Maps
-  app.get('/api/terminology/concepts', async (req: Request, res: Response) => {
+  app.get('/api/terminology/concepts', verifyToken as any, async (req: Request, res: Response) => {
     const concepts = await terminologyService.getAllConcepts();
     res.json(concepts);
   });
 
   // Mapping Configurations
-  app.get('/api/mappings', (req: Request, res: Response) => {
+  app.get('/api/mappings', verifyToken as any, async (req: Request, res: Response) => {
     const configs = engine.mappingEngine.getAllConfigurations();
     res.json(configs);
   });
 
   // Provenance Lineage Records
-  app.get('/api/provenance', async (req: Request, res: Response) => {
+  app.get('/api/provenance', verifyToken as any, async (req: Request, res: Response) => {
     const records = await provenanceService.getAllProvenance();
     res.json(records);
   });
@@ -955,13 +962,13 @@ export function createPlatformApp() {
   });
   app.use('/api/patients', patientReportedHealthRoutes);
 
-  // Admin Data Reset (Clean-slate reset) - National Admin only
+  // Admin Data Reset (Clean-slate reset) - SYS_ADMIN only
   app.post('/api/admin/reset-data', async (req: Request, res: Response) => {
-    const { verifyToken, requireNationalAdmin } = await import('../security/auth-middleware.js');
+    const { verifyToken: vt, requireSysAdmin } = await import('../security/auth-middleware.js');
     let authorized = false;
     await new Promise<void>((resolve) => {
-      (verifyToken as any)(req, res, () => {
-        (requireNationalAdmin as any)(req, res, () => { authorized = true; resolve(); });
+      (vt as any)(req, res, () => {
+        (requireSysAdmin as any)(req, res, () => { authorized = true; resolve(); });
       });
     });
     if (!authorized) return;
