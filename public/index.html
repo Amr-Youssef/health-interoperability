@@ -746,9 +746,10 @@
             <div class="card-header"><div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l8-4v18"/></svg><h3>المنشآت بانتظار الاعتماد</h3></div><button class="btn btn-secondary btn-sm" onclick="loadAdminGovernance()">تحديث</button></div>
             <div class="card-body" id="gov-pending-list" style="max-height:360px; overflow:auto;">جاري التحميل...</div>
           </div>
-          <div class="card">
-            <div class="card-header"><div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><h3>إنشاء أدمن وطني (Invite-only)</h3></div></div>
+          <div class="card" id="gov-create-admin-card">
+            <div class="card-header"><div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><h3>إنشاء أدمن وطني (Invite-only - SYS_ADMIN فقط)</h3></div></div>
             <div class="card-body">
+              <p id="gov-create-hint" style="font-size:0.8rem; color:var(--m3-on-surface-variant); margin-bottom:8px;">SYS_ADMIN فقط يمكنه إنشاء MOH_ADMIN</p>
               <form id="form-create-moh-admin" style="display:flex; flex-direction:column; gap:8px;">
                 <input type="text" id="moh-admin-username" class="form-select" placeholder="اسم المستخدم" required>
                 <input type="text" id="moh-admin-fullname" class="form-select" placeholder="الاسم الكامل" required>
@@ -804,24 +805,26 @@
               <form id="form-onboard-hospital" style="display:flex; flex-direction:column; gap:10px;">
                 <div>
                   <label class="form-group" style="font-size:0.8rem; margin-bottom:4px; display:block;">معرف المنشأة (Unique Facility ID):</label>
-                  <input type="text" id="onboard-id" class="form-select" placeholder="مثال: hospital-e" value="hospital-e" required>
+                  <input type="text" id="onboard-id" class="form-select" placeholder="مثال: hospital-riyadh-01 (اتركه فارغاً للتوليد التلقائي)">
                 </div>
                 <div>
                   <label class="form-group" style="font-size:0.8rem; margin-bottom:4px; display:block;">اسم المنشأة بالعربية:</label>
-                  <input type="text" id="onboard-name-ar" class="form-select" placeholder="مستشفى دار الشفاء الدولي" value="مستشفى دار الشفاء الدولي" required>
+                  <input type="text" id="onboard-name-ar" class="form-select" placeholder="مثال: مستشفى الملك فيصل التخصصي" required>
                 </div>
                 <div>
                   <label class="form-group" style="font-size:0.8rem; margin-bottom:4px; display:block;">اسم المنشأة بالإنجليزية:</label>
-                  <input type="text" id="onboard-name-en" class="form-select" placeholder="Dar Al-Shifa International Hospital" value="Dar Al-Shifa International Hospital" required>
+                  <input type="text" id="onboard-name-en" class="form-select" placeholder="Example: King Faisal Specialist Hospital" required>
                 </div>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
                   <div>
                     <label class="form-group" style="font-size:0.8rem; margin-bottom:4px; display:block;">نوع المنشأة:</label>
                     <select id="onboard-type" class="form-select">
-                      <option value="hospital">مستشفى عام / تخصصي</option>
-                      <option value="day_surgery">مركز جراحة اليوم الواحد</option>
-                      <option value="clinic">مجمع عيادات طبية</option>
-                      <option value="laboratory">مختبر تشخيصي</option>
+                      <option value="HOSPITAL">مستشفى عام / تخصصي</option>
+                      <option value="CLINIC">مجمع عيادات طبية</option>
+                      <option value="DAY_SURGERY">مركز جراحة اليوم الواحد</option>
+                      <option value="LABORATORY">مختبر تشخيصي</option>
+                      <option value="PHARMACY">صيدلية / مركز دواء</option>
+                      <option value="CENTER">مركز طبي</option>
                     </select>
                   </div>
                   <div>
@@ -832,6 +835,14 @@
                       <option value="Eastern">المنطقة الشرقية</option>
                       <option value="Madinah">المدينة المنورة</option>
                       <option value="Asir">عسير</option>
+                      <option value="Qassim">القصيم</option>
+                      <option value="Hail">حائل</option>
+                      <option value="Tabuk">تبوك</option>
+                      <option value="Najran">نجران</option>
+                      <option value="Jazan">جازان</option>
+                      <option value="AlBaha">الباحة</option>
+                      <option value="AlJawf">الجوف</option>
+                      <option value="NorthernBorders">الحدود الشمالية</option>
                     </select>
                   </div>
                 </div>
@@ -866,13 +877,7 @@
                 </div>
                 <div>
                   <label class="form-group" style="font-size:0.8rem; margin-bottom:4px; display:block;">حمولة البيانات المصدر (Source JSON Payload):</label>
-                  <textarea id="ingest-payload-json" class="form-select" style="height:120px; font-family:'JetBrains Mono', monospace; font-size:0.78rem; direction:ltr; text-align:left;" placeholder='{\n  "client_id": "MRN-001",\n  "national_id_num": "1000000000",\n  "full_arabic_name": "اسم المريض",\n  "dob_gregorian": "1990-01-01",\n  "sex_code": "ذكر"\n}'>{
-  "client_id": "MRN-001",
-  "national_id_num": "1000000000",
-  "full_arabic_name": "اسم المريض",
-  "dob_gregorian": "1990-01-01",
-  "sex_code": "ذكر"
-}</textarea>
+                  <textarea id="ingest-payload-json" class="form-select" style="height:120px; font-family:'JetBrains Mono', monospace; font-size:0.78rem; direction:ltr; text-align:left;" placeholder='{"client_id":"MRN-XXXX","national_id_num":"1XXXXXXXXX","full_arabic_name":"الاسم الكامل","dob_gregorian":"YYYY-MM-DD","sex_code":"ذكر/أنثى"}'></textarea>
                 </div>
                 <button type="submit" class="btn btn-secondary mt-4" id="btn-submit-custom-ingest">
                   <svg class="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
@@ -899,6 +904,7 @@
             <p style="font-size:0.84rem; color:var(--m3-on-surface-variant); margin-bottom:14px;">
               اسحب وأفلت أي ملف سريري أو مالي حقيقي من جهازك (ملف رسائل <code>.hl7</code>، حزمة موارد <code>.json</code> FHIR R4، أو جدول مرضى <code>.csv</code>) ليقوم المحرك الذكي باكتشاف التنسيق ومعايرته وتطبيعه وإدراجه فورياً في خط الأنابيب.
             </p>
+            <div style="background:var(--m3-warning-container); border:1px solid var(--m3-warning); border-radius:8px; padding:8px 12px; margin-bottom:12px; font-size:0.78rem; color:var(--m3-on-warning-container);">⚠️ يجب اختيار <strong>المنشأة المستهدفة</strong> من القائمة أعلاه قبل رفع أي ملف - سيتم ربط الملف بالمنشأة المختارة في قاعدة البيانات الحقيقية (مرفوض إذا كانت بانتظار الاعتماد)</div>
 
             <div class="file-dropzone" id="clinical-file-dropzone">
               <input type="file" id="input-clinical-file" accept=".hl7,.json,.csv,.txt" style="display:none;">
@@ -917,19 +923,19 @@
 
             <!-- Quick Load Sample Files -->
             <div style="margin-top:16px;">
-              <span style="font-size:0.78rem; font-weight:700; color:var(--m3-on-surface-muted); display:block; margin-bottom:8px;">أو جرب أحد النماذج السريرية الجاهزة بنقرة واحدة:</span>
+              <span style="font-size:0.78rem; font-weight:700; color:var(--m3-on-surface-muted); display:block; margin-bottom:8px;">أو جرب بيانات تجريبية للاختبار فقط (Demo - لا تُحتسب كبيانات حقيقية):</span>
               <div style="display:flex; gap:8px; flex-wrap:wrap;">
                 <button type="button" class="btn btn-secondary btn-sm btn-sample-file" data-sample="hl7">
                   <svg class="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
-                  <span>رسالة HL7 v2.5 (ADT^A01 تنويم طوارئ)</span>
+                  <span>Demo: رسالة HL7 v2.5 (ADT^A01)</span>
                 </button>
                 <button type="button" class="btn btn-secondary btn-sm btn-sample-file" data-sample="fhir">
                   <svg class="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                  <span>حزمة FHIR R4 Bundle (Patient + Encounter)</span>
+                  <span>Demo: حزمة FHIR R4</span>
                 </button>
                 <button type="button" class="btn btn-secondary btn-sm btn-sample-file" data-sample="csv">
                   <svg class="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>
-                  <span>جدول بيانات مرضى ومطالبات (CSV)</span>
+                  <span>Demo: جدول CSV</span>
                 </button>
               </div>
             </div>

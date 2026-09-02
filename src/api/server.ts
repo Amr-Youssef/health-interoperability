@@ -111,20 +111,22 @@ export function createPlatformApp() {
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-  const authLimiter = rateLimit({
+  const DISABLE_RATE_LIMIT = process.env.DISABLE_RATE_LIMIT === 'true';
+  const authLimiter: any = DISABLE_RATE_LIMIT ? ((req: any, _res: any, next: any) => next()) : rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 20,
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: 'محاولات كثيرة - حاول بعد 15 دقيقة' }
   });
-  const loginLimiter = rateLimit({
+  const loginLimiter: any = DISABLE_RATE_LIMIT ? ((req: any, _res: any, next: any) => next()) : rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 10,
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: 'محاولات دخول كثيرة - حاول بعد 15 دقيقة' }
   });
+  if (DISABLE_RATE_LIMIT) console.log('[DEV] Rate limiting disabled via DISABLE_RATE_LIMIT=true');
 
   // Initialize Core Services
   const rawStore = new PrismaRawStore();
@@ -636,17 +638,30 @@ export function createPlatformApp() {
     }
   });
 
-  app.post('/api/hospitals/onboard', verifyToken as any, requirePermission('ORG_MANAGE_ALL') as any, (req: Request, res: Response) => {
+  app.post('/api/hospitals/onboard', verifyToken as any, requirePermission('ORG_MANAGE_ALL') as any, async (req: Request, res: Response) => {
     try {
       const def = req.body;
-      if (!def.hospitalId || !def.hospitalName || !def.hospitalNameAr) {
-        return res.status(400).json({ error: 'Hospital ID and names are required.' });
+      if (!def.hospitalName || !def.hospitalNameAr) {
+        return res.status(400).json({ error: 'Hospital names (Ar/En) are required.' });
       }
-      engine.onboardHospital({
-        ...def,
-        createdAt: new Date().toISOString()
+      const prisma = new PrismaClient();
+      const region = def.region || 'Riyadh';
+      const facilityType = (def.facilityType || def.organizationType || 'HOSPITAL').toUpperCase();
+      const allowedTypes = ['HOSPITAL','CLINIC','DAY_SURGERY','LABORATORY','PHARMACY','CENTER'];
+      const orgType = allowedTypes.includes(facilityType) ? facilityType : 'HOSPITAL';
+      const existingByName = await prisma.organization.findFirst({ where: { OR: [{ organization_name: def.hospitalName }, { organization_name_ar: def.hospitalNameAr }] } });
+      if (existingByName) return res.status(400).json({ error: 'اسم المنشأة مسجل مسبقاً' });
+      const org = await prisma.organization.create({
+        data: {
+          organization_name: def.hospitalName,
+          organization_name_ar: def.hospitalNameAr,
+          organization_type: orgType,
+          region,
+          status: 'PENDING_APPROVAL'
+        }
       });
-      res.json({ success: true, message: `Hospital [${def.hospitalNameAr}] onboarded successfully.`, hospital: def });
+      await prisma.auditLog.create({ data: { entity_type: 'Organization', entity_id: org.id, action: 'HOSPITAL_ONBOARDED_PENDING', actor_id: (req as any).user?.id, organization_id: org.id, new_values: JSON.stringify({ hospitalName: org.organization_name, region }), details: `SYS_ADMIN onboarded ${org.organization_name_ar} -> PENDING_APPROVAL awaiting MOH` } }).catch(()=>{});
+      res.json({ success: true, message: `تم تسجيل المنشأة [${def.hospitalNameAr}] بنجاح - بانتظار اعتماد MOH`, organization: org, hospital: { hospitalId: org.id, hospitalName: org.organization_name, hospitalNameAr: org.organization_name_ar, facilityType: orgType, region, status: org.status, createdAt: org.created_at } });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
     }
@@ -654,22 +669,41 @@ export function createPlatformApp() {
 
   app.post('/api/hospitals/:id/ingest', verifyToken as any, requirePermission('IMPORT_EXECUTE_ORG') as any, async (req: Request, res: Response) => {
     try {
+      const targetId = req.params.id as string;
+      const prisma = new PrismaClient();
+      const org = await prisma.organization.findUnique({ where: { id: targetId } });
+      if (!org) return res.status(404).json({ success: false, error: 'المنشأة غير موجودة في قاعدة البيانات الحقيقية' });
+      if (org.status !== 'ACTIVE') return res.status(403).json({ success: false, error: `المنشأة غير معتمدة - الحالة: ${org.status} - يجب اعتمادها من MOH أولاً` });
       const { entityType, sourceRecordId, payload } = req.body;
-      const result = await engine.ingestDynamicPayload(req.params.id as string, entityType, sourceRecordId, payload);
+      if (!entityType || !sourceRecordId || !payload) return res.status(400).json({ success: false, error: 'entityType, sourceRecordId, payload مطلوبة' });
+      const result = await engine.ingestDynamicPayload(targetId, entityType, sourceRecordId, payload);
+      await prisma.auditLog.create({ data: { entity_type: 'DataIngest', entity_id: sourceRecordId, action: 'INGEST_CUSTOM', actor_id: (req as any).user?.id, organization_id: targetId, new_values: JSON.stringify({ entityType, sourceRecordId }), details: `Custom ingest to ${org.organization_name_ar}` } }).catch(()=>{});
       res.json({ success: true, result });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
     }
   });
 
-  // Direct Clinical File Ingestion (HL7 v2, FHIR Bundle, CSV)
   app.post('/api/ingest/file', verifyToken as any, requirePermission('IMPORT_EXECUTE_ORG') as any, async (req: Request, res: Response) => {
     try {
       const { fileName, fileContent, sourceSystemId } = req.body;
       if (!fileName || !fileContent) {
         return res.status(400).json({ error: 'Both fileName and fileContent are required.' });
       }
-      const result = await engine.ingestUploadedFile(fileName, fileContent, sourceSystemId || 'file-dropzone-uploader');
+      let resolvedSystemId = sourceSystemId;
+      if (!resolvedSystemId || resolvedSystemId === 'file-dropzone-uploader') {
+        const prisma = new PrismaClient();
+        const orgs = await prisma.organization.findMany({ where: { status: 'ACTIVE', NOT: { organization_type: 'MOH' } }, take: 1, orderBy: { created_at: 'asc' } });
+        resolvedSystemId = orgs[0]?.id || sourceSystemId || 'file-dropzone-uploader';
+      }
+      if (resolvedSystemId && resolvedSystemId !== 'file-dropzone-uploader') {
+        const prisma = new PrismaClient();
+        const org = await prisma.organization.findUnique({ where: { id: resolvedSystemId } });
+        if (org && org.status !== 'ACTIVE') return res.status(403).json({ success: false, error: `المنشأة المصدر غير معتمدة: ${org.status}` });
+      }
+      const result = await engine.ingestUploadedFile(fileName, fileContent, resolvedSystemId);
+      const prisma2 = new PrismaClient();
+      await prisma2.auditLog.create({ data: { entity_type: 'DataImport', entity_id: fileName, action: 'FILE_INGEST', actor_id: (req as any).user?.id, organization_id: resolvedSystemId, new_values: JSON.stringify({ fileName, format: (result as any).format }), details: `File ingest ${fileName} via ${resolvedSystemId}` } }).catch(()=>{});
       res.json({ success: true, result });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });

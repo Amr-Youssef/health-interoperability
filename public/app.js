@@ -347,16 +347,18 @@ const appAuth = {
 
   applyRolePermissions() {
     const allTabs = document.querySelectorAll('.nav-item');
-    allTabs.forEach(t => t.style.display = 'none'); // hide all by default
-    
+    allTabs.forEach(t => t.style.display = 'none');
     let defaultTab = 'monitoring';
-
-    // Show/hide run pipeline button (Only for central authorities)
     const btnRun = document.getElementById('btn-run-pipeline');
     if (btnRun) {
       btnRun.style.display = (this.currentRole === 'MOH_ADMIN' || this.currentRole === 'SYS_ADMIN') ? 'inline-flex' : 'none';
     }
-
+    const govCreateCard = document.getElementById('gov-create-admin-card');
+    if (govCreateCard) {
+      govCreateCard.style.display = this.currentRole === 'SYS_ADMIN' ? 'block' : 'none';
+      const hint = document.getElementById('gov-create-hint');
+      if (hint) hint.textContent = this.currentRole === 'SYS_ADMIN' ? 'SYS_ADMIN فقط يمكنه إنشاء MOH_ADMIN (فصل صلاحيات حقيقي)' : 'إنشاء الأدمن الوطني مقصور على SYS_ADMIN - تواصل مع مدير النظام';
+    }
     if (this.currentRole === 'MOH_ADMIN' || this.currentRole === 'SYS_ADMIN') {
       ['admin-governance','monitoring', 'onboarding', 'cds', 'nphies', 'medications', 'mpi', 'longitudinal', 'mapping', 'provenance', 'security', 'bulkexport', 'fhir'].forEach(id => {
         const t = document.getElementById(`tab-btn-${id}`);
@@ -465,12 +467,15 @@ function updateGlobalPatientBar() {
     return;
   }
 
-  // Hospital Management System: no active patient bar - hospital view is facility-centric, not patient-centric
   if (appAuth.currentRole === 'HOSPITAL_ADMIN') {
     if (bar) bar.style.display = 'none';
     return;
   }
-
+  const sysMOHClinicalTabs = ['longitudinal','cds','nphies','medications','mpi'];
+  if ((appAuth.currentRole === 'SYS_ADMIN' || appAuth.currentRole === 'MOH_ADMIN') && !sysMOHClinicalTabs.includes(currentTab)) {
+    if (bar) bar.style.display = 'none';
+    return;
+  }
   if (bar) bar.style.display = 'flex';
 
   // For Patient Role: Display ONLY logged-in patient details and completely hide selector dropdown
@@ -784,13 +789,18 @@ function initFileDropzone() {
 
   async function uploadAndProcessFile(fileName, fileContent) {
     if (!resultContainer) return;
+    const selectedHosp = document.getElementById('select-ingest-hospital')?.value;
+    if (!selectedHosp) { showToast('اختر المنشأة','يجب اختيار المنشأة المستهدفة من القائمة قبل رفع الملف','error'); return; }
+    const selEl = document.getElementById('select-ingest-hospital');
+    const selText = selEl?.options[selEl.selectedIndex]?.text || selectedHosp;
+    if (selText.includes('بانتظار اعتماد') || selText.includes('موقوف')) { showToast('المنشأة غير معتمدة','المنشأة المختارة غير نشطة - اعتمدها من الحوكمة أولاً','error'); return; }
     resultContainer.style.display = 'block';
     resultContainer.innerHTML = `
       <div class="ingestion-result-box" style="display:flex; align-items:center; gap:10px;">
         ${getSvgIcon('spinner', 'style="width:20px; height:20px; color:var(--m3-primary-light);')}
         <div>
-          <strong style="color:var(--m3-on-surface); font-size:0.9rem;">جاري تحليل ومعالجة وتطبيع الملف: <code>${fileName}</code>...</strong>
-          <p style="font-size:0.78rem; color:var(--m3-on-surface-muted);">فحص البنية واكتشاف الترميز والمعايرة ومطابقة الهوية في MPI...</p>
+          <strong style="color:var(--m3-on-surface); font-size:0.9rem;">جاري تحليل الملف: <code>${fileName}</code> للمنشأة: <code>${selText}</code>...</strong>
+          <p style="font-size:0.78rem; color:var(--m3-on-surface-muted);">فحص البنية واكتشاف الترميز والمعايرة ومطابقة الهوية في MPI (عملية حقيقية في DB)...</p>
         </div>
       </div>
     `;
@@ -802,7 +812,7 @@ function initFileDropzone() {
         body: JSON.stringify({
           fileName,
           fileContent,
-          sourceSystemId: 'file-dropzone-uploader'
+          sourceSystemId: selectedHosp
         })
       });
       const data = await res.json();
@@ -827,7 +837,8 @@ function initFileDropzone() {
               تم التعرف على التنسيق ومعالجة <strong>${r.totalIngested}</strong> سجل بنجاح، وتوحيد الهوية في فهرس المرضى الرئيسي (MPI)، وتوثيق العملية في سجل الكتل المشفر (NCA).
             </p>
             <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-              <span class="badge badge-success">جودة المطابقة: 100/100</span>
+              <span class="badge badge-success">جودة المطابقة: ${r.validation?.score ?? r.qualityScore ?? '--'}/100</span>
+              <span class="badge badge-info">المنشأة: ${r.sourceSystemId || selectedHosp}</span>
               <button type="button" class="btn btn-primary btn-sm" id="btn-view-ingested-result">
                 <svg class="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
                 <span>عرض السجلات المحدثة في لوحة المراقبة</span>
@@ -1038,14 +1049,16 @@ function initActions() {
     }
   });
 
-  // Dynamic Hospital Onboarding Form
   document.getElementById('form-onboard-hospital')?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const hospitalId = document.getElementById('onboard-id')?.value.trim();
+    const hospitalIdRaw = document.getElementById('onboard-id')?.value.trim();
+    const hospitalId = hospitalIdRaw || undefined;
     const hospitalNameAr = document.getElementById('onboard-name-ar')?.value.trim();
     const hospitalName = document.getElementById('onboard-name-en')?.value.trim();
     const facilityType = document.getElementById('onboard-type')?.value;
     const region = document.getElementById('onboard-region')?.value;
+    if (!hospitalNameAr || !hospitalName) { showToast('بيانات ناقصة','اسم المنشأة عربي/إنجليزي مطلوب','error'); return; }
+    if (hospitalNameAr.length < 3 || hospitalName.length < 3) { showToast('بيانات ناقصة','الاسم قصير جداً','error'); return; }
 
     try {
       const res = await fetch('/api/hospitals/onboard', {
@@ -1097,9 +1110,11 @@ function initActions() {
         })
       });
       const data = await res.json();
-      if (data.success) {
-        showToast('تم تسجيل المنشأة', `تم تفعيل الموصل الخاص بـ ${hospitalNameAr} بنجاح.`, 'success');
+      if (data.success || res.ok) {
+        showToast('تم التسجيل', data.message || `تم تسجيل ${hospitalNameAr} - بانتظار اعتماد MOH`, 'success');
+        document.getElementById('form-onboard-hospital')?.reset();
         loadOnboardedHospitals();
+        loadAdminGovernance();
       } else {
         showToast('خطأ في التسجيل', data.error, 'error');
       }
@@ -1500,6 +1515,7 @@ function handleTabSwitch(tab) {
   if (tab === 'security') loadSecurityAuditChain();
   if (tab === 'bulkexport') loadBulkExportTab();
   if (tab === 'fhir') fetchFhirEndpoint(currentFhirEndpoint);
+  updateGlobalPatientBar();
 }
 
 async function loadAllData() {
@@ -1562,27 +1578,19 @@ async function loadMonitoringStats() {
           </div>
         `;
       } else {
-        const knownHospitalNames = {
-          'hl7v2-mllp-feed': { nameAr: 'تغذية HL7 v2.5 MLLP الفورية', desc: 'قناة استيعاب رسائل ADT A01 و ORU R01 الحية للقبول والتنويم في الوقت الفعلي.', tag: 'modern', type: 'HL7 v2.5 MLLP Protocol' },
-          'hospital-a': { nameAr: 'مستشفى الأمل التخصصي', desc: 'موصل بيانات علائقية محلية.', tag: 'legacy', type: 'قواعد بيانات علائقية' },
-          'hospital-b': { nameAr: 'مستشفى النور الحديث', desc: 'موصل بيانات علائقية إنجليزية.', tag: 'modern', type: 'Relational Database' },
-          'hospital-c': { nameAr: 'مركز الملك فهد التخصصي', desc: 'موصل واجهات FHIR R4.', tag: 'fhir', type: 'HL7 FHIR R4 REST API' }
-        };
-
         sourcesGrid.innerHTML = data.sources.map((s) => {
           const sysId = s.systemId || s.sourceSystemId || '';
           const recCount = s.extractedRecordCount ?? 0;
           const lastSyncRaw = s.lastHeartbeat || s.lastSyncTime || s.lastChecked || new Date().toISOString();
           const lastSyncDate = new Date(lastSyncRaw);
           const lastSyncStr = !isNaN(lastSyncDate.getTime()) ? lastSyncDate.toLocaleTimeString('ar-SA') : new Date().toLocaleTimeString('ar-SA');
-          const latency = s.latencyMs || 5;
-
-          // Match known or dynamic hospital definition
+          const latency = s.latencyMs != null ? s.latencyMs : '--';
           const dynDef = data.dynamicHospitals?.find(d => d.hospitalId === sysId);
-          const nameAr = dynDef ? dynDef.hospitalNameAr : (knownHospitalNames[sysId]?.nameAr || sysId);
-          const desc = dynDef ? `منشأة مسجلة ديناميكياً في منطقة ${dynDef.region} بنظام موصل ذكي.` : (knownHospitalNames[sysId]?.desc || 'موصل بيانات سريرية متصل بالمنصة.');
-          const tagClass = dynDef ? 'modern' : (knownHospitalNames[sysId]?.tag || 'fhir');
-          const sourceType = dynDef ? `Dynamic (${dynDef.facilityType})` : (knownHospitalNames[sysId]?.type || 'Standard Protocol Feed');
+          const nameAr = dynDef ? (dynDef.hospitalNameAr || dynDef.hospitalName) : sysId;
+          const nameEn = dynDef ? dynDef.hospitalName : sysId;
+          const desc = dynDef ? `منشأة مسجلة ديناميكياً في منطقة ${dynDef.region} - النوع: ${dynDef.facilityType}` : `موصل بيانات حقيقي - ${sysId} - السجلات من قاعدة البيانات الموحدة`;
+          const tagClass = dynDef ? 'modern' : 'fhir';
+          const sourceType = dynDef ? `${dynDef.facilityType}` : (s.adapterType || s.type || 'HL7/FHIR Adapter');
 
           return `
             <div class="source-card">
@@ -1590,6 +1598,7 @@ async function loadMonitoringStats() {
                 <div class="source-title-wrap">
                   <span class="source-tag ${tagClass}">${sysId}</span>
                   <h4>${nameAr}</h4>
+                  ${nameEn!==nameAr ? `<small style="color:var(--m3-on-surface-variant);">${nameEn}</small>` : ''}
                 </div>
                 <span class="status-indicator online">
                   <span class="status-dot"></span> متصل
@@ -1599,7 +1608,7 @@ async function loadMonitoringStats() {
                 <p class="source-desc">${desc}</p>
                 <div class="source-details">
                   <div class="detail-row"><span>نوع المصدر:</span><strong>${sourceType}</strong></div>
-                  <div class="detail-row"><span>إجمالي السجلات المستوعبة:</span><strong>${recCount} سجل</strong></div>
+                  <div class="detail-row"><span>إجمالي السجلات المستوعبة:</span><strong>${recCount} سجل (حقيقي من DB)</strong></div>
                   <div class="detail-row"><span>زمن الاستجابة:</span><span class="badge badge-success">${latency}ms</span></div>
                   <div class="detail-row"><span>آخر اتصال:</span><code>${lastSyncStr}</code></div>
                 </div>
@@ -1610,18 +1619,19 @@ async function loadMonitoringStats() {
       }
     }
 
-    // Populate Audit Table
     const tbody = document.getElementById('audit-table-body');
     if (tbody && data.recentAudit) {
-      tbody.innerHTML = data.recentAudit.map((a) => `
+      tbody.innerHTML = data.recentAudit.map((a) => {
+        const ts = a.timestamp || a.created_at || a.createdAt || a.persisted_at || new Date().toISOString();
+        return `
         <tr>
-          <td><code>${new Date(a.timestamp).toLocaleTimeString('ar-SA')}</code></td>
-          <td><span class="badge badge-success">${a.action}</span></td>
-          <td><strong>${a.entityType}</strong></td>
-          <td><code>${a.entityId?.substring(0, 8)}...</code></td>
-          <td style="color:var(--m3-on-surface-variant);">${a.detail}</td>
-        </tr>
-      `).join('') || '<tr><td colspan="5" class="text-center py-4">لا توجد سجلات تدقيق حتى الآن.</td></tr>';
+          <td><code>${new Date(ts).toLocaleTimeString('ar-SA')}</code></td>
+          <td><span class="badge badge-success">${a.action || a.entityType}</span></td>
+          <td><strong>${a.entityType || a.target_entity_type || '--'}</strong></td>
+          <td><code>${(a.entityId || a.target_entity_id || '').substring(0, 8)}...</code></td>
+          <td style="color:var(--m3-on-surface-variant);">${a.detail || a.details || ''}</td>
+        </tr>`;
+      }).join('') || '<tr><td colspan="5" class="text-center py-4">لا توجد سجلات تدقيق حتى الآن - البيانات من سلسلة التدقيق الحقيقية</td></tr>';
     }
   } catch (err) {
     console.error('Failed to load monitoring stats', err);
@@ -1638,23 +1648,39 @@ async function loadOnboardedHospitals() {
     const select = document.getElementById('select-ingest-hospital');
 
     if (tbody && hospitals) {
-      tbody.innerHTML = hospitals.map(h => `
-        <tr>
-          <td><code>${h.hospitalId}</code></td>
-          <td><strong>${h.hospitalNameAr}</strong></td>
-          <td>${h.hospitalName}</td>
-          <td><span class="badge badge-info">${h.facilityType}</span></td>
-          <td>${h.region}</td>
-          <td><code>${new Date(h.createdAt).toLocaleDateString('ar-SA')}</code></td>
-          <td><span class="status-indicator online"><span class="status-dot"></span> متصل وجاهز</span></td>
-        </tr>
-      `).join('');
+      const realHospitals = hospitals.filter(h => !/(demo|test|mock|sample|linking)/i.test(`${h.hospitalId} ${h.hospitalName} ${h.hospitalNameAr}`));
+      if (realHospitals.length===0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4" style="color:var(--m3-on-surface-variant);">لا توجد منشآت مسجلة بعد - البيانات من جدول Organization الحقيقي (PostgreSQL)</td></tr>`;
+      } else {
+        tbody.innerHTML = realHospitals.map(h => {
+          const status = h.status || 'ACTIVE';
+          const badge = status==='ACTIVE' ? 'badge-success' : status==='PENDING_APPROVAL' ? 'badge-warning' : status==='SUSPENDED' ? 'badge-error' : status==='REJECTED' ? 'badge-error' : 'badge-secondary';
+          const label = status==='ACTIVE' ? 'نشط - معتمد' : status==='PENDING_APPROVAL' ? 'بانتظار اعتماد MOH' : status==='SUSPENDED' ? 'موقوف' : status==='REJECTED' ? 'مرفوض' : status;
+          return `
+          <tr>
+            <td><code>${h.hospitalId.substring(0,8)}...</code><br><small style="color:var(--m3-on-surface-variant);">${h.hospitalId}</small></td>
+            <td><strong>${h.hospitalNameAr}</strong></td>
+            <td>${h.hospitalName}</td>
+            <td><span class="badge badge-info">${h.facilityType || h.organizationType || ''}</span></td>
+            <td>${h.region}</td>
+            <td><code>${h.createdAt ? new Date(h.createdAt).toLocaleDateString('ar-SA') : '--'}</code></td>
+            <td><span class="badge ${badge}">${label}</span></td>
+          </tr>`;
+        }).join('');
+      }
     }
 
     if (select && hospitals) {
-      select.innerHTML = hospitals.map(h => `
-        <option value="${h.hospitalId}">${h.hospitalNameAr} (${h.hospitalId})</option>
-      `).join('');
+      const realHospitals = hospitals.filter(h => !/(demo|test|mock|sample|linking)/i.test(`${h.hospitalId} ${h.hospitalName} ${h.hospitalNameAr}`));
+      const activeOnly = realHospitals.filter(h => h.status==='ACTIVE');
+      const listForIngest = activeOnly.length>0 ? activeOnly : realHospitals;
+      if (listForIngest.length===0) {
+        select.innerHTML = `<option value="">لا توجد منشآت معتمدة - اعتمد منشأة أولاً من الحوكمة</option>`;
+      } else {
+        select.innerHTML = listForIngest.map(h => `
+          <option value="${h.hospitalId}">${h.hospitalNameAr} (${h.region} - ${h.status})</option>
+        `).join('');
+      }
     }
   } catch (err) {
     console.error('Failed to load onboarded hospitals', err);
@@ -4139,10 +4165,17 @@ async function loadAdminGovernance() {
     if (hospRes.ok && pendingEl && pendingEl.innerHTML.includes('لا توجد')) {
       // keep dashboard pending list; no override
     }
-    if (usersRes.ok && usersEl) {
-      const users = await usersRes.json();
-      usersEl.innerHTML = users.slice(0,50).map((u) => `<div style="display:flex; justify-content:space-between; align-items:center; padding:6px 8px; border-bottom:1px solid var(--m3-outline-variant);"><div><strong>${u.username}</strong> <span class="badge ${u.role==='MOH_ADMIN'?'badge-info':u.role==='HOSPITAL_ADMIN'?'badge-warning':'badge-success'}">${u.role}</span><br><small>${u.fullName} • ${u.organizationNameAr||u.organizationName||''} • ${u.isActive?'نشط':'معطل'}</small></div><button class="btn btn-secondary btn-sm" onclick="toggleUserStatus('${u.id}', ${u.isActive})">${u.isActive?'تعطيل':'تفعيل'}</button></div>`).join('') || 'لا يوجد مستخدمون';
-    }
+     if (usersRes.ok && usersEl) {
+       const users = await usersRes.json();
+       const isDemo = (u) => /^(test|demo|3mrr|sample)/i.test(u.username) || (u.email && /test|demo/i.test(u.email));
+       const filtered = users.filter(u => !isDemo(u));
+       const demoCount = users.length - filtered.length;
+       const list = filtered.slice(0,50);
+       let html = demoCount>0 ? `<div style="padding:4px 8px; font-size:0.75rem; color:var(--m3-on-surface-variant); background:var(--m3-surface-container); border-radius:6px; margin-bottom:6px;">تم إخفاء ${demoCount} حساب اختبار (test/demo) - البيانات الحقيقية فقط معروضة</div>` : '';
+       html += list.map((u) => `<div style="display:flex; justify-content:space-between; align-items:center; padding:6px 8px; border-bottom:1px solid var(--m3-outline-variant);"><div><strong>${u.username}</strong> <span class="badge ${u.role==='SYS_ADMIN'?'badge-error':u.role==='MOH_ADMIN'?'badge-info':u.role==='MOH_AUDITOR'?'badge-secondary':u.role==='HOSPITAL_ADMIN'?'badge-warning':u.role==='CLINICIAN'?'badge-success':'badge-info'}">${u.role}</span><br><small>${u.fullName} • ${u.organizationNameAr||u.organizationName||''} • ${u.email||'لا بريد'} • ${u.phone||'لا هاتف'} • ${u.isActive?'نشط':'معطل'}</small></div><button class="btn btn-secondary btn-sm" onclick="toggleUserStatus('${u.id}', ${u.isActive})">${u.isActive?'تعطيل':'تفعيل'}</button></div>`).join('') || 'لا يوجد مستخدمون';
+       if (users.length>0 && list.length===0) html+='<div class="text-center py-2" style="color:var(--m3-on-surface-variant);">كل المستخدمين الحاليين حسابات اختبار</div>';
+       usersEl.innerHTML = html;
+     }
     if (verifyRes.ok && verifyEl) {
       const q = await verifyRes.json();
       const total = (q.allergies?.length||0)+(q.medications?.length||0)+(q.conditions?.length||0)+(q.procedures?.length||0);
@@ -4157,8 +4190,8 @@ async function loadAdminGovernance() {
     }
     if (patientsRes.ok && patientsEl) {
       const patients = await patientsRes.json();
-      if (patients.length===0) patientsEl.innerHTML = '<div class="text-center py-3" style="color:var(--m3-on-surface-variant);">لا يوجد مرضى بعد</div>';
-      else patientsEl.innerHTML = patients.slice(0,50).map((p)=> `<div style="padding:6px 8px; border-bottom:1px solid var(--m3-outline-variant); display:flex; justify-content:space-between; align-items:center;"><span><strong>${p.firstNameAr||p.firstName||''} ${p.lastNameAr||p.lastName||''}</strong> <small>${p.internalId} • ${p.gender||''} • ${p.birthDate||''}</small></span><span class="badge badge-info">${p.identifiers?.[0]?.value||p.internalId}</span></div>`).join('');
+       if (patients.length===0) patientsEl.innerHTML = '<div class="text-center py-3" style="color:var(--m3-on-surface-variant);">لا يوجد مرضى بعد - البيانات مرتبطة مباشرة بجدول Patient الحقيقي</div>';
+       else patientsEl.innerHTML = `<div style="font-size:0.75rem; color:var(--m3-on-surface-variant); margin-bottom:6px;">${patients.length} مريض من قاعدة البيانات الموحدة (NID/HUID حقيقي)</div>` + patients.slice(0,50).map((p)=> `<div style="padding:6px 8px; border-bottom:1px solid var(--m3-outline-variant); display:flex; justify-content:space-between; align-items:center;"><span><strong>${p.firstNameAr||p.firstName||''} ${p.lastNameAr||p.lastName||''}</strong> <small>${p.internalId} • ${p.gender||''} • ${p.birthDate||''} • ${p.phone||''}</small></span><span class="badge badge-info">${p.identifiers?.[0]?.value||p.internalId}</span> <span class="badge badge-secondary">${p.status||'ACTIVE'}</span></div>`).join('');
     }
   } catch (e) {
     if (pendingEl) pendingEl.textContent = 'فشل تحميل الحوكمة: ' + e.message;
