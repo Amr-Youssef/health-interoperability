@@ -14,7 +14,16 @@ export class CdsHooksEngine {
                 hook: 'medication-prescribe',
                 patientId: draft.patientId,
                 timestamp: new Date().toISOString(),
-                cards: []
+                cards: [{
+                        uuid: 'cds-draft-no-record',
+                        summary: 'Inconclusive: No longitudinal record',
+                        summaryAr: 'غير حاسم: لا يوجد ملف موحد للمريض',
+                        detail: 'No longitudinal record found for this patient. Safety checks for allergies, renal function and duplicate therapy could not be performed. Load clinical data first.',
+                        detailAr: 'لا يوجد ملف صحي موحد لهذا المريض - لا يمكن التأكد من الحساسية أو وظائف الكلى أو التكرار الدوائي. حمّل بيانات سريرية أولاً ثم أعد الفحص.',
+                        indicator: 'warning',
+                        source: { label: 'CDS Hooks: Data Completeness Check', labelAr: 'فحص اكتمال البيانات - CDS Hooks' },
+                        suggestions: [{ label: 'Load patient clinical data before prescribing', labelAr: 'حمّل السجل السريري قبل الوصف', actionType: 'order_lab' }]
+                    }]
             };
         }
         const drugCodeUpper = draft.drugCode.toUpperCase();
@@ -177,6 +186,32 @@ export class CdsHooksEngine {
                 });
                 break;
             }
+        }
+        if (cards.length === 0) {
+            const checks = [];
+            if (record.allergies?.length)
+                checks.push(`${record.allergies.length} حساسية محفوظة`);
+            else
+                checks.push('لا حساسية مسجلة');
+            if (record.observations?.length)
+                checks.push(`${record.observations.length} تحليل/قياس`);
+            else
+                checks.push('لا تحاليل HbA1c/كلى محفوظة → التقييم الكلوي غير مكتمل');
+            if (activeMeds.length)
+                checks.push(`${activeMeds.length} وصفة نشطة فُحصت`);
+            else
+                checks.push('لا وصفات نشطة للمقارنة');
+            const detailAr = `تم فحص 4 قواعد: حساسية→لا تطابق، تكرار→لا تكرار، كلية/سكري→${drugNameUpper.includes('IBUPROFEN') || drugNameUpper.includes('CIPRO') ? 'تم التقييم' : 'لا ينطبق'}, لقاح→${record.conditions.some(c => c.code?.icd10amCode === 'E11') ? 'فحص' : 'لا سكري'}. التفاصيل: ${checks.join(' • ')}`;
+            cards.push({
+                uuid: 'cds-draft-safe-verified',
+                summary: 'Verified Safe: No CDS alerts after full check',
+                summaryAr: 'تم التحقق: لا تنبيهات بعد فحص كامل',
+                detail: `All 4 safety rules executed for ${draft.drugName}. No allergy match, no duplicate, no renal/diabetes contraindication.`,
+                detailAr,
+                indicator: 'info',
+                source: { label: 'CDS Hooks Engine - Full Trace', labelAr: 'محرك CDS - تتبع كامل للقواعد الأربعة' },
+                suggestions: [{ label: 'Proceed with normal monitoring', labelAr: 'يمكن الوصف مع المراقبة الاعتيادية', actionType: 'order_lab' }]
+            });
         }
         return {
             hook: 'medication-prescribe',

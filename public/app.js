@@ -21,8 +21,9 @@ const appAuth = {
       const onAuthPage = location.pathname.startsWith('/auth/');
       if (!onAuthPage) { location.replace('/auth/login.html'); return; }
     } else {
-      fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + this.token }, credentials: 'include' }).then(r=>{
-        if(!r.ok){ this.logout(); location.replace('/auth/login.html'); }
+      fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + this.token }, credentials: 'include' }).then(async r=>{
+        if(!r.ok){ this.logout(); location.replace('/auth/login.html'); return; }
+        try { const fresh = await r.json(); if (fresh && fresh.fullName) { this.user = fresh; localStorage.setItem('shiep_user', JSON.stringify(fresh)); updateSessionUI(); } } catch(e){}
       }).catch(()=>{});
     }
     this.updateUI();
@@ -342,6 +343,7 @@ const appAuth = {
     } else {
       overlay.style.display = 'none';
       this.applyRolePermissions();
+      updateSessionUI();
     }
   },
 
@@ -355,9 +357,22 @@ const appAuth = {
     }
     const govCreateCard = document.getElementById('gov-create-admin-card');
     if (govCreateCard) {
-      govCreateCard.style.display = this.currentRole === 'SYS_ADMIN' ? 'block' : 'none';
+      const isNational = this.currentRole === 'SYS_ADMIN' || this.currentRole === 'MOH_ADMIN';
+      govCreateCard.style.display = isNational ? 'block' : 'none';
       const hint = document.getElementById('gov-create-hint');
-      if (hint) hint.textContent = this.currentRole === 'SYS_ADMIN' ? 'SYS_ADMIN فقط يمكنه إنشاء MOH_ADMIN (فصل صلاحيات حقيقي)' : 'إنشاء الأدمن الوطني مقصور على SYS_ADMIN - تواصل مع مدير النظام';
+      if (hint) {
+        if (this.currentRole === 'SYS_ADMIN') hint.textContent = 'SYS_ADMIN ينشئ جميع الأدوار (SYS/MOH/HOSPITAL/CLINICIAN/PATIENT)';
+        else if (this.currentRole === 'MOH_ADMIN') hint.textContent = 'MOH_ADMIN ينشئ HOSPITAL/CLINICIAN/MOH_AUDITOR فقط (SYS/MOH محجوب)';
+        else hint.textContent = 'إنشاء المستخدمين مقصور على الإدارة الوطنية';
+      }
+      const roleSel = document.getElementById('moh-admin-role');
+      if (roleSel) {
+        Array.from(roleSel.options).forEach(o=>{
+          if (this.currentRole === 'MOH_ADMIN' && ['SYS_ADMIN','MOH_ADMIN'].includes(o.value)) o.style.display='none';
+          else o.style.display='';
+        });
+        if (this.currentRole === 'MOH_ADMIN' && ['SYS_ADMIN','MOH_ADMIN'].includes(roleSel.value)) roleSel.value='HOSPITAL_ADMIN';
+      }
     }
     if (this.currentRole === 'MOH_ADMIN' || this.currentRole === 'SYS_ADMIN') {
       ['admin-governance','monitoring', 'onboarding', 'cds', 'nphies', 'medications', 'mpi', 'longitudinal', 'mapping', 'provenance', 'security', 'bulkexport', 'fhir'].forEach(id => {
@@ -373,20 +388,27 @@ const appAuth = {
       if (patCard) patCard.style.display = 'block';
 
     } else if (this.currentRole === 'HOSPITAL_ADMIN') {
-      // Hospital Management System: migration + global registry (separate but integrated) + facility profile
       ['hospital-migration','hospital-global','hospital-profile'].forEach(id => {
         const t = document.getElementById(`tab-btn-${id}`);
         if(t) t.style.display = 'flex';
       });
       defaultTab = 'hospital-migration';
-
-      // Hospital HMS is facility-centric: hide global patient bar and longitudinal selector
-      const globalSelect = document.getElementById('global-patient-selector');
-      if (globalSelect) globalSelect.style.display = 'none';
+    } else if (this.currentRole === 'CLINICIAN') {
+      ['longitudinal','medications','cds','nphies','hospital-migration','hospital-global'].forEach(id => {
+        const t = document.getElementById(`tab-btn-${id}`);
+        if(t) t.style.display = 'flex';
+      });
+      defaultTab = 'longitudinal';
       const patCard = document.querySelector('.patient-selector-card');
-      if (patCard) patCard.style.display = 'none';
-      const bar = document.getElementById('active-patient-bar');
-      if (bar) bar.style.display = 'none';
+      if (patCard) patCard.style.display = 'block';
+    } else if (this.currentRole === 'MOH_AUDITOR') {
+      ['monitoring','longitudinal','security','provenance'].forEach(id => {
+        const t = document.getElementById(`tab-btn-${id}`);
+        if(t) t.style.display = 'flex';
+      });
+      defaultTab = 'monitoring';
+      const patCard = document.querySelector('.patient-selector-card');
+      if (patCard) patCard.style.display = 'block';
 
     } else if (this.currentRole === 'PATIENT') {
       ['profile', 'longitudinal', 'medications'].forEach(id => {
@@ -412,12 +434,67 @@ const appAuth = {
   }
 };
 
-// === ROLE-BASED TAB ALLOWLIST (security) ===
 function getAllowedTabsForRole(role) {
   if (role === 'MOH_ADMIN' || role === 'SYS_ADMIN') return ['admin-governance','monitoring','onboarding','cds','nphies','medications','mpi','longitudinal','mapping','provenance','security','bulkexport','fhir'];
   if (role === 'HOSPITAL_ADMIN') return ['hospital-migration','hospital-global','hospital-profile'];
+  if (role === 'CLINICIAN') return ['longitudinal','medications','cds','nphies','hospital-migration','hospital-global'];
   if (role === 'PATIENT') return ['profile','longitudinal','medications'];
+  if (role === 'MOH_AUDITOR') return ['monitoring','longitudinal','security','provenance'];
   return [];
+}
+
+function updateSessionUI() {
+  const u = appAuth.user;
+  const role = appAuth.currentRole;
+  if (!u || !role) return;
+  const roleArMap = { SYS_ADMIN: 'النظام', MOH_ADMIN: 'وزارة الصحة', MOH_AUDITOR: 'مدقق وزاري', HOSPITAL_ADMIN: 'إدارة مستشفى', CLINICIAN: 'طبيب', PATIENT: 'مريض' };
+  const roleAr = roleArMap[role] || role;
+  const roleBadgeClass = role==='SYS_ADMIN'?'badge-error':role==='MOH_ADMIN'?'badge-info':role==='MOH_AUDITOR'?'badge-secondary':role==='HOSPITAL_ADMIN'?'badge-warning':role==='CLINICIAN'?'badge-success':'badge-info';
+  const name = u.fullName || u.username || '—';
+  const org = u.organizationAr || u.organization || '';
+  const metaMap = {
+    SYS_ADMIN: `${u.username} • سيادي وطني`,
+    MOH_ADMIN: `${u.username} • ${org || 'وزارة الصحة'}`,
+    MOH_AUDITOR: `${u.username} • قراءة وتدقيق`,
+    HOSPITAL_ADMIN: `${u.username} • ${org || 'منشأة'}`,
+    CLINICIAN: `${u.username} • ${org || 'عيادة'}`,
+    PATIENT: `${u.username} • ${org ? org : 'سجل فردي'}`
+  };
+  const meta = metaMap[role] || u.username || '';
+  const sideCard = document.getElementById('session-user-card');
+  const sideName = document.getElementById('session-name');
+  const sideRole = document.getElementById('session-role-badge');
+  const sideOrg = document.getElementById('session-org');
+  const sideMeta = document.getElementById('session-meta');
+  if (sideCard) sideCard.style.display = 'flex';
+  if (sideName) sideName.textContent = name;
+  if (sideRole) { sideRole.textContent = roleAr; sideRole.className = 'badge ' + roleBadgeClass; }
+  if (sideOrg) sideOrg.textContent = org ? `المنشأة: ${org}` : (role==='PATIENT' ? 'حساب فردي محمي' : role==='SYS_ADMIN' ? 'المنصة السيادية' : '');
+  if (sideMeta) sideMeta.textContent = meta;
+  const headChip = document.getElementById('header-session-chip');
+  const headName = document.getElementById('header-session-name');
+  const headSub = document.getElementById('header-session-sub');
+  const headRole = document.getElementById('header-session-role');
+  if (headChip) headChip.style.display = 'flex';
+  if (headName) headName.textContent = name;
+  if (headSub) headSub.textContent = org ? `${roleAr} • ${org}` : roleAr;
+  if (headRole) { headRole.textContent = roleAr; headRole.className = 'badge ' + roleBadgeClass; }
+  if (role === 'HOSPITAL_ADMIN' && org) {
+    fetch('/api/hospital/me').then(r=>r.json()).then(d=>{
+      const ar = d.organization?.organizationNameAr || d.organization?.organizationName || org;
+      const region = d.organization?.region || '';
+      const type = d.organization?.organizationType || '';
+      if (sideOrg) sideOrg.textContent = `${ar}${region ? ' • ' + region : ''}${type ? ' • ' + type : ''}`;
+      if (headSub) headSub.textContent = `${roleAr} • ${ar}`;
+    }).catch(()=>{});
+  }
+  if (role === 'PATIENT' && u.patientProfileId) {
+    fetch('/api/patient/me').then(r=>r.json()).then(d=>{
+      const nid = d.patient?.nationalId || d.patient?.identifiers?.find(i=>i.type==='NID')?.value || u.username;
+      if (sideMeta) sideMeta.textContent = `الهوية: ${nid}`;
+      if (headSub) headSub.textContent = `مريض • ${nid}`;
+    }).catch(()=>{});
+  }
 }
 
 // === FETCH INTERCEPTOR FOR JWT AUTHENTICATION ===
@@ -476,11 +553,29 @@ function updateGlobalPatientBar() {
     if (bar) bar.style.display = 'none';
     return;
   }
+  const clinicianTabs = ['longitudinal','medications','cds','nphies'];
+  if (appAuth.currentRole === 'CLINICIAN' && !clinicianTabs.includes(currentTab)) {
+    if (bar) bar.style.display = 'none';
+    return;
+  }
+  const auditorTabs = ['longitudinal'];
+  if (appAuth.currentRole === 'MOH_AUDITOR' && !auditorTabs.includes(currentTab)) {
+    if (bar) bar.style.display = 'none';
+    return;
+  }
   if (bar) bar.style.display = 'flex';
 
   // For Patient Role: Display ONLY logged-in patient details and completely hide selector dropdown
   if (appAuth.currentRole === 'PATIENT') {
+    const combo = document.getElementById('global-patient-combobox');
+    const comboSearch = document.getElementById('global-patient-search');
+    const comboDrop = document.getElementById('global-patient-dropdown');
+    const comboCount = document.getElementById('global-patient-count');
     if (globalSelect) globalSelect.style.display = 'none';
+    if (combo) combo.style.display = 'none';
+    if (comboSearch) comboSearch.style.display = 'none';
+    if (comboDrop) comboDrop.style.display = 'none';
+    if (comboCount) comboCount.style.display = 'none';
     const activePatient = cachedPatients[0] || {
       nameAr: appAuth.user?.fullName,
       name: appAuth.user?.fullName,
@@ -496,25 +591,40 @@ function updateGlobalPatientBar() {
   }
 
   if (cachedPatients.length === 0) {
-    if (bar) bar.style.display = 'none';
+    if (nameEl) nameEl.textContent = '— لا يوجد مرضى —';
+    if (metaEl) metaEl.textContent = 'شغّل الاستيعاب أو ارفع ملف سريري أولاً';
+    const ci = document.getElementById('global-patient-search');
+    if (ci) { ci.placeholder = 'لا يوجد مرضى — ابحث بعد الاستيعاب'; ci.value=''; }
     return;
   }
 
-  // Populate global selector for Admin/Hospital
-  if (globalSelect) {
-    globalSelect.style.display = 'block';
-    globalSelect.innerHTML = cachedPatients.map(p =>
-      `<option value="${p.id}">${p.nameAr || p.name} (${p.nid || p.id.substring(0,8)})</option>`
-    ).join('');
-    globalSelect.value = currentPatientId;
+  if (!currentPatientId) {
+    if (nameEl) nameEl.textContent = '— اختر مريضاً —';
+    if (metaEl) metaEl.textContent = `| ${cachedPatients.length} مريض متاح • ابحث بالاسم/الهوية ←`;
+    const ci2 = document.getElementById('global-patient-search');
+    if (ci2 && document.activeElement !== ci2) ci2.placeholder = `ابحث بين ${cachedPatients.length} مريض...`;
+    return;
   }
 
+  const combo = document.getElementById('global-patient-combobox');
+  const searchInput = document.getElementById('global-patient-search');
+  if (combo) combo.style.display = 'block';
+  if (globalSelect) globalSelect.style.display = 'none';
+  if (searchInput && currentPatientId) {
+    const ap = cachedPatients.find(p => p.id === currentPatientId);
+    if (ap && document.activeElement !== searchInput) searchInput.value = ap.nameAr || ap.name;
+  }
+  if (typeof window.renderGlobalDropdown === 'function') {
+    try { window.renderGlobalDropdown(); } catch(e) {}
+  }
   const activePatient = cachedPatients.find(p => p.id === currentPatientId);
-  if (nameEl && activePatient) {
-    nameEl.textContent = activePatient.nameAr || activePatient.name;
+  if (nameEl) {
+    nameEl.textContent = activePatient ? (activePatient.nameAr || activePatient.name) : '— اختر مريضاً —';
   }
   if (metaEl && activePatient) {
     metaEl.textContent = `| الهوية: ${activePatient.nid || '—'} | ${activePatient.gender === 'male' ? 'ذكر' : 'أنثى'} | ${activePatient.birthDate || ''}`;
+  } else if (metaEl) {
+    metaEl.textContent = '| ابحث بالاسم أو الهوية في الحقل ←';
   }
 }
 
@@ -540,7 +650,6 @@ async function fetchAndCachePatients() {
         birthDate: cp.birthDate ? String(cp.birthDate).substring(0, 10) : '',
         gender: cp.gender || ''
       }));
-      if (cachedPatients.length > 0) currentPatientId = cachedPatients[0].id;
       updateGlobalPatientBar();
       return;
     }
@@ -555,7 +664,7 @@ async function fetchAndCachePatients() {
       birthDate: cp.birthDate ? String(cp.birthDate).substring(0, 10) : '',
       gender: cp.gender || ''
     }));
-    if (!currentPatientId && cachedPatients.length > 0) currentPatientId = cachedPatients[0].id;
+    if (currentPatientId && !cachedPatients.find(p=>p.id===currentPatientId)) currentPatientId='';
     updateGlobalPatientBar();
   } catch (err) {
     console.error('Failed to fetch and cache patients', err);
@@ -680,10 +789,107 @@ function initThemeSwitcher() {
   }
 }
 
+let globalPatientSearchState = { q: '', page: 1, limit: 12, total: 0, totalPages: 1, items: [] };
+let globalPatientDebounce = null;
 function initGlobalPatientSelector() {
-  document.getElementById('global-patient-selector')?.addEventListener('change', (e) => {
-    switchActivePatient(e.target.value);
+  const input = document.getElementById('global-patient-search');
+  const dropdown = document.getElementById('global-patient-dropdown');
+  const clearBtn = document.getElementById('global-patient-clear');
+  const countEl = document.getElementById('global-patient-count');
+  const legacySelect = document.getElementById('global-patient-selector');
+  if (!input || !dropdown || input.dataset.bound) return;
+  input.dataset.bound = '1';
+  legacySelect?.addEventListener('change', (e) => switchActivePatient(e.target.value));
+  const closeDropdown = () => { dropdown.style.display = 'none'; };
+  const openDropdown = () => { if (globalPatientSearchState.items.length || globalPatientSearchState.q) dropdown.style.display = 'block'; };
+  input.addEventListener('focus', async () => {
+    if (!globalPatientSearchState.items.length) await fetchGlobalPatients('', 1);
+    renderGlobalDropdown();
+    openDropdown();
   });
+  input.addEventListener('input', () => {
+    const v = input.value.trim();
+    if (clearBtn) clearBtn.style.display = v ? 'block' : 'none';
+    clearTimeout(globalPatientDebounce);
+    globalPatientDebounce = setTimeout(async () => {
+      globalPatientSearchState.q = v;
+      globalPatientSearchState.page = 1;
+      await fetchGlobalPatients(v, 1);
+      renderGlobalDropdown();
+      openDropdown();
+    }, 300);
+  });
+  clearBtn?.addEventListener('click', async () => {
+    input.value = ''; clearBtn.style.display = 'none';
+    globalPatientSearchState.q = ''; globalPatientSearchState.page = 1;
+    await fetchGlobalPatients('', 1);
+    renderGlobalDropdown();
+    input.focus();
+  });
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#global-patient-combobox')) closeDropdown();
+  });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeDropdown();
+    if (e.key === 'Enter') {
+      const first = dropdown.querySelector('.combobox-item[data-id]');
+      if (first) { const id = first.getAttribute('data-id'); if (id) switchActivePatient(id); closeDropdown(); }
+    }
+  });
+  async function fetchGlobalPatients(q, page) {
+    try {
+      const params = new URLSearchParams({ q, page: String(page), limit: String(globalPatientSearchState.limit), sort: 'recent' });
+      const res = await fetch('/api/patients/search?' + params.toString());
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'فشل البحث');
+      const items = (data.items || []).map(cp => ({
+        id: cp.internalId,
+        name: `${cp.givenName || ''} ${cp.familyName || ''}`.trim() || cp.internalId,
+        nameAr: `${cp.givenNameAr || ''} ${cp.familyNameAr || ''}`.trim() || `${cp.givenName || ''} ${cp.familyName || ''}`.trim(),
+        nid: cp.identifiers?.find(i => i.type === 'NID' || i.type === 'IQAMA')?.value || '',
+        birthDate: cp.birthDate ? String(cp.birthDate).substring(0, 10) : '',
+        gender: cp.gender || ''
+      }));
+      if (page === 1) globalPatientSearchState.items = items;
+      else globalPatientSearchState.items = globalPatientSearchState.items.concat(items);
+      globalPatientSearchState.total = data.total || items.length;
+      globalPatientSearchState.totalPages = data.totalPages || 1;
+      globalPatientSearchState.page = page;
+      items.forEach(m => { if (!cachedPatients.find(c => c.id === m.id)) cachedPatients.push(m); });
+      if (countEl) countEl.textContent = `${globalPatientSearchState.total} مريض • ${globalPatientSearchState.items.length} معروض`;
+    } catch (err) {
+      if (dropdown) dropdown.innerHTML = `<div class="combobox-empty" style="color:var(--m3-error);">${err.message}</div>`;
+    }
+  }
+  function renderGlobalDropdown() {
+    if (!dropdown) return;
+    if (!globalPatientSearchState.items.length) {
+      dropdown.innerHTML = `<div class="combobox-empty">لا توجد نتائج لـ "${globalPatientSearchState.q || '—'}"</div>`;
+      dropdown.style.display = 'block';
+      return;
+    }
+    const html = globalPatientSearchState.items.map(p => {
+      const isActive = p.id === currentPatientId;
+      return `<div class="combobox-item ${isActive ? 'active' : ''}" data-id="${p.id}" onclick="switchActivePatient('${p.id}')">
+        <div class="combobox-item-main"><span class="combobox-item-name">${p.nameAr || p.name}</span><span class="combobox-item-sub">${p.nid || p.id.substring(0,8)} • ${p.gender === 'male' ? 'ذكر' : p.gender === 'female' ? 'أنثى' : '—'} • ${p.birthDate || '—'}</span></div>
+        <span class="badge ${isActive ? 'badge-success' : 'badge-info'}" style="font-size:0.62rem;">${isActive ? 'نشط' : 'اختيار'}</span>
+      </div>`;
+    }).join('');
+    const moreBtn = globalPatientSearchState.page < globalPatientSearchState.totalPages ? `<button type="button" class="combobox-load-more" id="global-load-more">تحميل المزيد (${globalPatientSearchState.total - globalPatientSearchState.items.length} متبقي)</button>` : '';
+    dropdown.innerHTML = html + moreBtn;
+    dropdown.style.display = 'block';
+    document.getElementById('global-load-more')?.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await fetchGlobalPatients(globalPatientSearchState.q, globalPatientSearchState.page + 1);
+      renderGlobalDropdown();
+    });
+    dropdown.querySelectorAll('.combobox-item').forEach(el => {
+      el.addEventListener('click', () => { dropdown.style.display = 'none'; });
+    });
+  }
+  window.fetchGlobalPatients = fetchGlobalPatients;
+  window.renderGlobalDropdown = renderGlobalDropdown;
+  fetchGlobalPatients('', 1).then(() => { if (document.activeElement === input) renderGlobalDropdown(); });
 }
 
 function initFileDropzone() {
@@ -1057,8 +1263,15 @@ function initActions() {
     const hospitalName = document.getElementById('onboard-name-en')?.value.trim();
     const facilityType = document.getElementById('onboard-type')?.value;
     const region = document.getElementById('onboard-region')?.value;
+    const adminUsername = document.getElementById('onboard-admin-username')?.value.trim();
+    const adminPassword = document.getElementById('onboard-admin-password')?.value;
+    const adminFullName = document.getElementById('onboard-admin-fullname')?.value.trim();
+    const adminEmail = document.getElementById('onboard-admin-email')?.value.trim();
+    const adminPhone = document.getElementById('onboard-admin-phone')?.value.trim();
     if (!hospitalNameAr || !hospitalName) { showToast('بيانات ناقصة','اسم المنشأة عربي/إنجليزي مطلوب','error'); return; }
     if (hospitalNameAr.length < 3 || hospitalName.length < 3) { showToast('بيانات ناقصة','الاسم قصير جداً','error'); return; }
+    if (!adminUsername || !adminPassword || !adminFullName || !adminEmail || !adminPhone) { showToast('بيانات الأدمن ناقصة','جميع حقول أدمن المنشأة مطلوبة','error'); return; }
+    if (adminPassword.length < 8 || !/[A-Za-z]/.test(adminPassword) || !/\d/.test(adminPassword)) { showToast('كلمة مرور ضعيفة','يجب أن تكون 8+ حروف وأرقام','error'); return; }
 
     try {
       const res = await fetch('/api/hospitals/onboard', {
@@ -1070,6 +1283,11 @@ function initActions() {
           hospitalNameAr,
           facilityType,
           region,
+          adminUsername,
+          adminPassword,
+          adminFullName,
+          adminEmail,
+          adminPhone,
           adapterVersion: '1.0.0',
           sourceSchema: {
             sourceSystemId: hospitalId,
@@ -1111,7 +1329,8 @@ function initActions() {
       });
       const data = await res.json();
       if (data.success || res.ok) {
-        showToast('تم التسجيل', data.message || `تم تسجيل ${hospitalNameAr} - بانتظار اعتماد MOH`, 'success');
+        showToast('تم التسجيل', data.message || `تم تسجيل ${hospitalNameAr} مع الأدمن ${adminUsername} - بانتظار اعتماد MOH`, 'success');
+        if (data.admin) showToast('حساب الأدمن', `أدمن المنشأة: ${data.admin.username} (${data.admin.email}) - الدخول مُعلق حتى الاعتماد`, 'info');
         document.getElementById('form-onboard-hospital')?.reset();
         loadOnboardedHospitals();
         loadAdminGovernance();
@@ -1195,7 +1414,8 @@ function initActions() {
       if (data.cards && data.cards.length > 0) {
         container.innerHTML = data.cards.map((c) => {
           const borderColor = c.indicator === 'critical' ? 'var(--m3-error)' : c.indicator === 'warning' ? 'var(--m3-warning)' : 'var(--m3-primary)';
-          const badgeClass = c.indicator === 'critical' ? 'badge-warning' : c.indicator === 'warning' ? 'badge-warning' : 'badge-success';
+          const badgeClass = c.indicator === 'critical' ? 'badge-error' : c.indicator === 'warning' ? 'badge-warning' : 'badge-success';
+          const badgeLabel = c.indicator === 'critical' ? 'حرج' : c.indicator === 'warning' ? 'تحذير' : c.indicator === 'info' ? 'تم التحقق ✓' : 'إرشادي';
 
           return `
             <div style="background:var(--m3-surface-container-low); border:1px solid var(--m3-outline-variant); border-right:4px solid ${borderColor}; border-radius:var(--radius-xs); padding:16px 18px; margin-bottom:10px;">
@@ -1203,7 +1423,7 @@ function initActions() {
                 <div style="display:flex; align-items:center; gap:8px;">
                   <strong style="color:var(--m3-on-surface); font-size:0.95rem;">${c.summaryAr}</strong>
                 </div>
-                <span class="badge ${badgeClass}">${c.indicator === 'warning' ? 'تحذير تفاعل دوائي' : 'إرشادي معتمد'}</span>
+                <span class="badge ${badgeClass}">${badgeLabel}</span>
               </div>
               <p style="font-size:0.83rem; color:var(--m3-on-surface-variant); margin-bottom:8px; line-height:1.5;">${c.detailAr}</p>
               <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.75rem; color:var(--m3-on-surface-muted);">
@@ -1216,12 +1436,12 @@ function initActions() {
         showToast('تم فحص الوصفة التجريبية', 'تم توليد تنبيهات الأمان الدوائي اللحظية.', 'info');
       } else {
         container.innerHTML = `
-          <div style="background:var(--m3-surface-container-low); border:1px solid var(--m3-primary); border-radius:var(--radius-xs); padding:14px 18px; color:var(--m3-on-primary-container);">
-            <strong>✅ الدواء آمن تماماً للوصف</strong>
-            <p style="font-size:0.82rem; margin-top:4px;">لم يتم رصد أي تعارضات دوائية أو تحذيرات كلوية لهذا المريض مع دواء (${sel.name}).</p>
+          <div style="background:var(--m3-surface-container-low); border:1px solid var(--m3-outline-variant); border-radius:var(--radius-xs); padding:14px 18px; color:var(--m3-on-surface-variant);">
+            <strong style="color:var(--m3-on-surface);">⚠️ لا يمكن التحقق - لا توجد بيانات كافية</strong>
+            <p style="font-size:0.82rem; margin-top:4px;">المحرك لم يرجع أي بطاقة - تحقق من اكتمال سجل المريض (حساسيات/تحاليل/وصفات) ثم أعد الفحص.</p>
           </div>
         `;
-        showToast('الوصفة آمنة', 'لا توجد تعارضات مع هذا الدواء.', 'success');
+        showToast('غير مكتمل', 'الملف ناقص - لا يمكن الجزم بالأمان', 'info');
       }
     } catch (err) {
       showToast('خطأ', 'تعذر فحص الوصفة التجريبية.', 'error');
@@ -1476,6 +1696,7 @@ function handleTabSwitch(tab) {
   if (tab === 'mpi') loadMpiIdentities();
   if (tab === 'longitudinal') {
     loadPatientsDropdown();
+    applyLongitudinalPermissions();
     if (appAuth.currentRole === 'PATIENT') {
       loadPatientSelfReportedDashboard();
     }
@@ -1712,59 +1933,52 @@ async function loadCdsAndAnalyticsTab() {
       kpiSpeed.textContent = `${analytics.financialInteroperability.averageSettlementDurationSeconds}s`;
     }
 
-    // 2. Patient CDS Hooks Safety Cards
+    // 2. Patient CDS Hooks Safety Cards - غير مرتبط بـ KPIs
     const container = document.getElementById('cds-cards-container');
-    if (!currentPatientId) {
+    const hasPatient = !!currentPatientId && cachedPatients.some(p=>p.id===currentPatientId);
+    if (!hasPatient) {
       if (container) {
-        const activePatient = cachedPatients.find(p => p.id === currentPatientId);
-        container.innerHTML = `<div style="padding:16px; background:var(--m3-surface-container-low); border:1px solid var(--m3-outline-variant); border-radius:var(--radius-xs); text-align:center;">
-          <p style="color:var(--m3-on-surface-variant); font-size:0.88rem;">يجب تشغيل خط الأنابيب أولاً لاستيعاب بيانات المرضى، ثم اختيار مريض من شريط المريض النشط أعلاه.</p>
+        const count = cachedPatients.length;
+        container.innerHTML = `<div style="padding:16px; background:var(--m3-surface-container-low); border:1px solid var(--m3-warning); border-radius:var(--radius-xs); text-align:center;">
+          <p style="color:var(--m3-on-surface); font-size:0.92rem; font-weight:600;">— لم يتم اختيار مريض —</p>
+          <p style="color:var(--m3-on-surface-variant); font-size:0.84rem; margin-top:4px;">${count>0 ? `لديك ${count} مريض متاح - اختر مريضاً من الشريط العلوي ← ثم اضغط "إعادة تقييم السلامة"` : 'لا يوجد مرضى بعد - شغّل "تشغيل الاستيعاب والتطبيع" من لوحة المراقبة أولاً'}</p>
+          <p style="color:var(--m3-on-surface-muted); font-size:0.75rem; margin-top:6px;">المحاكي بالأسفل يعمل أيضاً بدون بطاقات المريض - جرّب وصف دواء تجريبي بعد اختيار المريض.</p>
         </div>`;
       }
-      return;
-    }
-
-    if (currentPatientId) {
+    } else {
       const activePatient = cachedPatients.find(p => p.id === currentPatientId);
       const patientLabel = activePatient ? (activePatient.nameAr || activePatient.name) : currentPatientId.substring(0, 8);
-
       const resCds = await fetch(`/api/cds/patient/${currentPatientId}/safety-alerts`);
       const cdsData = await resCds.json();
-
-      if (container && cdsData.cards) {
+      if (cdsData.cards) {
         const patientHeader = `<div style="padding:10px 14px; background:var(--m3-primary-container); border:1px solid var(--m3-primary); border-radius:var(--radius-xs); margin-bottom:12px; display:flex; align-items:center; gap:8px;">
           <strong style="color:var(--m3-on-primary-container); font-size:0.88rem;">تقييم السلامة الدوائية للمريض: ${patientLabel}</strong>
           <span class="badge badge-info">${cdsData.cards.length} تنبيه</span>
         </div>`;
-
         if (cdsData.cards.length === 0) {
           container.innerHTML = patientHeader + '<p class="text-center py-4 text-muted">لا توجد تعارضات أو تنبيهات دوائية حرجة مسجلة لهذا المريض.</p>';
-          return;
+        } else {
+          container.innerHTML = patientHeader + cdsData.cards.map((c) => {
+            const indicatorBadge = c.indicator === 'critical' ? '<span class="badge badge-error">حرج - تدقيق فوري</span>' :
+                                   c.indicator === 'warning' ? '<span class="badge badge-warning">تحذير سريري</span>' :
+                                   '<span class="badge badge-success">إرشادي معتمد</span>';
+            return `
+              <div style="background:var(--m3-surface-container); border:1px solid var(--m3-outline-variant); border-right:3px solid ${c.indicator === 'critical' ? 'var(--m3-error)' : c.indicator === 'warning' ? 'var(--m3-warning)' : 'var(--m3-primary)'}; border-radius:var(--radius-xs); padding:16px; margin-bottom:12px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                  <strong style="color:var(--m3-on-surface); font-size:0.96rem;">${c.summaryAr}</strong>
+                  ${indicatorBadge}
+                </div>
+                <p style="font-size:0.84rem; color:var(--m3-on-surface-variant); margin-bottom:10px; line-height:1.5;">${c.detailAr}</p>
+                <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.75rem; color:var(--m3-on-surface-muted);">
+                  <span>المصدر المعياري: <strong>${c.source?.labelAr}</strong></span>
+                  ${c.suggestions ? `<span>التوصية: <span class="badge badge-info">${c.suggestions[0].labelAr}</span></span>` : ''}
+                </div>
+              </div>
+            `;
+          }).join('');
         }
-
-        container.innerHTML = patientHeader + cdsData.cards.map((c) => {
-          const indicatorBadge = c.indicator === 'critical' ? '<span class="badge badge-error">حرج - تدقيق فوري</span>' :
-                                 c.indicator === 'warning' ? '<span class="badge badge-warning">تحذير سريري</span>' :
-                                 '<span class="badge badge-success">إرشادي معتمد</span>';
-
-          return `
-            <div style="background:var(--m3-surface-container); border:1px solid var(--m3-outline-variant); border-right:3px solid ${c.indicator === 'critical' ? 'var(--m3-error)' : c.indicator === 'warning' ? 'var(--m3-warning)' : 'var(--m3-primary)'}; border-radius:var(--radius-xs); padding:16px; margin-bottom:12px;">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                <strong style="color:var(--m3-on-surface); font-size:0.96rem;">${c.summaryAr}</strong>
-                ${indicatorBadge}
-              </div>
-              <p style="font-size:0.84rem; color:var(--m3-on-surface-variant); margin-bottom:10px; line-height:1.5;">${c.detailAr}</p>
-              <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.75rem; color:var(--m3-on-surface-muted);">
-                <span>المصدر المعياري: <strong>${c.source?.labelAr}</strong></span>
-                ${c.suggestions ? `<span>التوصية: <span class="badge badge-info">${c.suggestions[0].labelAr}</span></span>` : ''}
-              </div>
-            </div>
-          `;
-        }).join('');
       }
     }
-
-    // 3. Weqaa Communicable Disease Surveillance Cases
     await loadWeqaaSurveillanceCases();
   } catch (err) {
     console.error('Failed to load CDS analytics', err);
@@ -2218,10 +2432,11 @@ async function performLongitudinalSearch() {
           <div style="font-size:0.70rem; color:var(--m3-on-surface-muted);">معرف: <code>${p.id.substring(0,12)}…</code> ${p.phone? '• '+p.phone:''}</div>
         </div>`;
       }).join('');
-      if (!currentPatientId && mapped[0]) selectLongitudinalPatient(mapped[0].id);
-      else if (currentPatientId && !mapped.find(m => m.id === currentPatientId) && longitudinalSearchState.q === '') {
-        // keep current selection highlighted but not in this page - still load its record
+      if (currentPatientId && !mapped.find(m => m.id === currentPatientId) && longitudinalSearchState.q === '') {
         if (!longitudinalCache.has(currentPatientId)) loadLongitudinalRecord(currentPatientId);
+      } else if (!currentPatientId) {
+        const lc = document.getElementById('longitudinal-content');
+        if (lc && !longitudinalSearchState.q) lc.innerHTML = `<div class="card" style="padding:28px; text-align:center; color:var(--m3-on-surface-variant);"><p style="font-size:0.95rem; font-weight:700; color:var(--m3-on-surface);">— لم يتم اختيار مريض —</p><p style="font-size:0.84rem; margin-top:6px;">ابحث بالاسم أو الهوية أعلاه ثم اضغط "اختيار" لعرض الملف الصحي الموحد</p><p style="font-size:0.72rem; margin-top:8px; color:var(--m3-on-surface-muted);">النظام مصمم لملايين المرضى - لا يُحمّل أي سجل حتى تطلبه صراحةً</p></div>`;
       }
     }
     if (pagEl) {
@@ -4143,10 +4358,12 @@ async function loadAdminGovernance() {
   const usersEl = document.getElementById('gov-users-list');
   const verifyEl = document.getElementById('gov-verify-list');
   const patientsEl = document.getElementById('gov-patients-list');
+  let dashData = null;
   try {
     const dashRes = await fetch('/api/moh/dashboard');
     if (dashRes.ok) {
-      const d = await dashRes.json();
+      dashData = await dashRes.json();
+      const d = dashData;
       const gh = document.getElementById('gov-pending-hosp');
       const gu = document.getElementById('gov-users-total');
       const gv = document.getElementById('gov-verify-queue');
@@ -4157,26 +4374,46 @@ async function loadAdminGovernance() {
       if (gp) gp.textContent = d.nationalCounts.patientsTotal;
       if (pendingEl) {
         const list = d.pendingHospitalsList || [];
-        if (list.length === 0) pendingEl.innerHTML = '<div class="text-center py-3" style="color:var(--m3-on-surface-variant);">لا توجد منشآت بانتظار الاعتماد</div>';
-        else pendingEl.innerHTML = list.map((o) => `<div style="display:flex; justify-content:space-between; align-items:center; padding:8px; border:1px solid var(--m3-outline-variant); border-radius:8px; margin-bottom:6px;"><div><strong>${o.organizationNameAr || o.organizationName}</strong><br><small>${o.organizationName} • ${o.region} • ${o.organizationType}</small></div><div style="display:flex; gap:6px;"><button class="btn btn-primary btn-sm" onclick="approveHospital('${o.id}')">اعتماد</button><button class="btn btn-secondary btn-sm" onclick="rejectHospital('${o.id}')">رفض</button></div></div>`).join('');
+        if (list.length === 0) pendingEl.innerHTML = '<div class="text-center py-3" style="color:var(--m3-on-surface-variant);">لا توجد منشآت بانتظار الاعتماد — جميع المنشآت معتمدة ونشطة</div>';
+        else pendingEl.innerHTML = list.map((o) => {
+          const admin = o.admins?.[0];
+          const adminHtml = admin ? `<div style="margin-top:6px; background:var(--m3-surface-container); border-radius:6px; padding:6px 8px; font-size:0.78rem;"><strong>أدمن المنشأة:</strong> ${admin.fullName} (@${admin.username}) • ${admin.email||'لا بريد'} • ${admin.phone||'لا هاتف'} <span class="badge ${admin.isActive?'badge-success':'badge-warning'}">${admin.isActive?'نشط':'معلق'}</span> ${o.hasMapping?'<span class="badge badge-info">خرائط محفوظة</span>':''}</div>` : `<div style="margin-top:6px; font-size:0.75rem; color:var(--m3-error);">⚠️ لا يوجد أدمن مرتبط - المنشأة من تسجيل قديم</div>`;
+          const dateStr = o.createdAt ? new Date(o.createdAt).toLocaleDateString('ar-SA') : '';
+          return `<div style="padding:10px; border:1px solid var(--m3-outline-variant); border-radius:8px; margin-bottom:8px; background:var(--m3-surface);"><div style="display:flex; justify-content:space-between; align-items:flex-start;"><div><strong>${o.organizationNameAr || o.organizationName}</strong> <span class="badge badge-warning">PENDING</span><br><small>${o.organizationName} • ${o.region} • ${o.organizationType} • ${dateStr}</small>${adminHtml}</div><div style="display:flex; flex-direction:column; gap:6px; min-width:90px;"><button class="btn btn-primary btn-sm" onclick="approveHospital('${o.id}')">اعتماد وتفعيل</button><button class="btn btn-secondary btn-sm" onclick="rejectHospital('${o.id}')">رفض</button></div></div></div>`;
+        }).join('');
       }
+    } else {
+      if (pendingEl) pendingEl.innerHTML = `<div class="text-center py-3" style="color:var(--m3-error);">فشل تحميل الحوكمة (${dashRes.status}) - تحقق من تسجيل الدخول والصلاحيات</div>`;
+      const gh = document.getElementById('gov-pending-hosp'); if (gh) gh.textContent = '--';
     }
     const [hospRes, usersRes, verifyRes, patientsRes] = await Promise.all([fetch('/api/moh/hospitals'), fetch('/api/moh/users'), fetch('/api/moh/verification-queue'), fetch('/api/moh/patients?take=50')]);
     if (hospRes.ok && pendingEl && pendingEl.innerHTML.includes('لا توجد')) {
       // keep dashboard pending list; no override
     }
-     if (usersRes.ok && usersEl) {
-       const users = await usersRes.json();
-       const isDemo = (u) => /^(test|demo|3mrr|sample)/i.test(u.username) || (u.email && /test|demo/i.test(u.email));
-       const filtered = users.filter(u => !isDemo(u));
-       const demoCount = users.length - filtered.length;
-       const list = filtered.slice(0,50);
-       let html = demoCount>0 ? `<div style="padding:4px 8px; font-size:0.75rem; color:var(--m3-on-surface-variant); background:var(--m3-surface-container); border-radius:6px; margin-bottom:6px;">تم إخفاء ${demoCount} حساب اختبار (test/demo) - البيانات الحقيقية فقط معروضة</div>` : '';
-       html += list.map((u) => `<div style="display:flex; justify-content:space-between; align-items:center; padding:6px 8px; border-bottom:1px solid var(--m3-outline-variant);"><div><strong>${u.username}</strong> <span class="badge ${u.role==='SYS_ADMIN'?'badge-error':u.role==='MOH_ADMIN'?'badge-info':u.role==='MOH_AUDITOR'?'badge-secondary':u.role==='HOSPITAL_ADMIN'?'badge-warning':u.role==='CLINICIAN'?'badge-success':'badge-info'}">${u.role}</span><br><small>${u.fullName} • ${u.organizationNameAr||u.organizationName||''} • ${u.email||'لا بريد'} • ${u.phone||'لا هاتف'} • ${u.isActive?'نشط':'معطل'}</small></div><button class="btn btn-secondary btn-sm" onclick="toggleUserStatus('${u.id}', ${u.isActive})">${u.isActive?'تعطيل':'تفعيل'}</button></div>`).join('') || 'لا يوجد مستخدمون';
-       if (users.length>0 && list.length===0) html+='<div class="text-center py-2" style="color:var(--m3-on-surface-variant);">كل المستخدمين الحاليين حسابات اختبار</div>';
-       usersEl.innerHTML = html;
-     }
-    if (verifyRes.ok && verifyEl) {
+      if (usersEl) {
+        if (!usersRes.ok) {
+          usersEl.innerHTML = `<div class="text-center py-3" style="color:var(--m3-error);">فشل تحميل المستخدمين (${usersRes.status})</div>`;
+        } else {
+      const users = await usersRes.json();
+      const pendingOrgIds = new Set(((dashData?.pendingHospitalsList)||[]).map(o=>o.id));
+      const isDemo = (u) => /^(test|demo|3mrr|sample)/i.test(u.username) || (u.email && /test|demo/i.test(u.email));
+      const filtered = users.filter(u => !isDemo(u));
+      const demoCount = users.length - filtered.length;
+      const list = filtered.slice(0,50);
+      let html = demoCount>0 ? `<div style="padding:4px 8px; font-size:0.75rem; color:var(--m3-on-surface-variant); background:var(--m3-surface-container); border-radius:6px; margin-bottom:6px;">تم إخفاء ${demoCount} حساب اختبار - البيانات الحقيقية فقط</div>` : '';
+      html += list.map((u) => {
+        const isPendingOrg = pendingOrgIds.has(u.organizationId);
+        const pendingBadge = isPendingOrg ? `<span class="badge badge-warning">منشأة معلقة</span>` : '';
+        const orgStatusHint = isPendingOrg ? `<br><small style="color:var(--m3-warning);">⚠️ المنشأة بانتظار اعتماد MOH - دخول الأدمن معلق حتى التفعيل</small>` : '';
+        return `<div style="display:flex; justify-content:space-between; align-items:center; padding:6px 8px; border-bottom:1px solid var(--m3-outline-variant); ${isPendingOrg?'background:var(--m3-warning-container); border-radius:6px; margin-bottom:4px;':''}"><div><strong>${u.username}</strong> <span class="badge ${u.role==='SYS_ADMIN'?'badge-error':u.role==='MOH_ADMIN'?'badge-info':u.role==='MOH_AUDITOR'?'badge-secondary':u.role==='HOSPITAL_ADMIN'?'badge-warning':u.role==='CLINICIAN'?'badge-success':'badge-info'}">${u.role}</span> ${pendingBadge}<br><small>${u.fullName} • ${u.organizationNameAr||u.organizationName||''} • ${u.email||'لا بريد'} • ${u.phone||'لا هاتف'} • ${u.isActive?'نشط':'معطل'}</small>${orgStatusHint}</div><button class="btn btn-secondary btn-sm" onclick="toggleUserStatus('${u.id}', ${u.isActive})">${u.isActive?'تعطيل':'تفعيل'}</button></div>`;
+      }).join('') || 'لا يوجد مستخدمون';
+      if (users.length>0 && list.length===0) html+='<div class="text-center py-2" style="color:var(--m3-on-surface-variant);">كل المستخدمين الحاليين حسابات اختبار</div>';
+      usersEl.innerHTML = html;
+        }
+      }
+    if (verifyEl) {
+      if (!verifyRes.ok) verifyEl.innerHTML = `<div class="text-center py-3" style="color:var(--m3-error);">فشل تحميل طابور التحقق (${verifyRes.status})</div>`;
+      else if (verifyRes.ok) {
       const q = await verifyRes.json();
       const total = (q.allergies?.length||0)+(q.medications?.length||0)+(q.conditions?.length||0)+(q.procedures?.length||0);
       if (total===0) verifyEl.innerHTML = '<div class="text-center py-3" style="color:var(--m3-on-surface-variant);">لا توجد بلاغات بانتظار التحقق</div>';
@@ -4186,15 +4423,22 @@ async function loadAdminGovernance() {
         (q.medications||[]).slice(0,5).forEach((m)=>{ html+= `<div style="padding:6px; border:1px solid var(--m3-outline-variant); border-radius:6px; margin-bottom:4px; display:flex; justify-content:space-between; align-items:center;"><span>دواء: ${m.medicationName}</span><span><button class="btn btn-primary btn-sm" onclick="verifyItem('medication','${m.id}','VERIFIED')">تحقق</button> <button class="btn btn-secondary btn-sm" onclick="verifyItem('medication','${m.id}','REFUTED')">رفض</button></span></div>`; });
         (q.conditions||[]).slice(0,5).forEach((c)=>{ html+= `<div style="padding:6px; border:1px solid var(--m3-outline-variant); border-radius:6px; margin-bottom:4px; display:flex; justify-content:space-between; align-items:center;"><span>تشخيص: ${c.conditionName}</span><span><button class="btn btn-primary btn-sm" onclick="verifyItem('condition','${c.id}','VERIFIED')">تحقق</button> <button class="btn btn-secondary btn-sm" onclick="verifyItem('condition','${c.id}','REFUTED')">رفض</button></span></div>`; });
         verifyEl.innerHTML = html;
+        }
       }
     }
-    if (patientsRes.ok && patientsEl) {
+    if (patientsEl) {
+      if (!patientsRes.ok) patientsEl.innerHTML = `<div class="text-center py-3" style="color:var(--m3-error);">فشل تحميل المرضى (${patientsRes.status})</div>`;
+      else if (patientsRes.ok) {
       const patients = await patientsRes.json();
        if (patients.length===0) patientsEl.innerHTML = '<div class="text-center py-3" style="color:var(--m3-on-surface-variant);">لا يوجد مرضى بعد - البيانات مرتبطة مباشرة بجدول Patient الحقيقي</div>';
        else patientsEl.innerHTML = `<div style="font-size:0.75rem; color:var(--m3-on-surface-variant); margin-bottom:6px;">${patients.length} مريض من قاعدة البيانات الموحدة (NID/HUID حقيقي)</div>` + patients.slice(0,50).map((p)=> `<div style="padding:6px 8px; border-bottom:1px solid var(--m3-outline-variant); display:flex; justify-content:space-between; align-items:center;"><span><strong>${p.firstNameAr||p.firstName||''} ${p.lastNameAr||p.lastName||''}</strong> <small>${p.internalId} • ${p.gender||''} • ${p.birthDate||''} • ${p.phone||''}</small></span><span class="badge badge-info">${p.identifiers?.[0]?.value||p.internalId}</span> <span class="badge badge-secondary">${p.status||'ACTIVE'}</span></div>`).join('');
+       }
     }
   } catch (e) {
-    if (pendingEl) pendingEl.textContent = 'فشل تحميل الحوكمة: ' + e.message;
+    if (pendingEl) pendingEl.innerHTML = `<div style="color:var(--m3-error);">فشل تحميل الحوكمة: ${e.message}</div>`;
+    if (usersEl && usersEl.innerHTML.includes('جاري التحميل')) usersEl.innerHTML = `<div style="color:var(--m3-error);">فشل تحميل المستخدمين: ${e.message}</div>`;
+    if (verifyEl && verifyEl.innerHTML.includes('جاري التحميل')) verifyEl.innerHTML = `<div style="color:var(--m3-error);">فشل تحميل التحقق: ${e.message}</div>`;
+    if (patientsEl && patientsEl.innerHTML.includes('جاري التحميل')) patientsEl.innerHTML = `<div style="color:var(--m3-error);">فشل تحميل المرضى: ${e.message}</div>`;
   }
 }
 async function approveHospital(id){ try{ const r=await fetch('/api/moh/hospitals/'+id+'/approve',{method:'POST', headers:{'Content-Type':'application/json'}}); const j=await r.json(); if(r.ok){ showToast('تم الاعتماد', j.message||'تم اعتماد المنشأة','success'); loadAdminGovernance(); } else showToast('خطأ', j.error||'فشل الاعتماد','error'); } catch(e){ showToast('خطأ', e.message,'error'); } }
@@ -4202,5 +4446,20 @@ async function rejectHospital(id){ try{ const r=await fetch('/api/moh/hospitals/
 async function toggleUserStatus(id, isActive){ try{ const r=await fetch('/api/moh/users/'+id+'/status',{method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({is_active: !isActive})}); const j=await r.json(); if(r.ok){ showToast('تم التحديث','تم تغيير حالة المستخدم','success'); loadAdminGovernance(); } else showToast('خطأ', j.error,'error'); } catch(e){ showToast('خطأ', e.message,'error'); } }
 async function verifyItem(type,id,decision){ try{ const r=await fetch('/api/moh/verification/'+type+'/'+id+'/verify',{method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({decision})}); const j=await r.json(); if(r.ok){ showToast('تم التحقق','تم تحديث حالة التحقق','success'); loadVerificationQueue(); loadAdminGovernance(); } else showToast('خطأ', j.error,'error'); } catch(e){ showToast('خطأ', e.message,'error'); } }
 async function loadVerificationQueue(){ loadAdminGovernance(); }
-document.getElementById('form-create-moh-admin')?.addEventListener('submit', async (e)=>{ e.preventDefault(); const username=document.getElementById('moh-admin-username').value.trim(); const full_name=document.getElementById('moh-admin-fullname').value.trim(); const password=document.getElementById('moh-admin-password').value; const email=document.getElementById('moh-admin-email').value.trim(); const resEl=document.getElementById('moh-admin-create-result'); try{ const r=await fetch('/api/moh/users/create-admin',{method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({username, full_name, password, email: email||undefined})}); const j=await r.json(); if(r.ok){ if(resEl) resEl.innerHTML='<span style="color:var(--m3-primary);">✅ تم إنشاء أدمن وطني: '+j.user.username+'</span>'; showToast('تم الإنشاء','أدمن وطني جديد','success'); loadAdminGovernance(); } else { if(resEl) resEl.innerHTML='<span style="color:var(--m3-error);">'+(j.error||'فشل')+'</span>'; showToast('خطأ', j.error,'error'); } } catch(err){ if(resEl) resEl.textContent=err.message; } });
+document.getElementById('moh-admin-role')?.addEventListener('change', (e)=>{
+  const role=e.target.value;
+  const wrap=document.getElementById('gov-org-select-wrap');
+  if(wrap) wrap.style.display = ['HOSPITAL_ADMIN','CLINICIAN'].includes(role) ? 'block' : 'none';
+  if(['HOSPITAL_ADMIN','CLINICIAN'].includes(role)){
+    const sel=document.getElementById('gov-create-org');
+    if(sel && sel.options.length<=1){
+      fetch('/api/public/organizations').then(r=>r.json()).then(orgs=>{
+        if(Array.isArray(orgs) && orgs.length>0){
+          sel.innerHTML = '<option value="">-- اختر المنشأة --</option>' + orgs.map(o=>`<option value="${o.id}">${o.organization_name_ar||o.organization_name} (${o.region})</option>`).join('');
+        }
+      }).catch(()=>{});
+    }
+  }
+});
+document.getElementById('form-create-moh-admin')?.addEventListener('submit', async (e)=>{ e.preventDefault(); const role_code=document.getElementById('moh-admin-role')?.value||'MOH_ADMIN'; const username=document.getElementById('moh-admin-username').value.trim(); const full_name=document.getElementById('moh-admin-fullname').value.trim(); const password=document.getElementById('moh-admin-password').value; const email=document.getElementById('moh-admin-email').value.trim(); const phone=document.getElementById('moh-admin-phone')?.value.trim(); const organization_id=document.getElementById('gov-create-org')?.value||undefined; const resEl=document.getElementById('moh-admin-create-result'); if(['HOSPITAL_ADMIN','CLINICIAN'].includes(role_code) && !organization_id){ if(resEl) resEl.innerHTML='<span style="color:var(--m3-error);">يجب اختيار المنشأة لـ '+role_code+'</span>'; showToast('بيانات ناقصة','اختر المنشأة','error'); return; } try{ const r=await fetch('/api/moh/users/create-admin',{method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({username, full_name, password, email: email||undefined, phone: phone||undefined, role_code, organization_id})}); const j=await r.json(); if(r.ok){ if(resEl) resEl.innerHTML='<span style="color:var(--m3-primary);">✅ تم إنشاء '+role_code+': '+j.user.username+'</span>'; showToast('تم الإنشاء', role_code+' جديد: '+j.user.username,'success'); loadAdminGovernance(); e.target.reset(); const wrap=document.getElementById('gov-org-select-wrap'); if(wrap) wrap.style.display='none'; } else { if(resEl) resEl.innerHTML='<span style="color:var(--m3-error);">'+(j.error||'فشل')+'</span>'; showToast('خطأ', j.error,'error'); } } catch(err){ if(resEl) resEl.textContent=err.message; } });
 

@@ -72,7 +72,20 @@
   const roleInput = $('#register-role');
   const patientSec = $('#patient-section');
   const hospitalSec = $('#hospital-section');
+  const clinicianSec = $('#clinician-section');
   const stepperSteps = document.querySelectorAll('.step');
+
+  async function loadClinicianOrgs(){
+    const sel=$('#register-clinician-org');
+    if(!sel) return;
+    try{
+      const r=await fetch('/api/public/organizations');
+      const orgs=await r.json();
+      if(Array.isArray(orgs) && orgs.length>0){
+        sel.innerHTML = '<option value="">-- اختر المنشأة --</option>' + orgs.map(o=>`<option value="${o.id}">${o.organization_name_ar||o.organization_name} (${o.region}) - ${o.organization_type}</option>`).join('');
+      } else sel.innerHTML='<option value="">لا توجد منشآت معتمدة حالياً</option>';
+    } catch{ const s=$('#register-clinician-org'); if(s) s.innerHTML='<option value="">فشل تحميل المنشآت</option>'; }
+  }
 
   function setRole(role){
     if (roleInput) roleInput.value = role;
@@ -81,9 +94,10 @@
       c.classList.toggle('selected', is);
       c.setAttribute('aria-pressed', String(is));
     });
-    const isPatient = role==='PATIENT';
-    if(patientSec) patientSec.style.display = isPatient?'block':'none';
-    if(hospitalSec) hospitalSec.style.display = isPatient?'none':'block';
+    if(patientSec) patientSec.style.display = role==='PATIENT'?'block':'none';
+    if(hospitalSec) hospitalSec.style.display = role==='HOSPITAL_ADMIN'?'block':'none';
+    if(clinicianSec) clinicianSec.style.display = role==='CLINICIAN'?'block':'none';
+    if(role==='CLINICIAN') loadClinicianOrgs();
     // reset stepper to 2
     syncStepper();
     errBox('');
@@ -163,6 +177,7 @@
   // inline validations
   const fullnameEl=$('#register-fullname'), usernameEl=$('#register-username'), nidEl=$('#register-nid'), dobEl=$('#register-dob'), phoneEl=$('#register-phone'), emailEl=$('#register-email'), orgEl=$('#register-org'), orgArEl=$('#register-org-ar');
   const hphoneEl=$('#register-hphone'), hemailEl=$('#register-hemail'), regionEl=$('#register-region');
+  const clinOrgEl=$('#register-clinician-org'), clinPhoneEl=$('#register-clinician-phone'), clinEmailEl=$('#register-clinician-email');
 
   function vFullname(){
     const v=fullnameEl?.value.trim()||'';
@@ -338,7 +353,7 @@
           address_district: $('#register-district')?.value.trim()||null,
           address_postal_code: postalValid||null
         };
-      } else {
+      } else if(role==='HOSPITAL_ADMIN') {
         if(!vOrg()) valid=false;
         if(!vOrgAr()) valid=false;
         const regionVal = regionEl?.value||'';
@@ -354,6 +369,15 @@
         payload.facility_type = $('#register-facility-type')?.value||'HOSPITAL';
         payload.phone = normalizePhone(hphoneEl.value.trim());
         payload.email = hemailVal.toLowerCase();
+      } else if(role==='CLINICIAN') {
+        const orgId = clinOrgEl?.value||'';
+        if(!orgId){ setFieldErr('err-clinician-org','يجب اختيار المنشأة'); valid=false; } else setFieldErr('err-clinician-org','');
+        if(!vPhoneGeneric(clinPhoneEl,'err-clinician-phone','ok-phone')) valid=false;
+        if(!vEmailOptional(clinEmailEl,'err-clinician-email')) valid=false;
+        if(!valid){ errBox('يرجى تصحيح حقول الطبيب المميزة'); return; }
+        payload.organization_id = orgId;
+        payload.phone = normalizePhone(clinPhoneEl.value.trim());
+        const ce = clinEmailEl?.value.trim(); if(ce) payload.email = ce.toLowerCase();
       }
 
       const btn=$('#btn-register');

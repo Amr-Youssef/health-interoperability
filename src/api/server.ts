@@ -150,6 +150,14 @@ export function createPlatformApp() {
   app.use('/api/auth/login', loginLimiter);
   app.use('/api/auth', authRoutes);
 
+  app.get('/api/public/organizations', async (req: Request, res: Response) => {
+    try {
+      const prisma = new PrismaClient();
+      const orgs = await prisma.organization.findMany({ where: { status: 'ACTIVE', NOT: { organization_type: 'MOH' } }, select: { id: true, organization_name: true, organization_name_ar: true, organization_type: true, region: true, status: true }, orderBy: { organization_name_ar: 'asc' } });
+      res.json(orgs);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
   // Serve static UI - auth pages are public, app shell is protected
   const publicDir = path.join(__dirname, '../../public');
   app.use('/auth', express.static(path.join(publicDir, 'auth')));
@@ -651,6 +659,31 @@ export function createPlatformApp() {
       const orgType = allowedTypes.includes(facilityType) ? facilityType : 'HOSPITAL';
       const existingByName = await prisma.organization.findFirst({ where: { OR: [{ organization_name: def.hospitalName }, { organization_name_ar: def.hospitalNameAr }] } });
       if (existingByName) return res.status(400).json({ error: 'اسم المنشأة مسجل مسبقاً' });
+      const adminUsername = def.adminUsername?.trim();
+      const adminPassword = def.adminPassword;
+      const adminFullName = def.adminFullName?.trim();
+      const adminEmail = def.adminEmail?.trim()?.toLowerCase();
+      const adminPhoneRaw = def.adminPhone?.trim();
+      if (!adminUsername || !adminPassword || !adminFullName || !adminEmail || !adminPhoneRaw) {
+        return res.status(400).json({ error: 'بيانات أدمن المنشأة مطلوبة: username, password, fullName, email, phone' });
+      }
+      if (adminPassword.length < 8 || !/[A-Za-z]/.test(adminPassword) || !/\d/.test(adminPassword)) {
+        return res.status(400).json({ error: 'كلمة مرور الأدمن ضعيفة: 8+ حروف وأرقام' });
+      }
+      const existingUser = await prisma.user.findFirst({ where: { OR: [{ username: adminUsername }, { email: adminEmail }] } });
+      if (existingUser) return res.status(400).json({ error: 'اسم المستخدم أو البريد للأدمن مسجل مسبقاً' });
+      const phoneClean = adminPhoneRaw.replace(/[\s\-\(\)]/g, '');
+      let phoneNorm: string | null = null;
+      if (/^05\d{8}$/.test(phoneClean)) phoneNorm = '+966' + phoneClean.substring(1);
+      else if (/^5\d{8}$/.test(phoneClean)) phoneNorm = '+966' + phoneClean;
+      else if (/^9665\d{8}$/.test(phoneClean)) phoneNorm = '+' + phoneClean;
+      else if (/^\+9665\d{8}$/.test(phoneClean)) phoneNorm = phoneClean;
+      else return res.status(400).json({ error: 'رقم جوال الأدمن غير صحيح: 05xxxxxxxx أو +9665xxxxxxxx' });
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(adminEmail)) return res.status(400).json({ error: 'بريد الأدمن غير صالح' });
+
+      const hospitalAdminRole = await prisma.role.findUnique({ where: { role_code: 'HOSPITAL_ADMIN' } });
+      if (!hospitalAdminRole) return res.status(500).json({ error: 'HOSPITAL_ADMIN role missing' });
+
       const org = await prisma.organization.create({
         data: {
           organization_name: def.hospitalName,
@@ -660,8 +693,23 @@ export function createPlatformApp() {
           status: 'PENDING_APPROVAL'
         }
       });
-      await prisma.auditLog.create({ data: { entity_type: 'Organization', entity_id: org.id, action: 'HOSPITAL_ONBOARDED_PENDING', actor_id: (req as any).user?.id, organization_id: org.id, new_values: JSON.stringify({ hospitalName: org.organization_name, region }), details: `SYS_ADMIN onboarded ${org.organization_name_ar} -> PENDING_APPROVAL awaiting MOH` } }).catch(()=>{});
-      res.json({ success: true, message: `تم تسجيل المنشأة [${def.hospitalNameAr}] بنجاح - بانتظار اعتماد MOH`, organization: org, hospital: { hospitalId: org.id, hospitalName: org.organization_name, hospitalNameAr: org.organization_name_ar, facilityType: orgType, region, status: org.status, createdAt: org.created_at } });
+      const { default: bcrypt } = await import('bcryptjs');
+      const hash = await bcrypt.hash(adminPassword, 10);
+      const adminUser = await prisma.user.create({
+        data: {
+          username: adminUsername,
+          password_hash: hash,
+          full_name: adminFullName,
+          email: adminEmail,
+          phone: phoneNorm,
+          role_id: hospitalAdminRole.id,
+          organization_id: org.id,
+          is_active: true
+        }
+      });
+      await prisma.auditLog.create({ data: { entity_type: 'Organization', entity_id: org.id, action: 'HOSPITAL_ONBOARDED_PENDING', actor_id: (req as any).user?.id, organization_id: org.id, new_values: JSON.stringify({ hospitalName: org.organization_name, hospitalNameAr: org.organization_name_ar, region, facilityType: orgType, adminUsername, sourceSchema: def.sourceSchema || null, defaultMappingConfigs: def.defaultMappingConfigs || null }), details: `SYS_ADMIN onboarded ${org.organization_name_ar} with admin ${adminUsername} -> PENDING_APPROVAL` } }).catch(()=>{});
+      await prisma.auditLog.create({ data: { entity_type: 'User', entity_id: adminUser.id, action: 'HOSPITAL_ADMIN_CREATED_ONBOARD', actor_id: (req as any).user?.id, organization_id: org.id, new_values: JSON.stringify({ username: adminUsername, organizationId: org.id }), details: `Hospital admin ${adminUsername} created with facility ${org.organization_name_ar}` } }).catch(()=>{});
+      res.json({ success: true, message: `تم تسجيل المنشأة [${def.hospitalNameAr}] وإنشاء حساب الأدمن [${adminUsername}] - بانتظار اعتماد MOH لتفعيل الدخول`, organization: org, admin: { id: adminUser.id, username: adminUser.username, fullName: adminUser.full_name, email: adminUser.email }, hospital: { hospitalId: org.id, hospitalName: org.organization_name, hospitalNameAr: org.organization_name_ar, facilityType: orgType, region, status: org.status, createdAt: org.created_at } });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
     }

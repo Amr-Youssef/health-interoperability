@@ -31,10 +31,35 @@ router.get('/dashboard', async (req, res) => {
             prisma.patientReportedVitalObservation.count({ where: { verification_status: 'UNVERIFIED' } }).catch(() => 0),
             prisma.patientProfile.count({ where: { verification_status: 'SELF_REPORTED' } }).catch(() => 0)
         ]);
-        const [recentImports, recentAudit, pendingHospitalsList] = await Promise.all([
+        const pendingOrgsRaw = await prisma.organization.findMany({ where: { status: 'PENDING_APPROVAL' }, orderBy: { created_at: 'desc' }, take: 10 });
+        const pendingHospitalsList = await Promise.all(pendingOrgsRaw.map(async (org) => {
+            const admins = await prisma.user.findMany({ where: { organization_id: org.id }, include: { role: true }, take: 3 });
+            const audit = await prisma.auditLog.findFirst({ where: { entity_type: 'Organization', entity_id: org.id, action: 'HOSPITAL_ONBOARDED_PENDING' }, orderBy: { created_at: 'desc' } });
+            let hasMapping = false;
+            try {
+                if (audit?.new_values) {
+                    const j = JSON.parse(audit.new_values);
+                    hasMapping = !!(j.sourceSchema || j.defaultMappingConfigs);
+                }
+            }
+            catch { }
+            return {
+                id: org.id,
+                organizationName: org.organization_name,
+                organizationNameAr: org.organization_name_ar,
+                organizationType: org.organization_type,
+                region: org.region,
+                status: org.status,
+                createdAt: org.created_at,
+                admins: admins.map((u) => ({ id: u.id, username: u.username, fullName: u.full_name, email: u.email, phone: u.phone, role: u.role?.role_code, isActive: u.is_active })),
+                hasMapping,
+                onboardedBy: audit?.actor_id || null,
+                onboardedAt: audit?.created_at || org.created_at
+            };
+        }));
+        const [recentImports, recentAudit] = await Promise.all([
             prisma.dataImport.findMany({ orderBy: { started_at: 'desc' }, take: 5 }),
-            prisma.auditLog.findMany({ orderBy: { created_at: 'desc' }, take: 10 }),
-            prisma.organization.findMany({ where: { status: 'PENDING_APPROVAL' }, orderBy: { created_at: 'desc' }, take: 10 })
+            prisma.auditLog.findMany({ orderBy: { created_at: 'desc' }, take: 10 })
         ]);
         res.json({
             nationalCounts: {
@@ -82,15 +107,7 @@ router.get('/dashboard', async (req, res) => {
                 details: a.details,
                 createdAt: a.created_at
             })),
-            pendingHospitalsList: pendingHospitalsList.map((o) => ({
-                id: o.id,
-                organizationName: o.organization_name,
-                organizationNameAr: o.organization_name_ar,
-                organizationType: o.organization_type,
-                region: o.region,
-                status: o.status,
-                createdAt: o.created_at
-            }))
+            pendingHospitalsList
         });
     }
     catch (e) {
@@ -146,14 +163,24 @@ router.post('/hospitals/:id/approve', async (req, res) => {
         try {
             const exists = await prisma.dynamicHospital.findUnique({ where: { hospitalId: id } });
             if (!exists) {
+                let storedSchema = null, storedMappings = null;
+                try {
+                    const audit = await prisma.auditLog.findFirst({ where: { entity_type: 'Organization', entity_id: id, action: 'HOSPITAL_ONBOARDED_PENDING' }, orderBy: { created_at: 'desc' } });
+                    if (audit?.new_values) {
+                        const parsed = JSON.parse(audit.new_values);
+                        storedSchema = parsed.sourceSchema || null;
+                        storedMappings = parsed.defaultMappingConfigs || null;
+                    }
+                }
+                catch { }
                 const facilityForDynamic = (() => {
                     const t = (updated.organization_type || 'HOSPITAL').toLowerCase();
                     if (['hospital', 'clinic', 'laboratory', 'pharmacy', 'center', 'day_surgery'].includes(t))
                         return t;
                     return 'hospital';
                 })();
-                const regionForDynamic = ['Riyadh', 'Makkah', 'Eastern', 'Madinah', 'Asir'].includes(updated.region || '') ? updated.region : 'Riyadh';
-                const mappingConfig = {
+                const regionForDynamic = ['Riyadh', 'Makkah', 'Eastern', 'Madinah', 'Asir', 'Qassim', 'Hail', 'Tabuk', 'Najran', 'Jazan', 'AlBaha', 'AlJawf', 'NorthernBorders'].includes(updated.region || '') ? updated.region : 'Riyadh';
+                const mappingConfig = storedMappings ? storedMappings[0] : {
                     id: `map-${updated.id}-pt-v1`,
                     sourceSystemId: updated.id,
                     sourceEntityType: 'client_registry',
@@ -172,7 +199,7 @@ router.post('/hospitals/:id/approve', async (req, res) => {
                         { sourceField: 'dob_gregorian', targetField: 'birthDate', required: true, transformation: 'date_normalize' }
                     ]
                 };
-                const sourceSchemaObj = {
+                const sourceSchemaObj = storedSchema || {
                     sourceSystemId: updated.id,
                     tables: [{ name: 'client_registry', fields: [
                                 { name: 'client_id', type: 'string', isNullable: false },
@@ -191,7 +218,7 @@ router.post('/hospitals/:id/approve', async (req, res) => {
                         region: regionForDynamic,
                         adapterVersion: '1.0.0',
                         sourceSchema: JSON.stringify(sourceSchemaObj),
-                        defaultMappingConfigs: JSON.stringify([mappingConfig]),
+                        defaultMappingConfigs: JSON.stringify(Array.isArray(storedMappings) ? storedMappings : [mappingConfig]),
                         createdAt: new Date().toISOString()
                     }
                 });
@@ -267,7 +294,16 @@ router.post('/users/create-admin', async (req, res) => {
     if (req.user.role?.role_code === 'MOH_AUDITOR')
         return res.status(403).json({ error: 'MOH_AUDITOR cannot create users' });
     try {
-        const { username, password, full_name, email, phone } = req.body;
+        const { username, password, full_name, email, phone, role_code, organization_id } = req.body;
+        const requestedRole = role_code || 'MOH_ADMIN';
+        const allowedRoles = ['SYS_ADMIN', 'MOH_ADMIN', 'MOH_AUDITOR', 'HOSPITAL_ADMIN', 'CLINICIAN', 'PATIENT'];
+        if (!allowedRoles.includes(requestedRole))
+            return res.status(400).json({ error: 'role_code غير صالح' });
+        const actorRole = req.user.role?.role_code;
+        if (requestedRole === 'SYS_ADMIN' && actorRole !== 'SYS_ADMIN')
+            return res.status(403).json({ error: 'Only SYS_ADMIN can create SYS_ADMIN' });
+        if (requestedRole === 'MOH_ADMIN' && actorRole !== 'SYS_ADMIN')
+            return res.status(403).json({ error: 'Only SYS_ADMIN can create MOH_ADMIN' });
         if (!username || !password || !full_name)
             return res.status(400).json({ error: 'username, password, full_name required' });
         if (password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password))
@@ -280,12 +316,39 @@ router.post('/users/create-admin', async (req, res) => {
             if (dupEmail)
                 return res.status(400).json({ error: 'البريد مسجل مسبقاً' });
         }
-        const mohRole = await prisma.role.findUnique({ where: { role_code: 'MOH_ADMIN' } });
-        if (!mohRole)
-            return res.status(500).json({ error: 'MOH_ADMIN role missing' });
-        let mohOrg = await prisma.organization.findFirst({ where: { organization_type: 'MOH' } });
-        if (!mohOrg)
-            mohOrg = await prisma.organization.create({ data: { organization_name: 'Ministry of Health', organization_name_ar: 'وزارة الصحة', organization_type: 'MOH', region: 'National', status: 'ACTIVE' } });
+        const targetRole = await prisma.role.findUnique({ where: { role_code: requestedRole } });
+        if (!targetRole)
+            return res.status(500).json({ error: `${requestedRole} role missing` });
+        let targetOrgId;
+        let patientProfileId = null;
+        if (['HOSPITAL_ADMIN', 'CLINICIAN'].includes(requestedRole)) {
+            if (!organization_id)
+                return res.status(400).json({ error: 'يجب اختيار المنشأة للـ HOSPITAL_ADMIN/CLINICIAN' });
+            const org = await prisma.organization.findUnique({ where: { id: organization_id } });
+            if (!org)
+                return res.status(404).json({ error: 'المنشأة غير موجودة' });
+            if (org.status !== 'ACTIVE')
+                return res.status(403).json({ error: `المنشأة غير نشطة: ${org.status}` });
+            targetOrgId = org.id;
+        }
+        else if (requestedRole === 'PATIENT') {
+            if (organization_id) {
+                const org = await prisma.organization.findUnique({ where: { id: organization_id } });
+                targetOrgId = org ? org.id : (await prisma.organization.findFirst({ where: { organization_type: 'MOH' } })).id;
+            }
+            else {
+                let mohOrg = await prisma.organization.findFirst({ where: { organization_type: 'MOH' } });
+                if (!mohOrg)
+                    mohOrg = await prisma.organization.create({ data: { organization_name: 'Ministry of Health', organization_name_ar: 'وزارة الصحة', organization_type: 'MOH', region: 'National', status: 'ACTIVE' } });
+                targetOrgId = mohOrg.id;
+            }
+        }
+        else {
+            let mohOrg = await prisma.organization.findFirst({ where: { organization_type: 'MOH' } });
+            if (!mohOrg)
+                mohOrg = await prisma.organization.create({ data: { organization_name: 'Ministry of Health', organization_name_ar: 'وزارة الصحة', organization_type: 'MOH', region: 'National', status: 'ACTIVE' } });
+            targetOrgId = mohOrg.id;
+        }
         const hash = await bcrypt.hash(password, 10);
         let phoneNorm = null;
         if (phone) {
@@ -304,18 +367,22 @@ router.post('/users/create-admin', async (req, res) => {
                 full_name: full_name.trim(),
                 email: email ? email.trim().toLowerCase() : null,
                 phone: phoneNorm,
-                role_id: mohRole.id,
-                organization_id: mohOrg.id,
+                role_id: targetRole.id,
+                organization_id: targetOrgId,
+                patient_profile_id: patientProfileId,
                 is_active: true
             },
             include: { role: true, organization: true }
         });
-        await prisma.auditLog.create({ data: { entity_type: 'User', entity_id: user.id, action: 'MOH_ADMIN_CREATED', actor_id: req.user.id, organization_id: mohOrg.id, new_values: JSON.stringify({ username: user.username, role: 'MOH_ADMIN' }), details: `Created MOH admin ${user.username} by ${req.user.username}` } }).catch(() => { });
-        res.json({ success: true, user: { id: user.id, username: user.username, fullName: user.full_name, role: user.role.role_code } });
+        await prisma.auditLog.create({ data: { entity_type: 'User', entity_id: user.id, action: `${requestedRole}_CREATED`, actor_id: req.user.id, organization_id: targetOrgId, new_values: JSON.stringify({ username: user.username, role: requestedRole }), details: `Created ${requestedRole} ${user.username} by ${req.user.username}` } }).catch(() => { });
+        res.json({ success: true, user: { id: user.id, username: user.username, fullName: user.full_name, role: user.role.role_code, organizationId: targetOrgId } });
     }
     catch (e) {
         res.status(500).json({ error: e.message });
     }
+});
+router.post('/users/create', async (req, res) => {
+    return res.redirect(307, '/api/moh/users/create-admin');
 });
 router.patch('/users/:id/status', async (req, res) => {
     if (req.user.role?.role_code === 'MOH_AUDITOR')

@@ -176,7 +176,7 @@ async function ensureDefaultAccounts() {
 }
 router.post('/register', async (req, res) => {
     try {
-        const { username, password, full_name, roleType, organization_name, organization_name_ar, region, facility_type, patient_profile, nationalId, birthDate, gender, phone, email } = req.body;
+        const { username, password, full_name, roleType, organization_name, organization_name_ar, region, facility_type, organization_id: orgIdParam, patient_profile, nationalId, birthDate, gender, phone, email } = req.body;
         if (!username || !password || !full_name || !roleType) {
             return res.status(400).json({ error: 'Username, password, full_name, and roleType are required' });
         }
@@ -215,7 +215,7 @@ router.post('/register', async (req, res) => {
                 }
             });
         }
-        let organization_id;
+        let organization_id = orgIdParam || null;
         let patient_profile_id = null;
         if (roleCode === 'HOSPITAL_ADMIN') {
             // ===== HOSPITAL: Trusted organizational data =====
@@ -287,7 +287,6 @@ router.post('/register', async (req, res) => {
             if (namePartsHosp.length < 2) {
                 return res.status(400).json({ error: 'الاسم الكامل يجب أن يحتوي على الاسم الأول واسم العائلة' });
             }
-            // Check duplicate organization name (both languages)
             const dupOrg = await prisma.organization.findFirst({
                 where: {
                     OR: [
@@ -296,18 +295,30 @@ router.post('/register', async (req, res) => {
                     ]
                 }
             });
+            let org;
             if (dupOrg) {
-                return res.status(400).json({ error: 'اسم المنشأة مسجل مسبقاً (العربي أو الإنجليزي)' });
-            }
-            const org = await prisma.organization.create({
-                data: {
-                    organization_name: organization_name.trim(),
-                    organization_name_ar: organization_name_ar.trim(),
-                    organization_type: orgTypeNorm,
-                    region: regionNorm,
-                    status: 'PENDING_APPROVAL'
+                if (dupOrg.status === 'PENDING_APPROVAL') {
+                    org = dupOrg;
+                    try {
+                        await prisma.auditLog.create({ data: { entity_type: 'Organization', entity_id: org.id, action: 'HOSPITAL_CLAIMED_BY_ADMIN', actor_id: null, organization_id: org.id, details: `Pending org ${org.organization_name_ar} claimed by registering admin ${username.trim()}` } });
+                    }
+                    catch { }
                 }
-            });
+                else {
+                    return res.status(400).json({ error: 'اسم المنشأة مسجل مسبقاً (العربي أو الإنجليزي) ومنشأة نشطة بنفس الاسم' });
+                }
+            }
+            else {
+                org = await prisma.organization.create({
+                    data: {
+                        organization_name: organization_name.trim(),
+                        organization_name_ar: organization_name_ar.trim(),
+                        organization_type: orgTypeNorm,
+                        region: regionNorm,
+                        status: 'PENDING_APPROVAL'
+                    }
+                });
+            }
             organization_id = org.id;
             // Defer DynamicHospital onboarding until MOH approval - only audit pending registration
             try {
@@ -369,6 +380,43 @@ router.post('/register', async (req, res) => {
                     patientProfileId: userHosp.patient_profile_id
                 }
             });
+        }
+        else if (roleCode === 'CLINICIAN') {
+            if (!organization_id || !String(organization_id).trim()) {
+                return res.status(400).json({ error: 'يجب اختيار المنشأة التي يتبع لها الطبيب (Organization)' });
+            }
+            const org = await prisma.organization.findUnique({ where: { id: String(organization_id).trim() } });
+            if (!org)
+                return res.status(404).json({ error: 'المنشأة المختارة غير موجودة' });
+            if (org.status !== 'ACTIVE')
+                return res.status(403).json({ error: `المنشأة غير معتمدة - الحالة: ${org.status} - لا يمكن ربط طبيب بمنشأة غير نشطة` });
+            if (!phone || !phone.trim())
+                return res.status(400).json({ error: 'رقم جوال الطبيب مطلوب' });
+            const phoneNormClin = normalizeSaudiPhone(phone.trim());
+            if (!phoneNormClin)
+                return res.status(400).json({ error: 'رقم الجوال غير صحيح' });
+            let emailNormClin = null;
+            if (email && email.trim()) {
+                if (!isValidEmail(email.trim()))
+                    return res.status(400).json({ error: 'صيغة البريد غير صحيحة' });
+                emailNormClin = email.trim().toLowerCase();
+                const dupE = await prisma.user.findFirst({ where: { email: emailNormClin } });
+                if (dupE)
+                    return res.status(400).json({ error: 'البريد مسجل مسبقاً' });
+            }
+            organization_id = org.id;
+            const hashClin = await bcrypt.hash(password, 10);
+            const userClin = await prisma.user.create({
+                data: { username: username.trim(), password_hash: hashClin, full_name: full_name.trim(), email: emailNormClin, phone: phoneNormClin, role_id: role.id, organization_id, is_active: true },
+                include: { role: true, organization: true }
+            });
+            try {
+                await prisma.auditLog.create({ data: { entity_type: 'User', entity_id: userClin.id, action: 'CLINICIAN_REGISTERED', actor_id: userClin.id, organization_id: org.id, new_values: JSON.stringify({ username: userClin.username, organizationId: org.id, organizationName: org.organization_name_ar }), details: `Clinician ${userClin.username} linked to facility ${org.organization_name_ar}` } });
+            }
+            catch { }
+            const tokenClin = jwt.sign({ userId: userClin.id, role: userClin.role.role_code, orgId: userClin.organization_id }, JWT_SECRET, { expiresIn: '8h' });
+            setAuthCookie(res, tokenClin);
+            return res.json({ token: tokenClin, user: { id: userClin.id, username: userClin.username, fullName: userClin.full_name, role: userClin.role.role_code, organization: userClin.organization?.organization_name, organizationAr: userClin.organization?.organization_name_ar, orgId: userClin.organization_id, patientProfileId: null } });
         }
         else {
             // ===== PATIENT: Enhanced trusted data collection =====
@@ -567,6 +615,7 @@ router.post('/register', async (req, res) => {
                     fullName: user.full_name,
                     role: user.role.role_code,
                     organization: user.organization?.organization_name,
+                    organizationAr: user.organization?.organization_name_ar || user.organization?.organization_name,
                     orgId: user.organization_id,
                     patientProfileId: user.patient_profile_id
                 }
@@ -618,6 +667,7 @@ router.post('/login', async (req, res) => {
                 fullName: user.full_name,
                 role: user.role.role_code,
                 organization: user.organization?.organization_name,
+                organizationAr: user.organization?.organization_name_ar || user.organization?.organization_name,
                 orgId: user.organization_id,
                 patientProfileId: user.patient_profile_id
             }
@@ -645,6 +695,7 @@ router.get('/me', verifyToken, (req, res) => {
         fullName: user.full_name,
         role: user.role?.role_code || 'UNKNOWN',
         organization: user.organization?.organization_name,
+        organizationAr: user.organization?.organization_name_ar || user.organization?.organization_name,
         orgId: user.organization_id,
         patientProfileId: user.patient_profile_id
     });

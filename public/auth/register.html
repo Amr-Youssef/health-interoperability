@@ -87,7 +87,7 @@
     </div>
 
     <form id="register-form" class="auth-form" novalidate>
-      <div class="role-cards" id="role-cards">
+      <div class="role-cards" id="role-cards" style="grid-template-columns:1fr 1fr 1fr">
         <div class="role-card selected" data-role="PATIENT" tabindex="0" role="button" aria-pressed="true">
           <span class="check">✓</span>
           <h4>👤 فرد / مريض</h4>
@@ -99,6 +99,12 @@
           <h4>🏥 منشأة صحية</h4>
           <p>تسجيل منشأة جديدة يخضع لموافقة وزارة الصحة</p>
           <span class="hint-badge">الاسم عربي+إنجليزي + ترخيص</span>
+        </div>
+        <div class="role-card" data-role="CLINICIAN" tabindex="0" role="button" aria-pressed="false">
+          <span class="check">✓</span>
+          <h4>🩺 طبيب / ممارس</h4>
+          <p>حساب طبي مرتبط بمنشأة معتمدة - يتبع منشأة</p>
+          <span class="hint-badge">يتبع منشأة نشطة فقط</span>
         </div>
       </div>
       <input type="hidden" id="register-role" value="PATIENT">
@@ -238,6 +244,29 @@
           </div>
         </div>
         <div style="background:var(--m3-warning-container);color:var(--m3-on-warning-container);padding:8px 10px;font-size:.78rem;margin-top:6px">⏳ سيتم إنشاء المنشأة بحالة <b>PENDING_APPROVAL</b> ويحتاج تفعيلها لموافقة مسؤول الوزارة (MOH_ADMIN).</div>
+      </div>
+
+      <div id="clinician-section" style="display:none">
+        <div class="section-title-sm">🩺 بيانات الطبيب - الربط بالمنشأة</div>
+        <div class="auth-form-group">
+          <label for="register-clinician-org">المنشأة التابعة <span class="req">*</span></label>
+          <div class="auth-input-wrap"><select id="register-clinician-org" class="auth-input"><option value="">-- جاري تحميل المنشآت المعتمدة --</option></select></div>
+          <div class="field-hint">يجب أن تكون المنشأة نشطة ومعتمدة من الوزارة - الطبيب يتبع منشأة دائماً</div>
+          <div class="field-error" id="err-clinician-org"></div>
+        </div>
+        <div class="field-grid">
+          <div class="auth-form-group">
+            <label for="register-clinician-phone">رقم الجوال <span class="req">*</span></label>
+            <div class="auth-input-wrap"><input id="register-clinician-phone" class="auth-input" placeholder="05xxxxxxxx" dir="ltr" style="text-align:left"></div>
+            <div class="field-error" id="err-clinician-phone"></div>
+          </div>
+          <div class="auth-form-group">
+            <label for="register-clinician-email">البريد <span style="font-weight:400;color:var(--m3-on-surface-muted)">(اختياري)</span></label>
+            <div class="auth-input-wrap"><input id="register-clinician-email" type="email" class="auth-input" placeholder="doctor@hospital.sa" dir="ltr" style="text-align:left"></div>
+            <div class="field-error" id="err-clinician-email"></div>
+          </div>
+        </div>
+        <div style="background:var(--m3-primary-container);color:var(--m3-on-primary-container);padding:8px 10px;font-size:.78rem;margin-top:6px">🔗 الطبيب مرتبط تنظيمياً بمنشأة - لا يمكن العمل بدون منشأة - المنشأة غير النشطة يرفض الربط</div>
       </div>
 
       <div id="register-error" class="auth-error-box"><span id="register-error-text"></span></div>
