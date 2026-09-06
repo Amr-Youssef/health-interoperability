@@ -26,6 +26,7 @@ model User {
   deleted_at         DateTime?
 
   permissions        UserPermission[]
+  clinician_appointments Appointment[]
 }
 
 // 4.2 Organizations
@@ -53,6 +54,7 @@ model Organization {
   consents               Consent[]
   audit_logs             AuditLog[]
   data_imports           DataImport[]
+  appointments           Appointment[]
 }
 
 enum RoleCode {
@@ -162,6 +164,7 @@ model Patient {
   coverages             Coverage[]
   claims                Claim[]
   consents              Consent[]
+  appointments          Appointment[]
   allergies             AllergyIntolerance[]
   diagnostic_reports    DiagnosticReport[]
   
@@ -221,6 +224,11 @@ model Encounter {
   source_record_id String?
   
   created_at       DateTime     @default(now())
+  correction_status String      @default("ACTIVE")
+  correction_reason String?
+  corrected_by     String?
+  corrected_at     DateTime?
+  superseded_by    String?
 
   conditions       Condition[]
   observations     Observation[]
@@ -259,6 +267,10 @@ model Condition {
   source_record_id String?
   
   created_at       DateTime     @default(now())
+  correction_status String      @default("ACTIVE")
+  correction_reason String?
+  corrected_by     String?
+  corrected_at     DateTime?
 }
 
 // 4.10 Observations
@@ -292,6 +304,10 @@ model Observation {
   source_record_id String?
   
   created_at       DateTime     @default(now())
+  correction_status String      @default("ACTIVE")
+  correction_reason String?
+  corrected_by     String?
+  corrected_at     DateTime?
 }
 
 // 4.11 MedicationRequests
@@ -324,6 +340,10 @@ model MedicationRequest {
   source_record_id String?
   
   created_at       DateTime     @default(now())
+  correction_status String      @default("ACTIVE")
+  correction_reason String?
+  corrected_by     String?
+  corrected_at     DateTime?
 }
 
 // 4.12 Immunizations
@@ -474,19 +494,52 @@ model DiagnosticReport {
   created_at       DateTime     @default(now())
 }
 
-// 4.15 Consents
+// 4.15 Consents - Quad Appointment+Consent Model
 model Consent {
   id               String       @id @default(uuid())
   patient_id       String
   patient          Patient      @relation(fields: [patient_id], references: [internal_id])
   organization_id  String?
   organization     Organization? @relation(fields: [organization_id], references: [id])
+  appointment_id   String?      @unique
+  appointment      Appointment? @relation(fields: [appointment_id], references: [id])
   consent_type     String
   granted          Boolean      @default(true)
   granted_at       DateTime     @default(now())
   revoked_at       DateTime?
+  expires_at       DateTime?
   scope            String
+  allowed_organizations String?
+  blocked_categories String?
   consent_source   String
+  created_by       String?
+}
+
+// 4.15b Appointments - Quad Model (ROUTINE/EMERGENCY/REFERRAL/CHRONIC)
+model Appointment {
+  id               String       @id @default(uuid())
+  patient_id       String
+  patient          Patient      @relation(fields: [patient_id], references: [internal_id])
+  organization_id  String
+  organization     Organization @relation(fields: [organization_id], references: [id])
+  clinician_id     String?
+  clinician        User?        @relation(fields: [clinician_id], references: [id])
+  appointment_type String       // ROUTINE, EMERGENCY, REFERRAL, CHRONIC
+  status           String       @default("proposed") // proposed, booked, arrived, fulfilled, cancelled, no_show
+  service_category String?
+  scheduled_start  DateTime
+  scheduled_end    DateTime?
+  reason           String?
+  slot_id          String?
+  created_by       String
+  created_at       DateTime     @default(now())
+  updated_at       DateTime     @updatedAt
+  consent          Consent?
+
+  @@index([patient_id])
+  @@index([organization_id])
+  @@index([clinician_id])
+  @@index([status])
 }
 
 // 4.16 AuditLogs

@@ -1,0 +1,17 @@
+ALTER TABLE "Condition" ADD COLUMN "corrected_at" TIMESTAMP(3);
+ALTER TABLE "Condition" ADD COLUMN "corrected_by" TEXT;
+ALTER TABLE "Condition" ADD COLUMN "correction_reason" TEXT;
+ALTER TABLE "Condition" ADD COLUMN "correction_status" TEXT NOT NULL DEFAULT 'ACTIVE';
+ALTER TABLE "Encounter" ADD COLUMN "corrected_at" TIMESTAMP(3);
+ALTER TABLE "Encounter" ADD COLUMN "corrected_by" TEXT;
+ALTER TABLE "Encounter" ADD COLUMN "correction_reason" TEXT;
+ALTER TABLE "Encounter" ADD COLUMN "correction_status" TEXT NOT NULL DEFAULT 'ACTIVE';
+ALTER TABLE "Encounter" ADD COLUMN "superseded_by" TEXT;
+ALTER TABLE "MedicationRequest" ADD COLUMN "corrected_at" TIMESTAMP(3);
+ALTER TABLE "MedicationRequest" ADD COLUMN "corrected_by" TEXT;
+ALTER TABLE "MedicationRequest" ADD COLUMN "correction_reason" TEXT;
+ALTER TABLE "MedicationRequest" ADD COLUMN "correction_status" TEXT NOT NULL DEFAULT 'ACTIVE';
+ALTER TABLE "Observation" ADD COLUMN "corrected_at" TIMESTAMP(3);
+ALTER TABLE "Observation" ADD COLUMN "corrected_by" TEXT;
+ALTER TABLE "Observation" ADD COLUMN "correction_reason" TEXT;
+ALTER TABLE "Observation" ADD COLUMN "correction_status" TEXT NOT NULL DEFAULT 'ACTIVE';

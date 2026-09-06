@@ -141,6 +141,7 @@ router.get('/me', async (req: Request, res: Response) => {
 });
 
 router.patch('/me', async (req: Request, res: Response) => {
+  if (req.user?.role?.role_code === 'CLINICIAN') return res.status(403).json({ error: 'الطبيب لا يمكنه تعديل بيانات المنشأة - فقط أدمن المنشأة' });
   try {
     const user = req.user!;
     const validation = validateHospitalPayload(req.body);
@@ -426,35 +427,39 @@ router.get('/patients', async (req: Request, res: Response) => {
   }
 });
 
-// Hospital view of longitudinal record - enforces org linkage + consent
+// Hospital view of longitudinal record - enforces org linkage + appointment/consent
 router.get('/patients/:id/longitudinal', async (req: Request, res: Response) => {
   try {
-    const patientId = req.params.id as string;
+    const patientIdParam = req.params.id as string;
     const orgId = req.user!.organization_id;
     const role = req.user!.role?.role_code;
     if (role === 'CLINICIAN' || role === 'HOSPITAL_ADMIN') {
-      const link = await prisma.patientOrganization.findFirst({ where: { patient_id: patientId, organization_id: orgId, active: true } });
-      const direct = await prisma.patient.findFirst({ where: { id: patientId, source_system_id: orgId } });
-      const internal = await prisma.patient.findFirst({ where: { internal_id: patientId } });
-      const pid = internal?.id || patientId;
-      const link2 = !link ? await prisma.patientOrganization.findFirst({ where: { patient_id: pid, organization_id: orgId, active: true } }) : link;
-      if (!link && !direct && !link2) {
-        const consent = await prisma.consent.findFirst({ where: { patient_id: pid, organization_id: orgId, granted: true } });
-        if (!consent) return res.status(403).json({ error: 'Patient not linked to your organization and no consent granted - use break-glass for emergency' });
+      const patientRow = await prisma.patient.findFirst({ where: { OR: [{ id: patientIdParam }, { internal_id: patientIdParam }] } });
+      const pid = patientRow?.id || patientIdParam;
+      const internalId = patientRow?.internal_id || patientIdParam;
+      const link = await prisma.patientOrganization.findFirst({ where: { patient_id: pid, organization_id: orgId, active: true } });
+      const direct = await prisma.patient.findFirst({ where: { id: pid, source_system_id: orgId } });
+      if (!link && !direct) {
+        const appt = await prisma.appointment.findFirst({ where: { patient_id: internalId, organization_id: orgId, status: { in: ['booked','arrived','fulfilled'] } }, include: { consent: true } });
+        const hasConsent = await prisma.consent.findFirst({ where: { patient_id: internalId, organization_id: orgId, granted: true } });
+        const hasValidApptConsent = appt?.consent && appt.consent.granted && !appt.consent.revoked_at && (!appt.consent.expires_at || new Date(appt.consent.expires_at) > new Date());
+        if (!hasConsent && !hasValidApptConsent) {
+          return res.status(403).json({ error: 'Patient not linked to your organization and no appointment/consent - book appointment (المواعيد والكشف) and wait for confirmation, or use break-glass for emergency' });
+        }
       }
     }
-    const record = await canonicalStore.getLongitudinalRecord(patientId);
+    const record = await canonicalStore.getLongitudinalRecord(patientIdParam);
     if (!record) return res.status(404).json({ error: 'Patient not found' });
     // Audit hospital viewing global record (read-only)
     try {
       await prisma.auditLog.create({
         data: {
           entity_type: 'Patient',
-          entity_id: patientId,
+          entity_id: patientIdParam,
           action: 'HOSPITAL_VIEW_GLOBAL_RECORD',
           actor_id: req.user!.id,
           organization_id: req.user!.organization_id,
-          details: `Hospital ${req.user!.organization_id} viewed global longitudinal record for patient ${patientId} (read-only, separate view but integrated DB)`
+          details: `Hospital ${req.user!.organization_id} viewed global longitudinal record for patient ${patientIdParam} (read-only, separate view but integrated DB)`
         }
       });
     } catch (e) {}

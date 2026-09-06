@@ -437,6 +437,13 @@
           <span class="label">السجل العام الموحد</span>
         </button>
 
+        <button class="nav-item" data-tab="appointments" id="tab-btn-appointments" title="المواعيد والكشف - حجز ومتابعة مع المنشأة">
+          <span class="nav-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </span>
+          <span class="label">المواعيد والكشف</span>
+        </button>
+
         <button class="nav-item" data-tab="mapping" id="tab-btn-mapping" title="استوديو الربط والمصطلحات">
           <span class="nav-icon-wrap">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M18 6a9 9 0 0 1-9 9H6"/><polyline points="15 3 18 6 15 9"/></svg>
@@ -1088,8 +1095,8 @@
             </div>
             <div class="metric-info">
               <span class="metric-label">معدل سرعة تسوية نفيس (eClaims)</span>
-              <h3 class="metric-value" id="kpi-settlement-speed">0.12s</h3>
-              <span class="metric-sub">تسوية لحظية آلية 100%</span>
+              <h3 class="metric-value" id="kpi-settlement-speed">--</h3>
+              <span class="metric-sub">من قاعدة المطالبات الحقيقية</span>
             </div>
           </div>
         </div>
@@ -1514,6 +1521,39 @@
 
         <div id="patient-self-reported-dashboard" class="mt-4" style="display:none;"></div>
         <div id="longitudinal-content" class="longitudinal-content">
+        </div>
+      </section>
+
+      <section class="tab-pane" id="pane-appointments">
+        <div class="banner-info" style="border-right:4px solid var(--m3-primary); background:var(--m3-surface-container);">
+          <div class="banner-icon" style="background:var(--m3-primary); color:var(--m3-on-primary);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+          <div class="banner-text">
+            <h4>المواعيد والكشف - الدمج الرباعي (موعد + إذن)</h4>
+            <p>روتيني (حجز مسبق + إذن مؤقت) • طوارئ (كسر زجاج فوري) • تحويل (إذن للمنشأة المحوّلة) • متابعة مزمنة (إذن دائم) — صلاحية القراءة مرتبطة بموعد/إذن نشط فقط</p>
+          </div>
+        </div>
+
+        <div id="appointments-patient-card" class="card mb-4" style="display:none;">
+          <div class="card-header"><div class="card-header-title"><h3>حجز موعد جديد (المريض)</h3></div></div>
+          <div class="card-body">
+            <form id="form-book-appointment" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+              <div><label style="font-size:0.78rem; display:block; margin-bottom:4px;">المنشأة *</label><select id="appt-org" class="form-select" required><option value="">-- اختر المنشأة النشطة --</option></select></div>
+              <div><label style="font-size:0.78rem; display:block; margin-bottom:4px;">نوع الموعد *</label><select id="appt-type" class="form-select"><option value="ROUTINE">ROUTINE - كشف روتيني</option><option value="CHRONIC">CHRONIC - متابعة مزمنة</option><option value="REFERRAL">REFERRAL - تحويل</option><option value="EMERGENCY">EMERGENCY - طوارئ (فوري)</option></select></div>
+              <div><label style="font-size:0.78rem; display:block; margin-bottom:4px;">التاريخ * <span style="color:var(--m3-on-surface-variant); font-weight:400;">(ميلادي)</span></label><input type="date" id="appt-date" class="form-select" required><small id="appt-date-hint" style="font-size:0.68rem; color:var(--m3-on-surface-variant);"></small></div>
+              <div><label style="font-size:0.78rem; display:block; margin-bottom:4px;">الوقت * <span style="color:var(--m3-on-surface-variant); font-weight:400;">(Asia/Riyadh)</span></label><select id="appt-time" class="form-select" required><option value="">-- اختر الوقت --</option></select><small id="appt-time-hint" style="font-size:0.68rem; color:var(--m3-on-surface-variant);">08:00 - 17:00 • كل 30 دقيقة • الجمعة والسبت عطلة</small></div>
+              <div style="grid-column:1/-1; background:var(--m3-surface-container); border:1px solid var(--m3-outline-variant); border-radius:8px; padding:8px 10px; display:flex; align-items:center; gap:8px; font-size:0.78rem;"><span style="color:var(--m3-on-surface-variant);">الموعد المحجوز:</span><strong id="appt-preview">--</strong><span id="appt-preview-hijri" style="color:var(--m3-on-surface-variant); font-size:0.72rem;"></span><span id="appt-preview-relative" class="badge badge-info" style="margin-inline-start:auto;"></span></div>
+              <div style="grid-column:1/-1;"><label style="font-size:0.78rem; display:block; margin-bottom:4px;">الطبيب المفضل (اختياري - رغبة أولية)</label><select id="appt-clinician" class="form-select"><option value="">-- بدون تفضيل (المستشفى يخصص المتاح) --</option></select><small style="font-size:0.68rem; color:var(--m3-on-surface-variant);">المملكة (صحتي/موعد): المريض يختار المنشأة والعيادة والوقت، والمستشفى يخصص الطبيب المتاح حسب التخصص والحمل - تفضيلك يُحترم إن أمكن لكن التأكيد النهائي للمنشأة</small></div>
+              <div><label style="font-size:0.78rem; display:block; margin-bottom:4px;">السبب/الشكوى</label><input type="text" id="appt-reason" class="form-select" placeholder="مثال: متابعة سكري"></div>
+              <div style="display:flex; align-items:flex-end;"><label style="display:flex; align-items:center; gap:6px; font-size:0.78rem; cursor:pointer;"><input type="checkbox" id="appt-emergency-confirm" style="display:none;"> <span id="appt-emergency-note" style="display:none; background:var(--m3-error-container); color:var(--m3-on-error-container); padding:6px 8px; border-radius:6px;">⚠️ طوارئ: سيتم تفعيل كسر زجاج وإشعار المريض</span></label></div>
+              <div style="grid-column:1/-1;"><button type="submit" class="btn btn-primary">حجز الموعد وإنشاء الإذن</button> <span style="font-size:0.72rem; color:var(--m3-on-surface-variant);">الموعد ينشئ إذن تلقائياً بنوعه - الطوارئ يفعّل كسر زجاج فوري • التوقيت Asia/Riyadh</span></div>
+            </form>
+            <div id="appt-book-result" style="margin-top:10px; font-size:0.82rem;"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><div class="card-header-title"><h3>مواعيدي</h3></div><button class="btn btn-secondary btn-sm" onclick="loadAppointments()">تحديث</button></div>
+          <div class="card-body p-0"><table class="data-table"><thead><tr><th>المريض</th><th>المنشأة</th><th>النوع</th><th>الحالة</th><th>الموعد</th><th>الإذن</th><th>إجراء</th></tr></thead><tbody id="appointments-tbody"><tr><td colspan="7" class="text-center py-4">جاري التحميل...</td></tr></tbody></table></div>
         </div>
       </section>
 

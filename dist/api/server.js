@@ -20,6 +20,8 @@ import { hospitalRoutes } from './routes/hospital-routes.js';
 import { mohRoutes } from './routes/moh-routes.js';
 import { patientRoutes } from './routes/patient-routes.js';
 import { patientReportedHealthRoutes } from './routes/patient-reported-health-routes.js';
+import { appointmentsRoutes } from './routes/appointments-routes.js';
+import { correctionsRoutes } from './routes/corrections-routes.js';
 import { verifyToken } from '../security/auth-middleware.js';
 import { requirePermission } from '../security/authorize.js';
 const __filename = fileURLToPath(import.meta.url);
@@ -154,6 +156,22 @@ export function createPlatformApp() {
             res.status(500).json({ error: e.message });
         }
     });
+    app.get('/api/public/clinicians', async (req, res) => {
+        try {
+            const orgId = req.query.organization_id;
+            if (!orgId)
+                return res.status(400).json({ error: 'organization_id required' });
+            const prisma = new PrismaClient();
+            const org = await prisma.organization.findUnique({ where: { id: orgId } });
+            if (!org || org.status !== 'ACTIVE')
+                return res.status(403).json({ error: 'Organization not active' });
+            const clinicians = await prisma.user.findMany({ where: { organization_id: orgId, is_active: true, role: { role_code: 'CLINICIAN' } }, select: { id: true, username: true, full_name: true, email: true }, orderBy: { full_name: 'asc' } });
+            res.json(clinicians);
+        }
+        catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    });
     // Serve static UI - auth pages are public, app shell is protected
     const publicDir = path.join(__dirname, '../../public');
     app.use('/auth', express.static(path.join(publicDir, 'auth')));
@@ -167,6 +185,8 @@ export function createPlatformApp() {
     app.use('/api/hospital', hospitalRoutes);
     app.use('/api/moh', mohRoutes);
     app.use('/api/patient', patientRoutes);
+    app.use('/api/appointments', appointmentsRoutes);
+    app.use('/api/corrections', correctionsRoutes);
     // ==========================================
     // 1. SMART ON FHIR OAUTH2 & DISCOVERY
     // ==========================================
@@ -975,6 +995,46 @@ export function createPlatformApp() {
             }
             if (!allowed) {
                 return res.status(403).json({ error: 'Access denied: You can only view your own longitudinal health record.' });
+            }
+        }
+        if (user && ['HOSPITAL_ADMIN', 'CLINICIAN'].includes(user.role?.role_code)) {
+            const prismaCheck = new PrismaClient();
+            const pidCandidates = [requestedId];
+            let patientInternalId = requestedId;
+            try {
+                const patByInternal = await prismaCheck.patient.findFirst({ where: { internal_id: requestedId } });
+                if (patByInternal) {
+                    pidCandidates.push(patByInternal.internal_id, patByInternal.id);
+                    patientInternalId = patByInternal.internal_id;
+                }
+                const patById = await prismaCheck.patient.findFirst({ where: { id: requestedId } });
+                if (patById) {
+                    pidCandidates.push(patById.internal_id, patById.id);
+                    patientInternalId = patById.internal_id;
+                }
+            }
+            catch { }
+            const uniquePids = [...new Set(pidCandidates)];
+            const orgLink = await prismaCheck.patientOrganization.findFirst({ where: { organization_id: user.organization_id, active: true, patient: { internal_id: { in: uniquePids } } } }).catch(() => null);
+            const directPatient = await prismaCheck.patient.findFirst({ where: { internal_id: { in: uniquePids }, source_system_id: user.organization_id } }).catch(() => null);
+            if (orgLink || directPatient) {
+            }
+            else {
+                const appt = await prismaCheck.appointment.findFirst({
+                    where: {
+                        patient_id: { in: uniquePids },
+                        organization_id: user.organization_id,
+                        status: { in: ['booked', 'arrived', 'fulfilled'] }
+                    },
+                    include: { consent: true }
+                });
+                const hasValidConsent = appt?.consent && appt.consent.granted && !appt.consent.revoked_at && (!appt.consent.expires_at || new Date(appt.consent.expires_at) > new Date());
+                if (!appt || !hasValidConsent) {
+                    return res.status(403).json({ error: 'لا يوجد موعد/إذن نشط ولا ارتباط منشأة لهذا المريض - احجز موعد (المواعيد والكشف) وانتظر تأكيد المنشأة، أو استخدم كسر الزجاج للطوارئ. المرضى المرتبطون سابقاً (PatientOrganization) يبقون متاحين.' });
+                }
+                if (user.role?.role_code === 'CLINICIAN' && appt.clinician_id && appt.clinician_id !== user.id) {
+                    return res.status(403).json({ error: 'الموعد مرتبط بطبيب آخر - فقط الطبيب المتابع يملك صلاحية القراءة' });
+                }
             }
         }
         const record = await canonicalStore.getLongitudinalRecord(requestedId);

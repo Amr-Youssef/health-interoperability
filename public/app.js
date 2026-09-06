@@ -375,7 +375,7 @@ const appAuth = {
       }
     }
     if (this.currentRole === 'MOH_ADMIN' || this.currentRole === 'SYS_ADMIN') {
-      ['admin-governance','monitoring', 'onboarding', 'cds', 'nphies', 'medications', 'mpi', 'longitudinal', 'mapping', 'provenance', 'security', 'bulkexport', 'fhir'].forEach(id => {
+      ['admin-governance','monitoring', 'onboarding', 'cds', 'nphies', 'medications', 'mpi', 'longitudinal', 'appointments', 'mapping', 'provenance', 'security', 'bulkexport', 'fhir'].forEach(id => {
         const t = document.getElementById(`tab-btn-${id}`);
         if(t) t.style.display = 'flex';
       });
@@ -388,13 +388,13 @@ const appAuth = {
       if (patCard) patCard.style.display = 'block';
 
     } else if (this.currentRole === 'HOSPITAL_ADMIN') {
-      ['hospital-migration','hospital-global','hospital-profile'].forEach(id => {
+      ['hospital-migration','hospital-global','hospital-profile','appointments'].forEach(id => {
         const t = document.getElementById(`tab-btn-${id}`);
         if(t) t.style.display = 'flex';
       });
       defaultTab = 'hospital-migration';
     } else if (this.currentRole === 'CLINICIAN') {
-      ['longitudinal','medications','cds','nphies','hospital-migration','hospital-global'].forEach(id => {
+      ['longitudinal','medications','cds','nphies','hospital-migration','hospital-global','appointments'].forEach(id => {
         const t = document.getElementById(`tab-btn-${id}`);
         if(t) t.style.display = 'flex';
       });
@@ -411,7 +411,7 @@ const appAuth = {
       if (patCard) patCard.style.display = 'block';
 
     } else if (this.currentRole === 'PATIENT') {
-      ['profile', 'longitudinal', 'medications'].forEach(id => {
+      ['profile', 'longitudinal', 'medications', 'appointments'].forEach(id => {
         const t = document.getElementById(`tab-btn-${id}`);
         if(t) t.style.display = 'flex';
       });
@@ -435,11 +435,11 @@ const appAuth = {
 };
 
 function getAllowedTabsForRole(role) {
-  if (role === 'MOH_ADMIN' || role === 'SYS_ADMIN') return ['admin-governance','monitoring','onboarding','cds','nphies','medications','mpi','longitudinal','mapping','provenance','security','bulkexport','fhir'];
-  if (role === 'HOSPITAL_ADMIN') return ['hospital-migration','hospital-global','hospital-profile'];
-  if (role === 'CLINICIAN') return ['longitudinal','medications','cds','nphies','hospital-migration','hospital-global'];
-  if (role === 'PATIENT') return ['profile','longitudinal','medications'];
-  if (role === 'MOH_AUDITOR') return ['monitoring','longitudinal','security','provenance'];
+  if (role === 'MOH_ADMIN' || role === 'SYS_ADMIN') return ['admin-governance','monitoring','onboarding','cds','nphies','medications','mpi','longitudinal','appointments','mapping','provenance','security','bulkexport','fhir'];
+  if (role === 'HOSPITAL_ADMIN') return ['hospital-migration','hospital-global','hospital-profile','appointments'];
+  if (role === 'CLINICIAN') return ['longitudinal','medications','cds','nphies','hospital-migration','hospital-global','appointments'];
+  if (role === 'PATIENT') return ['profile','longitudinal','medications','appointments'];
+  if (role === 'MOH_AUDITOR') return ['monitoring','longitudinal','security'];
   return [];
 }
 
@@ -1701,6 +1701,7 @@ function handleTabSwitch(tab) {
       loadPatientSelfReportedDashboard();
     }
   }
+  if (tab === 'appointments') loadAppointments();
   if (tab === 'profile') {
     if (appAuth.currentRole === 'PATIENT') {
       loadPatientProfileTab();
@@ -1930,7 +1931,10 @@ async function loadCdsAndAnalyticsTab() {
       kpiVax.textContent = `${analytics.immunizationCoverage[0].coveragePercentage}%`;
     }
     if (kpiSpeed && analytics.financialInteroperability) {
-      kpiSpeed.textContent = `${analytics.financialInteroperability.averageSettlementDurationSeconds}s`;
+      const v = analytics.financialInteroperability.averageSettlementDurationSeconds;
+      kpiSpeed.textContent = v != null ? `${v}s` : '--';
+    } else if (kpiSpeed) {
+      kpiSpeed.textContent = '--';
     }
 
     // 2. Patient CDS Hooks Safety Cards - غير مرتبط بـ KPIs
@@ -3061,7 +3065,7 @@ function initHospitalMigrationDropzone() {
       if (data.success && data.result) {
         const r=data.result;
         const badge = r.format==='hl7v2'?'<span class="badge badge-warning">HL7 v2.5</span>': r.format==='fhir-bundle'?'<span class="badge badge-success">FHIR R4</span>':'<span class="badge badge-info">CSV</span>';
-        resultContainer.innerHTML=`<div class="ingestion-result-box success"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;"><div style="display:flex; align-items:center; gap:8px;">${getSvgIcon('shieldCheck','style="width:20px; height:20px; color:var(--m3-secondary);"')}<strong style="color:var(--m3-on-surface); font-size:0.96rem;">تم ترحيل وتطبيع ملف منشأتك بنجاح: <code>${r.fileName}</code></strong></div>${badge}</div><p style="font-size:0.82rem; color:var(--m3-on-surface-variant); margin-bottom:10px;">تم استيعاب <strong>${r.totalIngested}</strong> سجل باسم منشأتك وربطها في السجل الوطني مع حفظ المصدر.</p><div style="display:flex; gap:8px;"><span class="badge badge-success">جودة 100/100</span><button type="button" class="btn btn-secondary btn-sm" onclick="loadHospitalMigrationTab()">تحديث الإحصائيات</button></div></div>`;
+        resultContainer.innerHTML=`<div class="ingestion-result-box success"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;"><div style="display:flex; align-items:center; gap:8px;">${getSvgIcon('shieldCheck','style="width:20px; height:20px; color:var(--m3-secondary);"')}<strong style="color:var(--m3-on-surface); font-size:0.96rem;">تم ترحيل وتطبيع ملف منشأتك بنجاح: <code>${r.fileName}</code></strong></div>${badge}</div><p style="font-size:0.82rem; color:var(--m3-on-surface-variant); margin-bottom:10px;">تم استيعاب <strong>${r.totalIngested}</strong> سجل باسم منشأتك وربطها في السجل الوطني مع حفظ المصدر.</p><div style="display:flex; gap:8px; align-items:center;"><span class="badge badge-success">جودة ${r.validation?.score ?? r.qualityScore ?? '--'}/100</span><span class="badge badge-info">${orgId.substring(0,8)}</span><button type="button" class="btn btn-secondary btn-sm" onclick="loadHospitalMigrationTab()">تحديث الإحصائيات</button></div></div>`;
         showToast('تم الترحيل بنجاح', `تم ترحيل ${r.totalIngested} سجل لمنشأتك`, 'success');
         loadHospitalScopedStats(); loadHospitalImports(); loadHospitalPatientsList();
       } else {
@@ -4462,4 +4466,172 @@ document.getElementById('moh-admin-role')?.addEventListener('change', (e)=>{
   }
 });
 document.getElementById('form-create-moh-admin')?.addEventListener('submit', async (e)=>{ e.preventDefault(); const role_code=document.getElementById('moh-admin-role')?.value||'MOH_ADMIN'; const username=document.getElementById('moh-admin-username').value.trim(); const full_name=document.getElementById('moh-admin-fullname').value.trim(); const password=document.getElementById('moh-admin-password').value; const email=document.getElementById('moh-admin-email').value.trim(); const phone=document.getElementById('moh-admin-phone')?.value.trim(); const organization_id=document.getElementById('gov-create-org')?.value||undefined; const resEl=document.getElementById('moh-admin-create-result'); if(['HOSPITAL_ADMIN','CLINICIAN'].includes(role_code) && !organization_id){ if(resEl) resEl.innerHTML='<span style="color:var(--m3-error);">يجب اختيار المنشأة لـ '+role_code+'</span>'; showToast('بيانات ناقصة','اختر المنشأة','error'); return; } try{ const r=await fetch('/api/moh/users/create-admin',{method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({username, full_name, password, email: email||undefined, phone: phone||undefined, role_code, organization_id})}); const j=await r.json(); if(r.ok){ if(resEl) resEl.innerHTML='<span style="color:var(--m3-primary);">✅ تم إنشاء '+role_code+': '+j.user.username+'</span>'; showToast('تم الإنشاء', role_code+' جديد: '+j.user.username,'success'); loadAdminGovernance(); e.target.reset(); const wrap=document.getElementById('gov-org-select-wrap'); if(wrap) wrap.style.display='none'; } else { if(resEl) resEl.innerHTML='<span style="color:var(--m3-error);">'+(j.error||'فشل')+'</span>'; showToast('خطأ', j.error,'error'); } } catch(err){ if(resEl) resEl.textContent=err.message; } });
+
+async function loadAppointments(){
+  const tbody=document.getElementById('appointments-tbody');
+  const card=document.getElementById('appointments-patient-card');
+  const sel=document.getElementById('appt-org');
+  const clinSel=document.getElementById('appt-clinician');
+  if(card) card.style.display = appAuth.currentRole==='PATIENT' ? 'block' : 'none';
+  if(sel && sel.options.length<=1){
+    try{ const r=await fetch('/api/public/organizations'); const orgs=await r.json(); if(Array.isArray(orgs)) sel.innerHTML='<option value="">-- اختر المنشأة --</option>'+orgs.map(o=>`<option value="${o.id}">${o.organization_name_ar||o.organization_name} (${o.region})</option>`).join(''); }catch{}
+  }
+  if(sel && clinSel){
+    sel.addEventListener('change', async ()=>{
+      const orgId=sel.value;
+      if(!orgId){ clinSel.innerHTML='<option value="">-- بدون تحديد (أي طبيب في المنشأة) --</option>'; return; }
+      clinSel.innerHTML='<option value="">جاري تحميل الأطباء...</option>';
+      try{ const r=await fetch('/api/public/clinicians?organization_id='+orgId); const list=await r.json(); if(Array.isArray(list) && list.length>0) clinSel.innerHTML='<option value="">-- بدون تحديد (أي طبيب) --</option>'+list.map(c=>`<option value="${c.id}">${c.full_name} (@${c.username})</option>`).join(''); else clinSel.innerHTML='<option value="">-- لا يوجد أطباء في هذه المنشأة --</option>'; }catch{ clinSel.innerHTML='<option value="">-- فشل تحميل الأطباء --</option>'; }
+    });
+  }
+  if(!tbody) return;
+  tbody.innerHTML='<tr><td colspan="7" class="text-center py-4">جاري التحميل...</td></tr>';
+  try{
+    const url = appAuth.currentRole==='PATIENT' ? '/api/appointments/my' : '/api/appointments/organization';
+    const r=await fetch(url);
+    if(!r.ok){ tbody.innerHTML=`<tr><td colspan="7" class="text-center py-4" style="color:var(--m3-error);">فشل التحميل (${r.status})</td></tr>`; return; }
+    const list=await r.json();
+    if(!list || list.length===0){ tbody.innerHTML='<tr><td colspan="7" class="text-center py-4">لا توجد مواعيد - البيانات من جدول Appointment الحقيقي</td></tr>'; return; }
+    tbody.innerHTML=list.map(a=>{
+      const typeBadge = a.appointment_type==='ROUTINE'?'badge-info':a.appointment_type==='EMERGENCY'?'badge-error':a.appointment_type==='REFERRAL'?'badge-warning':'badge-success';
+      const statusBadge = a.status==='proposed'?'badge-secondary':a.status==='booked'?'badge-info':a.status==='arrived'?'badge-warning':a.status==='fulfilled'?'badge-success':'badge-error';
+      const consentBadge = a.consent?.granted ? '<span class="badge badge-success">إذن ممنوح</span>' : '<span class="badge badge-warning">بانتظار</span>';
+      const orgName = a.organization?.organization_name_ar||a.organization?.organization_name||a.organization_id?.substring(0,8);
+      const dateStr = a.scheduled_start ? new Date(a.scheduled_start).toLocaleString('ar-SA') : '--';
+      const clinName = a.clinician?.full_name ? `${a.clinician.full_name} (@${a.clinician.username})` : (a.clinician_id ? a.clinician_id.substring(0,8) : 'غير محدد - أي طبيب');
+      const clinicianBadge = a.clinician ? `<span class="badge badge-info">${clinName}</span>` : '<span class="badge badge-secondary">غير محدد</span>';
+      let actions='';
+      if(['HOSPITAL_ADMIN','CLINICIAN'].includes(appAuth.currentRole) && a.status==='proposed'){
+        actions+=`<button class="btn btn-primary btn-sm" onclick="promptAssignClinician('${a.id}')">تأكيد + تعيين طبيب</button> `;
+        actions+=`<button class="btn btn-secondary btn-sm" onclick="updateAppointment('${a.id}','booked')">تأكيد بدون تحديد</button> `;
+      }
+      if(['HOSPITAL_ADMIN','CLINICIAN'].includes(appAuth.currentRole) && a.status==='booked') actions+=`<button class="btn btn-warning btn-sm" onclick="updateAppointment('${a.id}','arrived')">وصول</button> `;
+      if(['HOSPITAL_ADMIN','CLINICIAN'].includes(appAuth.currentRole) && a.status==='arrived') actions+=`<button class="btn btn-success btn-sm" onclick="updateAppointment('${a.id}','fulfilled')">إتمام</button> `;
+      if(appAuth.currentRole==='PATIENT' && ['proposed','booked'].includes(a.status)) actions+=`<button class="btn btn-secondary btn-sm" onclick="updateAppointment('${a.id}','cancelled')">إلغاء</button>`;
+      return `<tr><td><small>${a.patient_id?.substring(0,8)}...</small></td><td>${orgName}</td><td><span class="badge ${typeBadge}">${a.appointment_type}</span><br>${clinicianBadge}</td><td><span class="badge ${statusBadge}">${a.status}</span></td><td>${dateStr}</td><td>${consentBadge} <small>${a.consent?.consent_type||''}</small></td><td>${actions||'--'}</td></tr>`;
+    }).join('');
+  }catch(e){ tbody.innerHTML=`<tr><td colspan="7" class="text-center py-4" style="color:var(--m3-error);">خطأ: ${e.message}</td></tr>`; }
+}
+async function updateAppointment(id,status,clinician_id){
+  try{
+    const body={status};
+    if(clinician_id) body.clinician_id=clinician_id;
+    const r=await fetch('/api/appointments/'+id+'/status',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const j=await r.json();
+    if(r.ok){ showToast('تم التحديث','الموعد '+status,'success'); loadAppointments(); }
+    else showToast('خطأ', j.error,'error');
+  }catch(e){ showToast('خطأ', e.message,'error'); }
+}
+async function promptAssignClinician(appointmentId){
+  const id=prompt('أدخل معرف الطبيب (username أو ID) - اتركه فارغاً للتأكيد بدون تحديد:');
+  if(id===null) return;
+  const trimmed=id.trim();
+  if(!trimmed) return updateAppointment(appointmentId,'booked');
+  try{
+    const orgSel=document.getElementById('appt-org');
+    const orgId=orgSel?.value || '';
+    let clinId=trimmed;
+    if(!trimmed.includes('-')){
+      const r=await fetch('/api/public/clinicians?organization_id='+ (document.querySelector('#appointments-tbody')?.dataset?.orgId || ''));
+      const list=await r.json();
+      const found=list.find(c=>c.username===trimmed || c.full_name===trimmed);
+      if(found) clinId=found.id;
+    }
+    return updateAppointment(appointmentId,'booked',clinId);
+  }catch{ return updateAppointment(appointmentId,'booked', trimmed); }
+}
+function initAppointmentDateTime(){
+  const dateEl=document.getElementById('appt-date');
+  const timeEl=document.getElementById('appt-time');
+  const previewEl=document.getElementById('appt-preview');
+  const hijriEl=document.getElementById('appt-preview-hijri');
+  const relativeEl=document.getElementById('appt-preview-relative');
+  const hintEl=document.getElementById('appt-date-hint');
+  const typeEl=document.getElementById('appt-type');
+  const emergencyNote=document.getElementById('appt-emergency-note');
+  const emergencyConfirm=document.getElementById('appt-emergency-confirm');
+  if(!dateEl||!timeEl) return;
+  const today=new Date(); today.setHours(0,0,0,0);
+  const todayStr=today.toISOString().split('T')[0];
+  dateEl.min=todayStr;
+  const max=new Date(); max.setMonth(max.getMonth()+3);
+  dateEl.max=max.toISOString().split('T')[0];
+  dateEl.value=todayStr;
+  const slots=[];
+  for(let h=8;h<17;h++){ for(let m=0;m<60;m+=30){ if(h===16 && m>30) continue; slots.push(String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')); } }
+  function fillTimes(){
+    const selectedDate=dateEl.value;
+    const isToday=selectedDate===todayStr;
+    const now=new Date();
+    timeEl.innerHTML='<option value="">-- اختر الوقت --</option>'+slots.map(s=>{
+      if(isToday){
+        const [hh,mm]=s.split(':').map(Number);
+        const slotTime=new Date(); slotTime.setHours(hh,mm,0,0);
+        if(slotTime <= now) return `<option value="${s}" disabled>${s} (انتهى)</option>`;
+      }
+      return `<option value="${s}">${s}</option>`;
+    }).join('');
+    if(timeEl.options.length>1){
+      const firstEnabled=Array.from(timeEl.options).find(o=>!o.disabled && o.value);
+      if(firstEnabled) timeEl.value=firstEnabled.value;
+    }
+    updatePreview();
+  }
+  function updatePreview(){
+    const d=dateEl.value; const t=timeEl.value;
+    if(!d||!t){ if(previewEl) previewEl.textContent='--'; if(hijriEl) hijriEl.textContent=''; if(relativeEl) relativeEl.textContent=''; return; }
+    const dt=new Date(d+'T'+t+':00');
+    const dayOfWeek=dt.getDay();
+    const isWeekend=dayOfWeek===5||dayOfWeek===6;
+    if(hintEl){
+      if(isWeekend) hintEl.innerHTML='<span style="color:var(--m3-error);">⚠️ الجمعة والسبت عطلة - اختر يوم عمل</span>';
+      else hintEl.textContent='يوم عمل • Asia/Riyadh';
+    }
+    if(previewEl) previewEl.textContent=dt.toLocaleString('ar-SA',{ weekday:'long', year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit', hour12:true, timeZone:'Asia/Riyadh' })+' (Asia/Riyadh)';
+    if(hijriEl){
+      try{ hijriEl.textContent=' • هجري: '+ new Intl.DateTimeFormat('ar-SA-islamic',{ day:'numeric', month:'long', year:'numeric', timeZone:'Asia/Riyadh' }).format(dt); }catch{ hijriEl.textContent=''; }
+    }
+    if(relativeEl){
+      const diffMs=dt.getTime()-Date.now();
+      const diffDays=Math.ceil(diffMs/86400000);
+      if(diffDays<0) { relativeEl.textContent='تاريخ ماضي'; relativeEl.className='badge badge-error'; }
+      else if(diffDays===0) { relativeEl.textContent='اليوم'; relativeEl.className='badge badge-warning'; }
+      else if(diffDays===1) { relativeEl.textContent='غداً'; relativeEl.className='badge badge-info'; }
+      else { relativeEl.textContent=`بعد ${diffDays} أيام`; relativeEl.className='badge badge-success'; }
+    }
+    if(emergencyNote && typeEl){
+      const isEmergency=typeEl.value==='EMERGENCY';
+      emergencyNote.style.display=isEmergency?'block':'none';
+      if(isEmergency && emergencyConfirm) emergencyConfirm.checked=false;
+    }
+  }
+  dateEl.addEventListener('change', fillTimes);
+  timeEl.addEventListener('change', updatePreview);
+  typeEl?.addEventListener('change', updatePreview);
+  fillTimes();
+}
+initAppointmentDateTime();
+document.getElementById('form-book-appointment')?.addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const org=document.getElementById('appt-org').value;
+  const type=document.getElementById('appt-type').value;
+  const dateVal=document.getElementById('appt-date').value;
+  const timeVal=document.getElementById('appt-time').value;
+  const clinician_id=document.getElementById('appt-clinician')?.value||undefined;
+  const reason=document.getElementById('appt-reason').value.trim();
+  const resEl=document.getElementById('appt-book-result');
+  if(!org||!dateVal||!timeVal){ if(resEl) resEl.innerHTML='<span style="color:var(--m3-error);">اختر المنشأة والتاريخ والوقت</span>'; return; }
+  const dt=new Date(dateVal+'T'+timeVal+':00');
+  if(dt.getDay()===5||dt.getDay()===6){ if(resEl) resEl.innerHTML='<span style="color:var(--m3-error);">الجمعة والسبت عطلة - اختر يوم عمل (الأحد-الخميس)</span>'; return; }
+  if(dt <= new Date()){ if(resEl) resEl.innerHTML='<span style="color:var(--m3-error);">لا يمكن حجز موعد في الماضي</span>'; return; }
+  const start=dt.toISOString();
+  try{
+    const body={organization_id:org, appointment_type:type, scheduled_start:start, reason};
+    if(clinician_id) body.clinician_id=clinician_id;
+    const r=await fetch('/api/appointments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const j=await r.json();
+    if(r.ok){ if(resEl) resEl.innerHTML='<span style="color:var(--m3-primary);">✅ تم حجز الموعد ('+type+') مع الطبيب '+(clinician_id||'غير محدد')+' وإذن '+j.consent.consent_type+' - '+new Date(j.appointment.scheduled_start).toLocaleString('ar-SA',{timeZone:'Asia/Riyadh'})+'</span>'; showToast('تم الحجز','الموعد والإذن منشآن','success'); loadAppointments(); e.target.reset(); initAppointmentDateTime(); }
+    else { if(resEl) resEl.innerHTML='<span style="color:var(--m3-error);">'+(j.error||'فشل')+'</span>'; showToast('خطأ', j.error,'error'); }
+  }catch(err){ if(resEl) resEl.textContent=err.message; }
+});
 
