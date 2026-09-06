@@ -1,3 +1,8 @@
+/**
+ * @deprecated LEGACY — Do not use in new code. Retained only until AuthorizationService parity is proven by tests.
+ * This guard uses header-based spoofing (x-user-id / x-role) and NationalHealthDB (JSON file) instead of JWT+Prisma.
+ * See src/security/authorize.ts and src/security/auth-middleware.ts for the canonical implementation.
+ */
 import { Request, Response, NextFunction } from 'express';
 import { NationalHealthDB } from '../database/national-health-db.js';
 import { SystemRoleCode, AuditAction } from '../database/schema.js';

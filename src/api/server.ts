@@ -6,8 +6,6 @@ import cookieParser from 'cookie-parser';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import jwt from 'jsonwebtoken';
-import { PrismaClient } from '@prisma/client';
-
 import { PrismaRawStore } from '../ingestion/raw-store/prisma-raw-store.js';
 import { PrismaCanonicalStore } from '../persistence/prisma-canonical-store.js';
 import { PrismaMpiService } from '../mpi/prisma-mpi-service.js';
@@ -28,15 +26,9 @@ import { requirePermission } from '../security/authorize.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-function getJwtSecret(): string {
-  const s = process.env.JWT_SECRET;
-  if (s && s.length >= 32) return s;
-  if (process.env.NODE_ENV === 'production') throw new Error('JWT_SECRET missing or too weak (min 32 chars) - configure .env');
-  console.warn('[SECURITY] JWT_SECRET not set or weak - using dev fallback. Set JWT_SECRET in .env for production');
-  return s && s.length >= 8 ? s : 'dev-only-super-secret-national-health-key-2026-not-for-prod';
-}
+import { prisma as prismaInstance } from '../lib/prisma.js';
+import { getJwtSecret } from '../config/jwt.js';
 const JWT_SECRET = getJwtSecret();
-const prismaInstance = new PrismaClient();
 
 function extractTokenFromReq(req: Request): string | null {
   const h = req.headers.authorization;
@@ -106,14 +98,19 @@ export function createPlatformApp() {
     crossOriginResourcePolicy: { policy: "cross-origin" },
     crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" }
   }));
+  const allowedOrigins = process.env.ALLOWED_ORIGIN?.split(',').map(s => s.trim()).filter(Boolean);
+  if (!allowedOrigins || allowedOrigins.length === 0) {
+    if (process.env.NODE_ENV === 'production') throw new Error('ALLOWED_ORIGIN must be set in production');
+    console.warn('[SECURITY] ALLOWED_ORIGIN not set - CORS will allow all origins in development only');
+  }
   app.use(cors({
-    origin: process.env.ALLOWED_ORIGIN?.split(',') || true,
+    origin: allowedOrigins && allowedOrigins.length > 0 ? allowedOrigins : true,
     credentials: true
   }));
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-  const DISABLE_RATE_LIMIT = process.env.DISABLE_RATE_LIMIT === 'true';
+  const DISABLE_RATE_LIMIT = process.env.DISABLE_RATE_LIMIT === 'true' && process.env.NODE_ENV !== 'production';
   const authLimiter: any = DISABLE_RATE_LIMIT ? ((req: any, _res: any, next: any) => next()) : rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 20,
@@ -128,7 +125,7 @@ export function createPlatformApp() {
     legacyHeaders: false,
     message: { error: 'محاولات دخول كثيرة - حاول بعد 15 دقيقة' }
   });
-  if (DISABLE_RATE_LIMIT) console.log('[DEV] Rate limiting disabled via DISABLE_RATE_LIMIT=true');
+  if (DISABLE_RATE_LIMIT) console.log('[DEV] Rate limiting disabled via DISABLE_RATE_LIMIT=true (non-production only)');
 
   // Initialize Core Services
   const rawStore = new PrismaRawStore();
@@ -154,8 +151,7 @@ export function createPlatformApp() {
 
   app.get('/api/public/organizations', async (req: Request, res: Response) => {
     try {
-      const prisma = new PrismaClient();
-      const orgs = await prisma.organization.findMany({ where: { status: 'ACTIVE', NOT: { organization_type: 'MOH' } }, select: { id: true, organization_name: true, organization_name_ar: true, organization_type: true, region: true, status: true }, orderBy: { organization_name_ar: 'asc' } });
+      const orgs = await prismaInstance.organization.findMany({ where: { status: 'ACTIVE', NOT: { organization_type: 'MOH' } }, select: { id: true, organization_name: true, organization_name_ar: true, organization_type: true, region: true, status: true }, orderBy: { organization_name_ar: 'asc' } });
       res.json(orgs);
     } catch (e: any) { res.status(500).json({ error: e.message }); }
   });
@@ -163,10 +159,9 @@ export function createPlatformApp() {
     try {
       const orgId = req.query.organization_id as string;
       if (!orgId) return res.status(400).json({ error: 'organization_id required' });
-      const prisma = new PrismaClient();
-      const org = await prisma.organization.findUnique({ where: { id: orgId } });
+      const org = await prismaInstance.organization.findUnique({ where: { id: orgId } });
       if (!org || org.status !== 'ACTIVE') return res.status(403).json({ error: 'Organization not active' });
-      const clinicians = await prisma.user.findMany({ where: { organization_id: orgId, is_active: true, role: { role_code: 'CLINICIAN' } }, select: { id: true, username: true, full_name: true, email: true }, orderBy: { full_name: 'asc' } });
+      const clinicians = await prismaInstance.user.findMany({ where: { organization_id: orgId, is_active: true, role: { role_code: 'CLINICIAN' } }, select: { id: true, username: true, full_name: true, email: true }, orderBy: { full_name: 'asc' } });
       res.json(clinicians);
     } catch (e: any) { res.status(500).json({ error: e.message }); }
   });
@@ -638,12 +633,10 @@ export function createPlatformApp() {
   // Dynamic Hospital Registry & Onboarding
   app.get('/api/hospitals', verifyToken as any, async (req: Request, res: Response) => {
     try {
-      const { PrismaClient } = await import('@prisma/client');
-      const prisma = new PrismaClient();
-      const orgs = await prisma.organization.findMany({
+      const orgs = await prismaInstance.organization.findMany({
         where: { organization_type: { in: ['HOSPITAL', 'CLINIC', 'LABORATORY', 'PHARMACY', 'DAY_SURGERY', 'CENTER', 'MEDICAL_CENTER', 'HOSPITAL_ADMIN'] } }
       });
-      const fallback = orgs.length === 0 ? await prisma.organization.findMany({ where: { NOT: { organization_type: 'MOH' } } }) : orgs;
+      const fallback = orgs.length === 0 ? await prismaInstance.organization.findMany({ where: { NOT: { organization_type: 'MOH' } } }) : orgs;
       const hospitals = fallback.map(o => ({
         hospitalId: o.id,
         hospitalName: o.organization_name,
@@ -667,12 +660,11 @@ export function createPlatformApp() {
       if (!def.hospitalName || !def.hospitalNameAr) {
         return res.status(400).json({ error: 'Hospital names (Ar/En) are required.' });
       }
-      const prisma = new PrismaClient();
       const region = def.region || 'Riyadh';
       const facilityType = (def.facilityType || def.organizationType || 'HOSPITAL').toUpperCase();
       const allowedTypes = ['HOSPITAL','CLINIC','DAY_SURGERY','LABORATORY','PHARMACY','CENTER'];
       const orgType = allowedTypes.includes(facilityType) ? facilityType : 'HOSPITAL';
-      const existingByName = await prisma.organization.findFirst({ where: { OR: [{ organization_name: def.hospitalName }, { organization_name_ar: def.hospitalNameAr }] } });
+      const existingByName = await prismaInstance.organization.findFirst({ where: { OR: [{ organization_name: def.hospitalName }, { organization_name_ar: def.hospitalNameAr }] } });
       if (existingByName) return res.status(400).json({ error: 'اسم المنشأة مسجل مسبقاً' });
       const adminUsername = def.adminUsername?.trim();
       const adminPassword = def.adminPassword;
@@ -685,7 +677,7 @@ export function createPlatformApp() {
       if (adminPassword.length < 8 || !/[A-Za-z]/.test(adminPassword) || !/\d/.test(adminPassword)) {
         return res.status(400).json({ error: 'كلمة مرور الأدمن ضعيفة: 8+ حروف وأرقام' });
       }
-      const existingUser = await prisma.user.findFirst({ where: { OR: [{ username: adminUsername }, { email: adminEmail }] } });
+      const existingUser = await prismaInstance.user.findFirst({ where: { OR: [{ username: adminUsername }, { email: adminEmail }] } });
       if (existingUser) return res.status(400).json({ error: 'اسم المستخدم أو البريد للأدمن مسجل مسبقاً' });
       const phoneClean = adminPhoneRaw.replace(/[\s\-\(\)]/g, '');
       let phoneNorm: string | null = null;
@@ -696,10 +688,10 @@ export function createPlatformApp() {
       else return res.status(400).json({ error: 'رقم جوال الأدمن غير صحيح: 05xxxxxxxx أو +9665xxxxxxxx' });
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(adminEmail)) return res.status(400).json({ error: 'بريد الأدمن غير صالح' });
 
-      const hospitalAdminRole = await prisma.role.findUnique({ where: { role_code: 'HOSPITAL_ADMIN' } });
+      const hospitalAdminRole = await prismaInstance.role.findUnique({ where: { role_code: 'HOSPITAL_ADMIN' } });
       if (!hospitalAdminRole) return res.status(500).json({ error: 'HOSPITAL_ADMIN role missing' });
 
-      const org = await prisma.organization.create({
+      const org = await prismaInstance.organization.create({
         data: {
           organization_name: def.hospitalName,
           organization_name_ar: def.hospitalNameAr,
@@ -710,7 +702,7 @@ export function createPlatformApp() {
       });
       const { default: bcrypt } = await import('bcryptjs');
       const hash = await bcrypt.hash(adminPassword, 10);
-      const adminUser = await prisma.user.create({
+      const adminUser = await prismaInstance.user.create({
         data: {
           username: adminUsername,
           password_hash: hash,
@@ -722,8 +714,8 @@ export function createPlatformApp() {
           is_active: true
         }
       });
-      await prisma.auditLog.create({ data: { entity_type: 'Organization', entity_id: org.id, action: 'HOSPITAL_ONBOARDED_PENDING', actor_id: (req as any).user?.id, organization_id: org.id, new_values: JSON.stringify({ hospitalName: org.organization_name, hospitalNameAr: org.organization_name_ar, region, facilityType: orgType, adminUsername, sourceSchema: def.sourceSchema || null, defaultMappingConfigs: def.defaultMappingConfigs || null }), details: `SYS_ADMIN onboarded ${org.organization_name_ar} with admin ${adminUsername} -> PENDING_APPROVAL` } }).catch(()=>{});
-      await prisma.auditLog.create({ data: { entity_type: 'User', entity_id: adminUser.id, action: 'HOSPITAL_ADMIN_CREATED_ONBOARD', actor_id: (req as any).user?.id, organization_id: org.id, new_values: JSON.stringify({ username: adminUsername, organizationId: org.id }), details: `Hospital admin ${adminUsername} created with facility ${org.organization_name_ar}` } }).catch(()=>{});
+      await prismaInstance.auditLog.create({ data: { entity_type: 'Organization', entity_id: org.id, action: 'HOSPITAL_ONBOARDED_PENDING', actor_id: (req as any).user?.id, organization_id: org.id, new_values: JSON.stringify({ hospitalName: org.organization_name, hospitalNameAr: org.organization_name_ar, region, facilityType: orgType, adminUsername, sourceSchema: def.sourceSchema || null, defaultMappingConfigs: def.defaultMappingConfigs || null }), details: `SYS_ADMIN onboarded ${org.organization_name_ar} with admin ${adminUsername} -> PENDING_APPROVAL` } }).catch(()=>{});
+      await prismaInstance.auditLog.create({ data: { entity_type: 'User', entity_id: adminUser.id, action: 'HOSPITAL_ADMIN_CREATED_ONBOARD', actor_id: (req as any).user?.id, organization_id: org.id, new_values: JSON.stringify({ username: adminUsername, organizationId: org.id }), details: `Hospital admin ${adminUsername} created with facility ${org.organization_name_ar}` } }).catch(()=>{});
       res.json({ success: true, message: `تم تسجيل المنشأة [${def.hospitalNameAr}] وإنشاء حساب الأدمن [${adminUsername}] - بانتظار اعتماد MOH لتفعيل الدخول`, organization: org, admin: { id: adminUser.id, username: adminUser.username, fullName: adminUser.full_name, email: adminUser.email }, hospital: { hospitalId: org.id, hospitalName: org.organization_name, hospitalNameAr: org.organization_name_ar, facilityType: orgType, region, status: org.status, createdAt: org.created_at } });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
@@ -733,14 +725,13 @@ export function createPlatformApp() {
   app.post('/api/hospitals/:id/ingest', verifyToken as any, requirePermission('IMPORT_EXECUTE_ORG') as any, async (req: Request, res: Response) => {
     try {
       const targetId = req.params.id as string;
-      const prisma = new PrismaClient();
-      const org = await prisma.organization.findUnique({ where: { id: targetId } });
+      const org = await prismaInstance.organization.findUnique({ where: { id: targetId } });
       if (!org) return res.status(404).json({ success: false, error: 'المنشأة غير موجودة في قاعدة البيانات الحقيقية' });
       if (org.status !== 'ACTIVE') return res.status(403).json({ success: false, error: `المنشأة غير معتمدة - الحالة: ${org.status} - يجب اعتمادها من MOH أولاً` });
       const { entityType, sourceRecordId, payload } = req.body;
       if (!entityType || !sourceRecordId || !payload) return res.status(400).json({ success: false, error: 'entityType, sourceRecordId, payload مطلوبة' });
       const result = await engine.ingestDynamicPayload(targetId, entityType, sourceRecordId, payload);
-      await prisma.auditLog.create({ data: { entity_type: 'DataIngest', entity_id: sourceRecordId, action: 'INGEST_CUSTOM', actor_id: (req as any).user?.id, organization_id: targetId, new_values: JSON.stringify({ entityType, sourceRecordId }), details: `Custom ingest to ${org.organization_name_ar}` } }).catch(()=>{});
+      await prismaInstance.auditLog.create({ data: { entity_type: 'DataIngest', entity_id: sourceRecordId, action: 'INGEST_CUSTOM', actor_id: (req as any).user?.id, organization_id: targetId, new_values: JSON.stringify({ entityType, sourceRecordId }), details: `Custom ingest to ${org.organization_name_ar}` } }).catch(()=>{});
       res.json({ success: true, result });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
@@ -755,18 +746,15 @@ export function createPlatformApp() {
       }
       let resolvedSystemId = sourceSystemId;
       if (!resolvedSystemId || resolvedSystemId === 'file-dropzone-uploader') {
-        const prisma = new PrismaClient();
-        const orgs = await prisma.organization.findMany({ where: { status: 'ACTIVE', NOT: { organization_type: 'MOH' } }, take: 1, orderBy: { created_at: 'asc' } });
+        const orgs = await prismaInstance.organization.findMany({ where: { status: 'ACTIVE', NOT: { organization_type: 'MOH' } }, take: 1, orderBy: { created_at: 'asc' } });
         resolvedSystemId = orgs[0]?.id || sourceSystemId || 'file-dropzone-uploader';
       }
       if (resolvedSystemId && resolvedSystemId !== 'file-dropzone-uploader') {
-        const prisma = new PrismaClient();
-        const org = await prisma.organization.findUnique({ where: { id: resolvedSystemId } });
+        const org = await prismaInstance.organization.findUnique({ where: { id: resolvedSystemId } });
         if (org && org.status !== 'ACTIVE') return res.status(403).json({ success: false, error: `المنشأة المصدر غير معتمدة: ${org.status}` });
       }
       const result = await engine.ingestUploadedFile(fileName, fileContent, resolvedSystemId);
-      const prisma2 = new PrismaClient();
-      await prisma2.auditLog.create({ data: { entity_type: 'DataImport', entity_id: fileName, action: 'FILE_INGEST', actor_id: (req as any).user?.id, organization_id: resolvedSystemId, new_values: JSON.stringify({ fileName, format: (result as any).format }), details: `File ingest ${fileName} via ${resolvedSystemId}` } }).catch(()=>{});
+      await prismaInstance.auditLog.create({ data: { entity_type: 'DataImport', entity_id: fileName, action: 'FILE_INGEST', actor_id: (req as any).user?.id, organization_id: resolvedSystemId, new_values: JSON.stringify({ fileName, format: (result as any).format }), details: `File ingest ${fileName} via ${resolvedSystemId}` } }).catch(()=>{});
       res.json({ success: true, result });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
@@ -1054,7 +1042,7 @@ export function createPlatformApp() {
       }
     }
     if (user && ['HOSPITAL_ADMIN','CLINICIAN'].includes(user.role?.role_code)) {
-      const prismaCheck = new PrismaClient();
+      const prismaCheck = prismaInstance;
       const pidCandidates = [requestedId];
       let patientInternalId: string | null = requestedId;
       try {

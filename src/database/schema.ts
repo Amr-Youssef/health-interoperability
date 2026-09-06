@@ -1,6 +1,8 @@
 /**
- * Saudi National Health Platform - Unified Database Schema
- * Production Relational Schema Definitions across 17 Canonical Entities
+ * @deprecated LEGACY — Do not use for new code. This schema represents the old file-based NationalHealthDB (JSON).
+ * The canonical database schema is now prisma/schema.prisma (PostgreSQL + Prisma).
+ * This file is retained only for reference until NationalHealthDB is fully removed.
+ * See src/lib/prisma.ts for the current database client.
  */
 
 export type OrganizationType = 'ministry' | 'hospital' | 'medical_center' | 'day_surgery' | 'clinic' | 'laboratory' | 'pharmacy';

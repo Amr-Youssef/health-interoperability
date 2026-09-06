@@ -1,20 +1,11 @@
 import { Router, Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { verifyToken } from '../../security/auth-middleware.js';
-import { v4 as uuidv4 } from 'uuid';
+import { prisma } from '../../lib/prisma.js';
+import { JWT_SECRET, JWT_EXPIRES_IN } from '../../config/jwt.js';
 
 const router = Router();
-const prisma = new PrismaClient();
-function getJwtSecret(): string {
-  const s = process.env.JWT_SECRET;
-  if (s && s.length >= 32) return s;
-  if (process.env.NODE_ENV === 'production') throw new Error('JWT_SECRET missing or too weak (min 32 chars)');
-  console.warn('[SECURITY] JWT_SECRET not set or weak - using dev fallback. Set JWT_SECRET in .env for production');
-  return s && s.length >= 8 ? s : 'dev-only-super-secret-national-health-key-2026-not-for-prod';
-}
-const JWT_SECRET = getJwtSecret();
 
 function setAuthCookie(res: Response, token: string) {
   const isProd = process.env.NODE_ENV === 'production';
@@ -379,7 +370,7 @@ async function ensureDefaultAccounts() {
       const tokenHosp = jwt.sign(
         { userId: userHosp.id, role: userHosp.role.role_code, orgId: userHosp.organization_id },
         JWT_SECRET,
-        { expiresIn: '8h' }
+        { expiresIn: JWT_EXPIRES_IN } as any
       );
       setAuthCookie(res, tokenHosp);
       return res.json({
@@ -419,7 +410,7 @@ async function ensureDefaultAccounts() {
         include: { role: true, organization: true }
       });
       try { await prisma.auditLog.create({ data: { entity_type: 'User', entity_id: userClin.id, action: 'CLINICIAN_REGISTERED', actor_id: userClin.id, organization_id: org.id, new_values: JSON.stringify({ username: userClin.username, organizationId: org.id, organizationName: org.organization_name_ar }), details: `Clinician ${userClin.username} linked to facility ${org.organization_name_ar}` } }); } catch {}
-      const tokenClin = jwt.sign({ userId: userClin.id, role: userClin.role.role_code, orgId: userClin.organization_id }, JWT_SECRET, { expiresIn: '8h' });
+      const tokenClin = jwt.sign({ userId: userClin.id, role: userClin.role.role_code, orgId: userClin.organization_id }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN } as any);
       setAuthCookie(res, tokenClin);
       return res.json({ token: tokenClin, user: { id: userClin.id, username: userClin.username, fullName: userClin.full_name, role: userClin.role.role_code, organization: userClin.organization?.organization_name, organizationAr: (userClin.organization as any)?.organization_name_ar, orgId: userClin.organization_id, patientProfileId: null } });
     } else {
@@ -622,7 +613,7 @@ async function ensureDefaultAccounts() {
       const token = jwt.sign(
         { userId: user.id, role: user.role.role_code, orgId: user.organization_id, patientProfileId: user.patient_profile_id },
         JWT_SECRET,
-        { expiresIn: '8h' }
+        { expiresIn: JWT_EXPIRES_IN } as any
       );
       setAuthCookie(res, token);
       return res.json({
@@ -639,8 +630,6 @@ async function ensureDefaultAccounts() {
         }
       });
     }
-
-    // Fallback (should not reach here) - already handled hospital branch
 
   } catch (error: any) {
     console.error('Registration error:', error);
@@ -686,7 +675,7 @@ router.post('/login', async (req: Request, res: Response) => {
     const token = jwt.sign(
       { userId: user.id, role: user.role.role_code, orgId: user.organization_id, patientProfileId: user.patient_profile_id },
       JWT_SECRET,
-      { expiresIn: '8h' }
+      { expiresIn: JWT_EXPIRES_IN } as any
     );
     setAuthCookie(res, token);
     res.json({
@@ -706,11 +695,6 @@ router.post('/login', async (req: Request, res: Response) => {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Internal server error during login' });
   }
-});
-
-router.post('/logout', (req: Request, res: Response) => {
-  res.clearCookie('shiep_token', { path: '/' });
-  res.json({ success: true });
 });
 
 router.post('/logout', (req: Request, res: Response) => {

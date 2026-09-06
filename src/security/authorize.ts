@@ -1,7 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '../lib/prisma.js';
 
 export const ROLE_PERMISSIONS: Record<string, string[]> = {
   SYS_ADMIN: ['ORG_MANAGE_ALL','USER_MANAGE_NATIONAL','ROLE_ASSIGN_NATIONAL','AUDIT_READ_CENTRAL','ANALYTICS_READ_NATIONAL','EXPORT_BULK_IDENTIFIED','FHIR_READ_ALL','BREAK_GLASS_EXECUTE'],
