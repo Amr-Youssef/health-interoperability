@@ -1,7 +1,7 @@
-import { PrismaClient } from '@prisma/client';
 import { RawRecord } from '../../core/domain/raw-record.js';
 import { ProcessingStatus } from '../../core/domain/types.js';
 import { RawStore, RawStoreStats } from './raw-store.interface.js';
+import type { PrismaClient } from '@prisma/client';
 export declare class PrismaRawStore implements RawStore {
     private prisma;
     constructor(prisma?: PrismaClient);

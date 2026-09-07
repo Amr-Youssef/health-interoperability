@@ -1,9 +1,9 @@
 import { v4 as uuidv4 } from 'uuid';
-import { PrismaClient } from '@prisma/client';
+import { prisma as defaultPrisma } from '../lib/prisma.js';
 export class PrismaMpiService {
     prisma;
     constructor(prisma) {
-        this.prisma = prisma || new PrismaClient();
+        this.prisma = prisma || defaultPrisma;
     }
     normalizeArabic(text) {
         if (!text)

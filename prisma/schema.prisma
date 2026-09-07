@@ -562,6 +562,24 @@ model AuditLog {
   created_at       DateTime     @default(now())
 }
 
+// 4.16b AuditChain Blocks — separated from AuditLog to prevent pollution (P8)
+model AuditBlock {
+  id            String   @id // blockId (uuid)
+  index         Int      @unique
+  timestamp     DateTime @default(now())
+  action        String
+  actor         String
+  entityType    String
+  entityId      String
+  details       String
+  previousHash  String
+  currentHash   String
+  createdAt     DateTime @default(now())
+
+  @@index([action])
+  @@index([createdAt])
+}
+
 // 4.17 DataImports
 model DataImport {
   id                String       @id @default(uuid())

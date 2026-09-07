@@ -1,9 +1,9 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma as defaultPrisma } from '../lib/prisma.js';
 import crypto from 'crypto';
 export class ConsentManager {
     prisma;
     constructor(prisma) {
-        this.prisma = prisma || new PrismaClient();
+        this.prisma = prisma || defaultPrisma;
     }
     async setConsent(directive) {
         await this.prisma.consent.upsert({
@@ -59,8 +59,8 @@ export class ConsentManager {
         }
         const baseline = {
             patientId,
-            policy: 'OPT_IN_FULL',
-            allowedOrganizations: ['*'],
+            policy: 'EXPLICIT_PER_ENCOUNTER',
+            allowedOrganizations: [],
             blockedCategories: [],
             allowEmergencyOverride: true,
             lastUpdated: new Date().toISOString()
@@ -76,7 +76,14 @@ export class ConsentManager {
     async evaluateAccess(patientId, requestingOrgId, category = 'general') {
         const consent = await this.getConsent(patientId);
         if (consent.policy === 'OPT_IN_FULL') {
-            return { isGranted: true, reason: 'Patient consented to full national health record exchange across accredited health facilities.' };
+            if (consent.allowedOrganizations.length === 0)
+                return { isGranted: false, reason: 'OPT_IN_FULL requires explicit organization list — denied by default.' };
+            if (consent.allowedOrganizations.includes('*') || consent.allowedOrganizations.includes(requestingOrgId))
+                return { isGranted: true, reason: 'Patient consented to full exchange for this organization.' };
+            return { isGranted: false, reason: 'Organization not in OPT_IN_FULL allow-list.' };
+        }
+        if (consent.policy === 'EXPLICIT_PER_ENCOUNTER') {
+            return { isGranted: false, reason: 'EXPLICIT_PER_ENCOUNTER — access requires active Appointment + Consent per encounter.' };
         }
         if (consent.blockedCategories.includes(category)) {
             return { isGranted: false, reason: `Data category '${category}' is blocked by patient privacy directive.` };

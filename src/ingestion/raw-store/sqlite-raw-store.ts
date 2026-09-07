@@ -1,3 +1,7 @@
+/**
+ * @deprecated TEST ONLY — Do not use in production. PrismaRawStore (PostgreSQL) is the single source of truth.
+ * Retained only for fast unit tests that run with :memory: without Docker.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -17,7 +21,7 @@ export class SqliteRawStore implements RawStore {
     }
 
     this.db = new DatabaseSync(resolvedPath);
-    this.db.exec(`
+     this.db.exec(`
       PRAGMA journal_mode = WAL;
       CREATE TABLE IF NOT EXISTS raw_records (
         id TEXT PRIMARY KEY,
@@ -33,7 +37,8 @@ export class SqliteRawStore implements RawStore {
         processingStatus TEXT NOT NULL,
         errorMessage TEXT,
         reprocessCount INTEGER DEFAULT 0,
-        lastReprocessedAt TEXT
+        lastReprocessedAt TEXT,
+        UNIQUE(sourceSystemId, sourceEntityType, sourceRecordId)
       );
     `);
   }

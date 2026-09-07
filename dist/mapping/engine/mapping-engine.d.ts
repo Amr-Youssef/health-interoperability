@@ -17,6 +17,7 @@ export declare class MappingEngine {
     private configurations;
     private transformEngine;
     private terminologyService;
+    private fhirMapper;
     constructor(terminologyService: TerminologyService, transformEngine?: TransformEngine);
     private loadDefaultConfigurations;
     registerConfiguration(config: MappingConfiguration): void;
@@ -27,8 +28,5 @@ export declare class MappingEngine {
      * Executes the 3-stage Mapping Pipeline on a raw record
      */
     mapRecord(rawRecord: RawRecord): Promise<MappedEntityResult>;
-    /**
-     * Normalizes standard FHIR R4 resources from Hospital C into Canonical domain representation
-     */
     private mapFhirResource;
 }

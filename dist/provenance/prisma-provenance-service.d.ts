@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '@prisma/client';
 import { ProvenanceRecord, AuditEntry } from '../core/domain/provenance.js';
 export declare class PrismaProvenanceService {
     private prisma;

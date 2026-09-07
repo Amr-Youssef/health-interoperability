@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '@prisma/client';
 import { CanonicalConcept, ClinicalCode, TerminologyMapping } from '../core/domain/clinical-code.js';
 export declare class PrismaTerminologyService {
     private prisma;

@@ -1,11 +1,12 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma as defaultPrisma } from '../lib/prisma.js';
+import type { PrismaClient } from '@prisma/client';
 import { CanonicalConcept, ClinicalCode, TerminologyMapping } from '../core/domain/clinical-code.js';
 
 export class PrismaTerminologyService {
   private prisma: PrismaClient;
 
   constructor(prisma?: PrismaClient) {
-    this.prisma = prisma || new PrismaClient();
+    this.prisma = prisma || defaultPrisma as unknown as PrismaClient;
   }
 
   async resolveCode(sourceCode: string, sourceSystemId: string, domain?: string): Promise<ClinicalCode> {

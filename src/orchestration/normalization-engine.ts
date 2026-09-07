@@ -1,5 +1,4 @@
 import { v4 as uuidv4 } from 'uuid';
-import { PrismaClient } from '@prisma/client';
 import { RawStore } from '../ingestion/raw-store/raw-store.interface.js';
 import { SourceAdapter } from '../ingestion/adapters/adapter.interface.js';
 import { DynamicHospitalRegistry, DynamicHospitalDefinition } from '../ingestion/dynamic/dynamic-adapter.js';
@@ -316,14 +315,13 @@ export class NormalizationEngine {
           let orgNameAr = `مستشفى ${hospitalId.substring(0, 8)}`;
           let orgRegion: any = 'Riyadh';
           try {
-            const tmpPrisma = new PrismaClient();
-            const org = await tmpPrisma.organization.findUnique({ where: { id: hospitalId } });
+            const { prisma: sharedPrisma } = await import('../lib/prisma.js');
+            const org = await sharedPrisma.organization.findUnique({ where: { id: hospitalId } });
             if (org) {
               if (org.organization_name) orgName = org.organization_name;
               if (org.organization_name_ar) orgNameAr = org.organization_name_ar;
               if (org.region && ['Riyadh','Makkah','Eastern','Madinah','Asir'].includes(org.region)) orgRegion = org.region;
             }
-            await tmpPrisma.$disconnect();
           } catch (e) {}
           const defaultDef: DynamicHospitalDefinition = {
             hospitalId,

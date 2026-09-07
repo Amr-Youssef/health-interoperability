@@ -1,13 +1,14 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma as defaultPrisma } from '../../lib/prisma.js';
 import { RawRecord } from '../../core/domain/raw-record.js';
 import { ProcessingStatus } from '../../core/domain/types.js';
 import { RawStore, RawStoreStats } from './raw-store.interface.js';
+import type { PrismaClient } from '@prisma/client';
 
 export class PrismaRawStore implements RawStore {
   private prisma: PrismaClient;
 
   constructor(prisma?: PrismaClient) {
-    this.prisma = prisma || new PrismaClient();
+    this.prisma = prisma || defaultPrisma as unknown as PrismaClient;
   }
 
   private toDomain(record: any): RawRecord {
@@ -76,14 +77,10 @@ export class PrismaRawStore implements RawStore {
   }
 
   async saveBatch(records: RawRecord[]): Promise<void> {
-    // using transactions
     await this.prisma.$transaction(
       records.map(r => this.prisma.rawRecord.upsert({
-        where: { id: r.id },
+        where: { source_system_id_source_entity_type_source_record_id: { source_system_id: r.sourceSystemId, source_entity_type: r.sourceEntityType, source_record_id: r.sourceRecordId } },
         update: {
-          source_system_id: r.sourceSystemId,
-          source_entity_type: r.sourceEntityType,
-          source_record_id: r.sourceRecordId,
           payload: JSON.stringify(r.payload),
           payload_format: r.payloadFormat,
           adapter_version: r.adapterVersion,
@@ -91,9 +88,7 @@ export class PrismaRawStore implements RawStore {
           batch_id: r.batchId,
           checksum: r.checksum,
           processing_status: r.processingStatus,
-          error_message: r.errorMessage,
-          reprocess_count: r.reprocessCount || 0,
-          last_reprocessed_at: r.lastReprocessedAt ? new Date(r.lastReprocessedAt) : null
+          error_message: r.errorMessage || null,
         },
         create: {
           id: r.id,
@@ -107,7 +102,7 @@ export class PrismaRawStore implements RawStore {
           batch_id: r.batchId,
           checksum: r.checksum,
           processing_status: r.processingStatus,
-          error_message: r.errorMessage,
+          error_message: r.errorMessage || null,
           reprocess_count: r.reprocessCount || 0,
           last_reprocessed_at: r.lastReprocessedAt ? new Date(r.lastReprocessedAt) : null
         }
@@ -121,9 +116,9 @@ export class PrismaRawStore implements RawStore {
   }
 
   async findBySource(sourceSystemId: string, entityType?: string): Promise<RawRecord[]> {
-    const where: any = { source_system_id: sourceSystemId };
+    const where: any = { source_system_id: { equals: sourceSystemId, mode: 'insensitive' } };
     if (entityType) {
-      where.source_entity_type = entityType; // maybe case-insensitive needed
+      where.source_entity_type = { equals: entityType, mode: 'insensitive' };
     }
     const records = await this.prisma.rawRecord.findMany({
       where,

@@ -1,5 +1,6 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma as defaultPrisma } from '../lib/prisma.js';
 import crypto from 'crypto';
+import type { PrismaClient } from '@prisma/client';
 
 export type ConsentPolicyType = 'OPT_IN_FULL' | 'RESTRICT_SENSITIVE' | 'CLUSTER_ONLY' | 'EXPLICIT_PER_ENCOUNTER';
 
@@ -27,7 +28,7 @@ export class ConsentManager {
   private prisma: PrismaClient;
 
   constructor(prisma?: PrismaClient) {
-    this.prisma = prisma || new PrismaClient();
+    this.prisma = prisma || defaultPrisma as unknown as PrismaClient;
   }
 
   async setConsent(directive: PatientConsentDirective): Promise<void> {
@@ -86,8 +87,8 @@ export class ConsentManager {
 
     const baseline: PatientConsentDirective = {
       patientId,
-      policy: 'OPT_IN_FULL',
-      allowedOrganizations: ['*'],
+      policy: 'EXPLICIT_PER_ENCOUNTER',
+      allowedOrganizations: [],
       blockedCategories: [],
       allowEmergencyOverride: true,
       lastUpdated: new Date().toISOString()
@@ -106,7 +107,12 @@ export class ConsentManager {
     const consent = await this.getConsent(patientId);
 
     if (consent.policy === 'OPT_IN_FULL') {
-      return { isGranted: true, reason: 'Patient consented to full national health record exchange across accredited health facilities.' };
+      if (consent.allowedOrganizations.length === 0) return { isGranted: false, reason: 'OPT_IN_FULL requires explicit organization list — denied by default.' };
+      if (consent.allowedOrganizations.includes('*') || consent.allowedOrganizations.includes(requestingOrgId)) return { isGranted: true, reason: 'Patient consented to full exchange for this organization.' };
+      return { isGranted: false, reason: 'Organization not in OPT_IN_FULL allow-list.' };
+    }
+    if (consent.policy === 'EXPLICIT_PER_ENCOUNTER') {
+      return { isGranted: false, reason: 'EXPLICIT_PER_ENCOUNTER — access requires active Appointment + Consent per encounter.' };
     }
 
     if (consent.blockedCategories.includes(category)) {

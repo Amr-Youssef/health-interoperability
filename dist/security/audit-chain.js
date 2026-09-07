@@ -1,18 +1,25 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma as defaultPrisma } from '../lib/prisma.js';
 import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 export class CryptographicAuditChain {
     prisma;
     genesisHash = '0000000000000000000000000000000000000000000000000000000000000000';
     constructor(prisma) {
-        this.prisma = prisma || new PrismaClient();
+        this.prisma = prisma || defaultPrisma;
     }
     async getChainLength() {
         return await this.prisma.auditLog.count({ where: { old_values: { not: null } } }); // Very simplistic assumption
     }
+    static CHAIN_ACTIONS = ['INGEST', 'TRANSFORM', 'QUERY', 'CONSENT_CHANGE', 'BREAK_GLASS', 'BULK_EXPORT', 'GENESIS'];
     async getLastBlock() {
+        try {
+            const last = await this.prisma.auditBlock.findFirst({ orderBy: { index: 'desc' } });
+            if (last)
+                return { index: last.index, blockId: last.id, timestamp: last.timestamp.toISOString(), action: last.action, actor: last.actor, entityType: last.entityType, entityId: last.entityId, details: last.details, previousHash: last.previousHash, currentHash: last.currentHash };
+        }
+        catch { }
         const lastLog = await this.prisma.auditLog.findFirst({
-            where: { new_values: { not: null } },
+            where: { action: { in: [...CryptographicAuditChain.CHAIN_ACTIONS] }, new_values: { not: null } },
             orderBy: { created_at: 'desc' }
         });
         if (!lastLog)
@@ -20,21 +27,10 @@ export class CryptographicAuditChain {
         try {
             const parsed = JSON.parse(lastLog.new_values || '{}');
             if (parsed.index !== undefined && parsed.currentHash) {
-                return {
-                    index: parsed.index,
-                    blockId: lastLog.id,
-                    timestamp: lastLog.created_at.toISOString(),
-                    action: lastLog.action,
-                    actor: lastLog.actor_id || 'UNKNOWN',
-                    entityType: lastLog.entity_type,
-                    entityId: lastLog.entity_id,
-                    details: lastLog.details || '',
-                    previousHash: parsed.previousHash,
-                    currentHash: parsed.currentHash
-                };
+                return { index: parsed.index, blockId: lastLog.id, timestamp: lastLog.created_at.toISOString(), action: lastLog.action, actor: lastLog.actor_id || 'UNKNOWN', entityType: lastLog.entity_type, entityId: lastLog.entity_id, details: lastLog.details || '', previousHash: parsed.previousHash, currentHash: parsed.currentHash };
             }
         }
-        catch (e) { }
+        catch { }
         return null;
     }
     async recordEvent(action, actor, entityType, entityId, details) {
@@ -69,22 +65,23 @@ export class CryptographicAuditChain {
             previousHash,
             currentHash
         };
-        await this.prisma.auditLog.create({
-            data: {
-                id: blockId,
-                entity_type: entityType,
-                entity_id: entityId,
-                action,
-                actor_id: actor,
-                details,
-                new_values: JSON.stringify({ index, previousHash, currentHash }),
-                created_at: new Date(timestamp)
-            }
-        });
+        try {
+            await this.prisma.auditBlock.create({ data: { id: blockId, index, timestamp: new Date(timestamp), action, actor, entityType, entityId, details, previousHash, currentHash } });
+        }
+        catch {
+            await this.prisma.auditLog.create({ data: { id: blockId, entity_type: entityType, entity_id: entityId, action, actor_id: actor, details, new_values: JSON.stringify({ index, previousHash, currentHash }), created_at: new Date(timestamp) } });
+        }
         return block;
     }
     async getRecentEvents(limit = 20) {
+        try {
+            const blocks = await this.prisma.auditBlock.findMany({ orderBy: { index: 'desc' }, take: limit });
+            if (blocks.length)
+                return blocks.map((b) => ({ index: b.index, blockId: b.id, timestamp: b.timestamp.toISOString(), action: b.action, actor: b.actor, entityType: b.entityType, entityId: b.entityId, details: b.details, previousHash: b.previousHash, currentHash: b.currentHash }));
+        }
+        catch { }
         const logs = await this.prisma.auditLog.findMany({
+            where: { action: { in: [...CryptographicAuditChain.CHAIN_ACTIONS] } },
             orderBy: { created_at: 'desc' },
             take: limit
         });
@@ -112,7 +109,27 @@ export class CryptographicAuditChain {
         return blocks;
     }
     async verifyChainIntegrity() {
+        try {
+            const ablocks = await this.prisma.auditBlock.findMany({ orderBy: { index: 'asc' } });
+            if (ablocks.length) {
+                const blocks = ablocks.map((b) => ({ index: b.index, blockId: b.id, timestamp: b.timestamp.toISOString(), action: b.action, actor: b.actor, entityType: b.entityType, entityId: b.entityId, details: b.details, previousHash: b.previousHash, currentHash: b.currentHash }));
+                if (blocks.length <= 1)
+                    return { isValid: true, totalBlocks: blocks.length };
+                for (let i = 1; i < blocks.length; i++) {
+                    const current = blocks[i];
+                    const prev = blocks[i - 1];
+                    if (current.previousHash !== prev.currentHash)
+                        return { isValid: false, brokenAtIndex: current.index, totalBlocks: blocks.length };
+                    const payload = `${current.index}:${current.blockId}:${current.timestamp}:${current.action}:${current.actor}:${current.entityType}:${current.entityId}:${current.details}:${current.previousHash}`;
+                    if (crypto.createHash('sha256').update(payload).digest('hex') !== current.currentHash)
+                        return { isValid: false, brokenAtIndex: current.index, totalBlocks: blocks.length };
+                }
+                return { isValid: true, totalBlocks: blocks.length };
+            }
+        }
+        catch { }
         const logs = await this.prisma.auditLog.findMany({
+            where: { action: { in: [...CryptographicAuditChain.CHAIN_ACTIONS] } },
             orderBy: { created_at: 'asc' }
         });
         const blocks = [];
@@ -143,14 +160,8 @@ export class CryptographicAuditChain {
         for (let i = 1; i < blocks.length; i++) {
             const current = blocks[i];
             const prev = blocks[i - 1];
-            // Accommodate for historical broken chains caused by the previous getLastBlock bug
-            if (current.index === 1 && current.previousHash === expectedGenesisPrevHash) {
-                // Valid historical chain restart - do not enforce linkage to the previous chain's hash.
-            }
-            else {
-                if (current.previousHash !== prev.currentHash) {
-                    return { isValid: false, brokenAtIndex: current.index, totalBlocks: blocks.length };
-                }
+            if (current.previousHash !== prev.currentHash) {
+                return { isValid: false, brokenAtIndex: current.index, totalBlocks: blocks.length };
             }
             const payload = `${current.index}:${current.blockId}:${current.timestamp}:${current.action}:${current.actor}:${current.entityType}:${current.entityId}:${current.details}:${current.previousHash}`;
             const recalculatedHash = crypto.createHash('sha256').update(payload).digest('hex');
@@ -161,7 +172,11 @@ export class CryptographicAuditChain {
         return { isValid: true, totalBlocks: blocks.length };
     }
     async clearAll() {
-        await this.prisma.auditLog.deleteMany();
+        try {
+            await this.prisma.auditBlock.deleteMany({});
+        }
+        catch { }
+        await this.prisma.auditLog.deleteMany({ where: { action: { in: [...CryptographicAuditChain.CHAIN_ACTIONS] } } });
     }
 }
 //# sourceMappingURL=audit-chain.js.map

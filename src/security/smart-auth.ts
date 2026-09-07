@@ -1,5 +1,6 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma as defaultPrisma } from '../lib/prisma.js';
 import crypto from 'crypto';
+import type { PrismaClient } from '@prisma/client';
 
 export interface SmartTokenResponse {
   access_token: string;
@@ -28,7 +29,7 @@ export class SmartOnFhirAuthService {
   private baseUrl: string;
 
   constructor(prisma?: PrismaClient, baseUrl: string = 'http://localhost:3000') {
-    this.prisma = prisma || new PrismaClient();
+    this.prisma = prisma || defaultPrisma as unknown as PrismaClient;
     this.baseUrl = baseUrl;
   }
 
@@ -70,15 +71,27 @@ export class SmartOnFhirAuthService {
     };
   }
 
+  private readonly allowedScopes = new Set(this.getSmartConfiguration().scopes_supported);
+
   async issueToken(params: {
     clientId: string;
     grantType: string;
     scope?: string;
     patientId?: string;
+    clientSecret?: string;
   }): Promise<SmartTokenResponse> {
+    const allowedClients = (process.env.SMART_CLIENT_SECRETS || '').split(',').map(s => s.trim()).filter(Boolean);
+    if (allowedClients.length > 0 && params.clientSecret) {
+      const expected = process.env[`SMART_SECRET_${params.clientId}`] || allowedClients[0];
+      if (params.clientSecret !== expected) throw new Error('Invalid client_secret');
+    } else if (process.env.NODE_ENV === 'production' && !params.clientId) {
+      throw new Error('client_id required');
+    }
+    const requestedScopes = (params.scope || 'launch/patient patient/*.read openid profile').split(/\s+/).filter(Boolean);
+    for (const s of requestedScopes) if (!this.allowedScopes.has(s) && !s.startsWith('patient/') && !s.startsWith('user/')) throw new Error(`Scope not supported: ${s}`);
+    const scope = requestedScopes.join(' ');
     const accessToken = `smart_tok_${crypto.randomBytes(24).toString('hex')}`;
-    const expiresIn = 3600; // 1 hour
-    const scope = params.scope || 'launch/patient patient/*.read openid profile';
+    const expiresIn = 3600;
     const patient = params.patientId || '1088445566';
 
     await this.prisma.smartToken.create({

@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
-import { PrismaClient } from '@prisma/client';
+import { prisma as defaultPrisma } from '../lib/prisma.js';
+import type { PrismaClient } from '@prisma/client';
 import { InternalPatientIdentity, DuplicateCandidate, MatchRecord } from '../core/domain/mpi-identity.js';
 import { PatientIdentifier } from '../core/domain/patient-identifier.js';
 
@@ -30,7 +31,7 @@ export class PrismaMpiService {
   private prisma: PrismaClient;
 
   constructor(prisma?: PrismaClient) {
-    this.prisma = prisma || new PrismaClient();
+    this.prisma = prisma || defaultPrisma as unknown as PrismaClient;
   }
 
   private normalizeArabic(text?: string): string {

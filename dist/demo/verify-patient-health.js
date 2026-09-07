@@ -1,7 +1,6 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma.js';
 import { PatientReportedHealthService } from '../core/patient-reported-health-service.js';
 import { CryptographicAuditChain } from '../security/audit-chain.js';
-const prisma = new PrismaClient();
 const auditChain = new CryptographicAuditChain(prisma);
 const healthService = new PatientReportedHealthService(prisma, auditChain);
 async function verifyPatientReportedHealthModule() {

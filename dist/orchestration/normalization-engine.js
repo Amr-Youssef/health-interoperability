@@ -1,5 +1,4 @@
 import { v4 as uuidv4 } from 'uuid';
-import { PrismaClient } from '@prisma/client';
 import { DynamicHospitalRegistry } from '../ingestion/dynamic/dynamic-adapter.js';
 import { MappingEngine } from '../mapping/engine/mapping-engine.js';
 import { DataQualityEngine } from '../validation/validation-engine.js';
@@ -237,8 +236,8 @@ export class NormalizationEngine {
                     let orgNameAr = `مستشفى ${hospitalId.substring(0, 8)}`;
                     let orgRegion = 'Riyadh';
                     try {
-                        const tmpPrisma = new PrismaClient();
-                        const org = await tmpPrisma.organization.findUnique({ where: { id: hospitalId } });
+                        const { prisma: sharedPrisma } = await import('../lib/prisma.js');
+                        const org = await sharedPrisma.organization.findUnique({ where: { id: hospitalId } });
                         if (org) {
                             if (org.organization_name)
                                 orgName = org.organization_name;
@@ -247,7 +246,6 @@ export class NormalizationEngine {
                             if (org.region && ['Riyadh', 'Makkah', 'Eastern', 'Madinah', 'Asir'].includes(org.region))
                                 orgRegion = org.region;
                         }
-                        await tmpPrisma.$disconnect();
                     }
                     catch (e) { }
                     const defaultDef = {

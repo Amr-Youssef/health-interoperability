@@ -9,24 +9,19 @@ import { CanonicalMedicationRequest } from '../core/domain/medication.js';
 import { CanonicalImmunization } from '../core/domain/immunization.js';
 import { CanonicalAllergyIntolerance } from '../core/domain/allergy-intolerance.js';
 import { CanonicalDiagnosticReport } from '../core/domain/diagnostic-report.js';
+/**
+ * @deprecated LEGACY — File-based JSON store. Do not use in production. Use PrismaCanonicalStore (PostgreSQL) via ICanonicalStore.
+ * Retained only for unit tests/benchmarks that run without DB. See src/persistence/canonical-store.interface.ts
+ */
+import type { LongitudinalRecord } from '../core/domain/longitudinal-record.js';
+import type { ICanonicalStore } from './canonical-store.interface.js';
 
 import fs from 'fs';
 import path from 'path';
 
-export interface LongitudinalRecord {
-  patient: CanonicalPatient;
-  encounters: CanonicalEncounter[];
-  conditions: CanonicalCondition[];
-  observations: CanonicalObservation[];
-  coverages?: CanonicalCoverage[];
-  claims?: CanonicalClaim[];
-  medicationRequests?: CanonicalMedicationRequest[];
-  immunizations?: CanonicalImmunization[];
-  allergies?: CanonicalAllergyIntolerance[];
-  diagnosticReports?: CanonicalDiagnosticReport[];
-}
+export type { LongitudinalRecord };
 
-export class CanonicalStore {
+export class CanonicalStore implements ICanonicalStore {
   private persistPath: string;
   private patients: Map<string, CanonicalPatient> = new Map();
   private encounters: Map<string, CanonicalEncounter> = new Map();

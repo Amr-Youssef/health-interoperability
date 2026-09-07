@@ -1,3 +1,7 @@
+/**
+ * @deprecated LEGACY — File-based JSON NationalHealthDB. Do not use in production. PostgreSQL/Prisma is the single source of truth.
+ * Retained only for old tests (national-health-db.test.ts) until they are migrated. See src/lib/prisma.ts
+ */
 import fs from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';

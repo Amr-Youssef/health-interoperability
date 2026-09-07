@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
-import { PrismaClient } from '@prisma/client';
+import { prisma as defaultPrisma } from '../../lib/prisma.js';
 export class GenericConfigurableAdapter {
     sourceSystemId;
     sourceSystemName;
@@ -67,7 +67,7 @@ export class GenericConfigurableAdapter {
 export class DynamicHospitalRegistry {
     prisma;
     constructor(prisma) {
-        this.prisma = prisma || new PrismaClient();
+        this.prisma = prisma || defaultPrisma;
     }
     static isDemoHospital(definition) {
         if (!definition)

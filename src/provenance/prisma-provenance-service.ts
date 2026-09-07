@@ -1,4 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma as defaultPrisma } from '../lib/prisma.js';
+import type { PrismaClient } from '@prisma/client';
 import { ProvenanceRecord, AuditEntry } from '../core/domain/provenance.js';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -6,7 +7,7 @@ export class PrismaProvenanceService {
   private prisma: PrismaClient;
 
   constructor(prisma?: PrismaClient) {
-    this.prisma = prisma || new PrismaClient();
+    this.prisma = prisma || defaultPrisma as unknown as PrismaClient;
   }
 
   async recordProvenance(record: ProvenanceRecord): Promise<void> {

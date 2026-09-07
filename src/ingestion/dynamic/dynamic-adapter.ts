@@ -3,7 +3,8 @@ import { SourceAdapter, SourceSchemaDescriptor, AdapterStatus } from '../adapter
 import { RawRecord } from '../../core/domain/raw-record.js';
 import { MappingConfiguration } from '../../core/domain/mapping-config.js';
 import crypto from 'crypto';
-import { PrismaClient } from '@prisma/client';
+import { prisma as defaultPrisma } from '../../lib/prisma.js';
+import type { PrismaClient } from '@prisma/client';
 
 export interface DynamicHospitalDefinition {
   hospitalId: string;
@@ -93,7 +94,7 @@ export class DynamicHospitalRegistry {
   private prisma: PrismaClient;
 
   constructor(prisma?: PrismaClient) {
-    this.prisma = prisma || new PrismaClient();
+    this.prisma = prisma || defaultPrisma as unknown as PrismaClient;
   }
 
   static isDemoHospital(definition?: Partial<DynamicHospitalDefinition>): boolean {

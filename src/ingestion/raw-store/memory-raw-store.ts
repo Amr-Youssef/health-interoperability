@@ -1,3 +1,7 @@
+/**
+ * @deprecated TEST/DEMO ONLY — Do not use in production. Use PrismaRawStore (PostgreSQL) as the single source of truth.
+ * This in-memory store is retained only for unit tests and benchmarks that run without a database.
+ */
 import fs from 'fs';
 import path from 'path';
 import { RawRecord } from '../../core/domain/raw-record.js';

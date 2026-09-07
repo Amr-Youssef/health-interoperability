@@ -1,9 +1,8 @@
 import { Router } from 'express';
 import { verifyToken } from '../../security/auth-middleware.js';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../../lib/prisma.js';
 import { PatientReportedHealthService } from '../../core/patient-reported-health-service.js';
 const router = Router();
-const prisma = new PrismaClient();
 const healthService = new PatientReportedHealthService(prisma);
 // Middleware: Verify Patient Role
 function requirePatient(req, res, next) {

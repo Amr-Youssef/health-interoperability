@@ -1,9 +1,8 @@
 import { Router } from 'express';
 import { verifyToken } from '../../security/auth-middleware.js';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../../lib/prisma.js';
 import { PrismaCanonicalStore } from '../../persistence/prisma-canonical-store.js';
 const router = Router();
-const prisma = new PrismaClient();
 const canonicalStore = new PrismaCanonicalStore(prisma);
 const ALLOWED_HOSPITAL_FIELDS = new Set([
     'phone', 'email', 'fullName',

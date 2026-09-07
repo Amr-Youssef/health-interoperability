@@ -1,9 +1,9 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma as defaultPrisma } from '../lib/prisma.js';
 import { v4 as uuidv4 } from 'uuid';
 export class PrismaProvenanceService {
     prisma;
     constructor(prisma) {
-        this.prisma = prisma || new PrismaClient();
+        this.prisma = prisma || defaultPrisma;
     }
     async recordProvenance(record) {
         await this.prisma.provenanceRecord.upsert({

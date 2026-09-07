@@ -1,10 +1,9 @@
 import { Router } from 'express';
 import { verifyToken, requireNationalAdmin } from '../../security/auth-middleware.js';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../../lib/prisma.js';
 import bcrypt from 'bcryptjs';
 import { PrismaCanonicalStore } from '../../persistence/prisma-canonical-store.js';
 const router = Router();
-const prisma = new PrismaClient();
 const canonicalStore = new PrismaCanonicalStore(prisma);
 router.use(verifyToken);
 router.use(requireNationalAdmin);

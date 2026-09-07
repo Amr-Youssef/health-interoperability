@@ -1,4 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma as defaultPrisma } from '../lib/prisma.js';
+import type { PrismaClient } from '@prisma/client';
 import { CanonicalPatient } from '../core/domain/patient.js';
 import { CanonicalEncounter } from '../core/domain/encounter.js';
 import { CanonicalCondition } from '../core/domain/condition.js';
@@ -10,25 +11,16 @@ import { CanonicalMedicationRequest } from '../core/domain/medication.js';
 import { CanonicalImmunization } from '../core/domain/immunization.js';
 import { CanonicalAllergyIntolerance } from '../core/domain/allergy-intolerance.js';
 import { CanonicalDiagnosticReport } from '../core/domain/diagnostic-report.js';
+import type { LongitudinalRecord } from '../core/domain/longitudinal-record.js';
+import type { ICanonicalStore } from './canonical-store.interface.js';
 
-export interface LongitudinalRecord {
-  patient: CanonicalPatient;
-  encounters: CanonicalEncounter[];
-  conditions: CanonicalCondition[];
-  observations: CanonicalObservation[];
-  coverages?: CanonicalCoverage[];
-  claims?: CanonicalClaim[];
-  medicationRequests?: CanonicalMedicationRequest[];
-  immunizations?: CanonicalImmunization[];
-  allergies?: CanonicalAllergyIntolerance[];
-  diagnosticReports?: CanonicalDiagnosticReport[];
-}
+export type { LongitudinalRecord };
 
-export class PrismaCanonicalStore {
+export class PrismaCanonicalStore implements ICanonicalStore {
   private prisma: PrismaClient;
 
   constructor(prisma?: PrismaClient) {
-    this.prisma = prisma || new PrismaClient();
+    this.prisma = prisma || defaultPrisma as unknown as PrismaClient;
   }
 
   // PATIENT

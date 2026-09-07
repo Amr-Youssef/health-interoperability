@@ -1,8 +1,7 @@
 import { Router } from 'express';
 import { verifyToken } from '../../security/auth-middleware.js';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../../lib/prisma.js';
 const router = Router();
-const prisma = new PrismaClient();
 router.use(verifyToken);
 function consentTypeForAppointment(t) {
     if (t === 'EMERGENCY')

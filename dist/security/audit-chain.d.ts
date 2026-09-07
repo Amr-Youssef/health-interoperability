@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '@prisma/client';
 export interface AuditBlock {
     index: number;
     blockId: string;
@@ -16,6 +16,7 @@ export declare class CryptographicAuditChain {
     private genesisHash;
     constructor(prisma?: PrismaClient);
     private getChainLength;
+    private static readonly CHAIN_ACTIONS;
     private getLastBlock;
     recordEvent(action: 'INGEST' | 'TRANSFORM' | 'QUERY' | 'CONSENT_CHANGE' | 'BREAK_GLASS' | 'BULK_EXPORT', actor: string, entityType: string, entityId: string, details: string): Promise<AuditBlock>;
     getRecentEvents(limit?: number): Promise<AuditBlock[]>;

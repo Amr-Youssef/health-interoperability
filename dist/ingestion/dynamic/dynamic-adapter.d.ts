@@ -1,7 +1,7 @@
 import { SourceAdapter, SourceSchemaDescriptor, AdapterStatus } from '../adapters/adapter.interface.js';
 import { RawRecord } from '../../core/domain/raw-record.js';
 import { MappingConfiguration } from '../../core/domain/mapping-config.js';
-import { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '@prisma/client';
 export interface DynamicHospitalDefinition {
     hospitalId: string;
     hospitalName: string;

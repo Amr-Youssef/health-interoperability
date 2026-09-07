@@ -1,10 +1,10 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma as defaultPrisma } from '../lib/prisma.js';
 import { CryptographicAuditChain } from '../security/audit-chain.js';
 export class PatientReportedHealthService {
     prisma;
     auditChain;
     constructor(prisma, auditChain) {
-        this.prisma = prisma || new PrismaClient();
+        this.prisma = prisma || defaultPrisma;
         this.auditChain = auditChain || new CryptographicAuditChain(this.prisma);
     }
     // === PROFILE MANAGEMENT ===

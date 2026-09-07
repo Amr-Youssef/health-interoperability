@@ -1,3 +1,8 @@
+/**
+ * @deprecated LEGACY — Use prisma/seed.ts and Prisma migrations for production seeding.
+ * This runner is retained only for cleaning legacy JSON/SQLite artifacts and for old tests that still use NationalHealthDB.
+ * For new code, use `prisma` from src/lib/prisma.ts directly.
+ */
 import fs from 'fs';
 import path from 'path';
 export class MigrationRunner {
@@ -14,6 +19,14 @@ export class MigrationRunner {
             path.resolve(process.cwd(), '.data', 'mpi-store.json'),
             path.resolve(process.cwd(), '.data', 'raw-store.json'),
             path.resolve(process.cwd(), '.data', 'consent-store.json'),
+            path.resolve(process.cwd(), '.data', 'raw-store.db'),
+            path.resolve(process.cwd(), '.data', 'raw-store.db-shm'),
+            path.resolve(process.cwd(), '.data', 'raw-store.db-wal'),
+            path.resolve(process.cwd(), '.data', 'hospitals-registry.db'),
+            path.resolve(process.cwd(), '.data', 'hospitals-registry.db-shm'),
+            path.resolve(process.cwd(), '.data', 'hospitals-registry.db-wal'),
+            path.resolve(process.cwd(), '.data', 'audit-chain.json'),
+            path.resolve(process.cwd(), '.data', 'national-health-db.json'),
             path.resolve(process.cwd(), 'data', 'hospitals-registry.json'),
             path.resolve(process.cwd(), 'data', 'dynamic-hospitals.json')
         ];

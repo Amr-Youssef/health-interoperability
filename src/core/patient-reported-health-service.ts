@@ -1,4 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma as defaultPrisma } from '../lib/prisma.js';
+import type { PrismaClient } from '@prisma/client';
 import {
   PatientReportedAllergyData,
   PatientReportedMedicationData,
@@ -18,7 +19,7 @@ export class PatientReportedHealthService {
   private auditChain: CryptographicAuditChain;
 
   constructor(prisma?: PrismaClient, auditChain?: CryptographicAuditChain) {
-    this.prisma = prisma || new PrismaClient();
+    this.prisma = prisma || defaultPrisma as unknown as PrismaClient;
     this.auditChain = auditChain || new CryptographicAuditChain(this.prisma);
   }
 

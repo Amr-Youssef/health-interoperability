@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '@prisma/client';
 import { PatientReportedAllergyData, PatientReportedMedicationData, PatientReportedConditionData, PatientReportedProcedureData, FamilyMemberData, PatientReportedSocialHistoryData, PatientReportedVitalObservationData, PatientUploadedDocumentData, PatientProfileData, PatientHealthProfile } from '../core/domain/patient-reported-health.js';
 import { CryptographicAuditChain } from '../security/audit-chain.js';
 export declare class PatientReportedHealthService {

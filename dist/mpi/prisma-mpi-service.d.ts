@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '@prisma/client';
 import { InternalPatientIdentity, DuplicateCandidate } from '../core/domain/mpi-identity.js';
 export interface ResolveIdentityInput {
     sourceSystemId: string;

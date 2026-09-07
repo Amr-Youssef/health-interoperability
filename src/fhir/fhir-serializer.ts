@@ -7,7 +7,7 @@ import { CanonicalMedicationRequest } from '../core/domain/medication.js';
 import { CanonicalImmunization } from '../core/domain/immunization.js';
 import { CanonicalAllergyIntolerance } from '../core/domain/allergy-intolerance.js';
 import { CanonicalDiagnosticReport } from '../core/domain/diagnostic-report.js';
-import { LongitudinalRecord } from '../persistence/canonical-store.js';
+import { LongitudinalRecord } from '../core/domain/longitudinal-record.js';
 
 export class FhirR4Serializer {
   /**
