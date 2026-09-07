@@ -388,13 +388,13 @@ const appAuth = {
       if (patCard) patCard.style.display = 'block';
 
     } else if (this.currentRole === 'HOSPITAL_ADMIN') {
-      ['hospital-migration','hospital-global','hospital-profile','appointments'].forEach(id => {
+      ['hospital-migration','hospital-global','hospital-profile','appointments','longitudinal','medications','cds','nphies','security','provenance','monitoring'].forEach(id => {
         const t = document.getElementById(`tab-btn-${id}`);
         if(t) t.style.display = 'flex';
       });
       defaultTab = 'hospital-migration';
     } else if (this.currentRole === 'CLINICIAN') {
-      ['longitudinal','medications','cds','nphies','hospital-migration','hospital-global','appointments'].forEach(id => {
+      ['longitudinal','medications','cds','nphies','appointments'].forEach(id => {
         const t = document.getElementById(`tab-btn-${id}`);
         if(t) t.style.display = 'flex';
       });
@@ -436,10 +436,10 @@ const appAuth = {
 
 function getAllowedTabsForRole(role) {
   if (role === 'MOH_ADMIN' || role === 'SYS_ADMIN') return ['admin-governance','monitoring','onboarding','cds','nphies','medications','mpi','longitudinal','appointments','mapping','provenance','security','bulkexport','fhir'];
-  if (role === 'HOSPITAL_ADMIN') return ['hospital-migration','hospital-global','hospital-profile','appointments'];
-  if (role === 'CLINICIAN') return ['longitudinal','medications','cds','nphies','hospital-migration','hospital-global','appointments'];
+  if (role === 'HOSPITAL_ADMIN') return ['hospital-migration','hospital-global','hospital-profile','appointments','longitudinal','medications','cds','nphies','security','provenance','monitoring'];
+  if (role === 'CLINICIAN') return ['longitudinal','medications','cds','nphies','appointments'];
   if (role === 'PATIENT') return ['profile','longitudinal','medications','appointments'];
-  if (role === 'MOH_AUDITOR') return ['monitoring','longitudinal','security'];
+  if (role === 'MOH_AUDITOR') return ['monitoring','longitudinal','security','provenance'];
   return [];
 }
 

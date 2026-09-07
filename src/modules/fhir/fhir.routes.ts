@@ -70,8 +70,17 @@ export function createFhirRoutes(canonicalStore: ICanonicalStore & any, fhirSeri
   });
 
   router.get('/Patient', verifyToken as any, requirePermission('FHIR_READ_SELF','FHIR_READ_ORG','FHIR_READ_ALL') as any, async (req: Request, res: Response) => {
+    const user: any = (req as any).user;
     const identifier = getQueryString(req.query.identifier as any);
     let patients = await canonicalStore.getAllPatients();
+    if (['HOSPITAL_ADMIN','CLINICIAN'].includes(user?.role?.role_code)) {
+      const orgId = user.organization_id;
+      const links = await prisma.patientOrganization.findMany({ where: { organization_id: orgId, active: true }, select: { patient_id: true } });
+      const linkedIds = new Set(links.map(l => l.patient_id));
+      const direct = await prisma.patient.findMany({ where: { source_system_id: orgId }, select: { id: true } });
+      direct.forEach(d => linkedIds.add(d.id));
+      patients = patients.filter((p: any) => linkedIds.has(p.id) || (p as any).sourceSystemId === orgId);
+    }
     if (identifier) patients = patients.filter((p: any) => p.identifiers.some((id: any) => id.value.includes(identifier)));
     res.json({ resourceType: 'Bundle', type: 'searchset', total: patients.length, entry: patients.map((p: any) => ({ fullUrl: `/fhir/Patient/${p.internalId}`, resource: fhirSerializer.serializePatient(p) })) });
   });
@@ -101,9 +110,19 @@ export function createFhirRoutes(canonicalStore: ICanonicalStore & any, fhirSeri
 
   const bindSearch = (type: string, getter: string, serializer: string) => {
     router.get(`/${type}`, verifyToken as any, requirePermission('FHIR_READ_SELF','FHIR_READ_ORG','FHIR_READ_ALL') as any, async (req: Request, res: Response) => {
+      const user: any = (req as any).user;
       const patientId = getQueryString((req.query as any).patient);
       let list: any[] = await (canonicalStore as any)[getter]();
       if (patientId) list = list.filter((e: any) => e.patientId === patientId);
+      if (['HOSPITAL_ADMIN','CLINICIAN'].includes(user?.role?.role_code)) {
+        const allPatients = await canonicalStore.getAllPatients();
+        const orgId = user.organization_id;
+        const links = await prisma.patientOrganization.findMany({ where: { organization_id: orgId, active: true }, select: { patient_id: true } });
+        const linkedIds = new Set(links.map(l => l.patient_id));
+        const direct = await prisma.patient.findMany({ where: { source_system_id: orgId }, select: { id: true, internal_id: true } });
+        const allowedInternalIds = new Set([...Array.from(linkedIds).map(id => allPatients.find(p=>p.id===id)?.internalId).filter(Boolean), ...direct.map(d=>d.internal_id)]);
+        list = list.filter((e: any) => allowedInternalIds.has(e.patientId));
+      }
       res.json({ resourceType: 'Bundle', type: 'searchset', total: list.length, entry: list.map((e: any) => ({ fullUrl: `/fhir/${type}/${e.internalId}`, resource: (fhirSerializer as any)[serializer](e) })) });
     });
   };

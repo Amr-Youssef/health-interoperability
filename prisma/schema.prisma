@@ -137,6 +137,7 @@ model UserPermission {
 model Patient {
   id                    String                @id @default(uuid())
   internal_id           String                @unique
+  internal_id_uuid String?  @unique // P6 opaque UUID
   first_name            String?
   last_name             String?
   first_name_ar         String?
@@ -222,6 +223,8 @@ model Encounter {
   internal_id      String       @unique
   patient_id       String
   patient          Patient      @relation(fields: [patient_id], references: [internal_id])
+  patient_id_uuid  String?
+  // TODO P6: migrate FK to Patient.id, keep patient_id for backward compat
   organization_id  String?
   organization     Organization? @relation(fields: [organization_id], references: [id])
   
@@ -255,6 +258,8 @@ model Condition {
   internal_id      String       @unique
   patient_id       String
   patient          Patient      @relation(fields: [patient_id], references: [internal_id])
+  patient_id_uuid  String?
+  // TODO P6: migrate FK to Patient.id, keep patient_id for backward compat
   encounter_id     String?
   encounter        Encounter?   @relation(fields: [encounter_id], references: [internal_id])
   organization_id  String?
@@ -290,6 +295,8 @@ model Observation {
   internal_id      String       @unique
   patient_id       String
   patient          Patient      @relation(fields: [patient_id], references: [internal_id])
+  patient_id_uuid  String?
+  // TODO P6: migrate FK to Patient.id, keep patient_id for backward compat
   encounter_id     String?
   encounter        Encounter?   @relation(fields: [encounter_id], references: [internal_id])
   organization_id  String?
@@ -327,6 +334,8 @@ model MedicationRequest {
   internal_id      String       @unique
   patient_id       String
   patient          Patient      @relation(fields: [patient_id], references: [internal_id])
+  patient_id_uuid  String?
+  // TODO P6: migrate FK to Patient.id, keep patient_id for backward compat
   encounter_id     String?
   encounter        Encounter?   @relation(fields: [encounter_id], references: [internal_id])
   organization_id  String?
@@ -363,6 +372,8 @@ model Immunization {
   internal_id      String       @unique
   patient_id       String
   patient          Patient      @relation(fields: [patient_id], references: [internal_id])
+  patient_id_uuid  String?
+  // TODO P6: migrate FK to Patient.id, keep patient_id for backward compat
   encounter_id     String?
   encounter        Encounter?   @relation(fields: [encounter_id], references: [internal_id])
   organization_id  String?
@@ -390,6 +401,8 @@ model Coverage {
   internal_id      String       @unique
   patient_id       String
   patient          Patient      @relation(fields: [patient_id], references: [internal_id])
+  patient_id_uuid  String?
+  // TODO P6: migrate FK to Patient.id, keep patient_id for backward compat
   organization_id  String?
   organization     Organization? @relation(fields: [organization_id], references: [id])
   
@@ -416,6 +429,8 @@ model Claim {
   internal_id      String       @unique
   patient_id       String
   patient          Patient      @relation(fields: [patient_id], references: [internal_id])
+  patient_id_uuid  String?
+  // TODO P6: migrate FK to Patient.id, keep patient_id for backward compat
   organization_id  String?
   organization     Organization? @relation(fields: [organization_id], references: [id])
   encounter_id     String?
@@ -461,6 +476,8 @@ model AllergyIntolerance {
   internal_id      String       @unique
   patient_id       String
   patient          Patient      @relation(fields: [patient_id], references: [internal_id])
+  patient_id_uuid  String?
+  // TODO P6: migrate FK to Patient.id, keep patient_id for backward compat
   
   clinical_status  String?
   verification_status String?
@@ -486,6 +503,8 @@ model DiagnosticReport {
   internal_id      String       @unique
   patient_id       String
   patient          Patient      @relation(fields: [patient_id], references: [internal_id])
+  patient_id_uuid  String?
+  // TODO P6: migrate FK to Patient.id, keep patient_id for backward compat
   encounter_id     String?
   encounter        Encounter?   @relation(fields: [encounter_id], references: [internal_id])
   
@@ -510,6 +529,8 @@ model Consent {
   id               String       @id @default(uuid())
   patient_id       String
   patient          Patient      @relation(fields: [patient_id], references: [internal_id])
+  patient_id_uuid  String?
+  // TODO P6: migrate FK to Patient.id, keep patient_id for backward compat
   organization_id  String?
   organization     Organization? @relation(fields: [organization_id], references: [id])
   appointment_id   String?      @unique
@@ -531,6 +552,8 @@ model Appointment {
   id               String       @id @default(uuid())
   patient_id       String
   patient          Patient      @relation(fields: [patient_id], references: [internal_id])
+  patient_id_uuid  String?
+  // TODO P6: migrate FK to Patient.id, keep patient_id for backward compat
   organization_id  String
   organization     Organization @relation(fields: [organization_id], references: [id])
   clinician_id     String?

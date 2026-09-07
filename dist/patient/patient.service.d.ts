@@ -24,6 +24,7 @@ export declare function getPatientSelfView(patientId: string, userId: string): P
         source_system_id: string | null;
         source_record_id: string | null;
         internal_id: string;
+        internal_id_uuid: string | null;
         first_name: string | null;
         last_name: string | null;
         first_name_ar: string | null;
@@ -108,6 +109,7 @@ export declare function updatePatientSelfData(patientId: string, userId: string,
         source_system_id: string | null;
         source_record_id: string | null;
         internal_id: string;
+        internal_id_uuid: string | null;
         first_name: string | null;
         last_name: string | null;
         first_name_ar: string | null;

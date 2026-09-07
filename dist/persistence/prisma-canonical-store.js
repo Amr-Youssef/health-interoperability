@@ -50,6 +50,7 @@ export class PrismaCanonicalStore {
             const created = await this.prisma.patient.create({
                 data: {
                     internal_id: patient.internalId,
+                    internal_id_uuid: patient.internalIdUuid || undefined,
                     first_name: patient.givenName,
                     last_name: patient.familyName,
                     first_name_ar: patient.givenNameAr,
@@ -112,10 +113,13 @@ export class PrismaCanonicalStore {
         };
     }
     async getPatient(internalId) {
-        let p = await this.prisma.patient.findUnique({
-            where: { internal_id: internalId },
-            include: { identifiers: true }
-        });
+        let p = null;
+        try {
+            p = await this.prisma.patient.findUnique({ where: { internal_id_uuid: internalId }, include: { identifiers: true } });
+        }
+        catch { }
+        if (!p)
+            p = await this.prisma.patient.findUnique({ where: { internal_id: internalId }, include: { identifiers: true } });
         if (!p) {
             p = await this.prisma.patient.findFirst({
                 where: { id: internalId },
@@ -227,10 +231,18 @@ export class PrismaCanonicalStore {
     }
     async saveEncounter(enc) {
         const encClass = typeof enc.class === 'string' ? enc.class : enc.class?.code || 'outpatient';
+        let patientUuid = null;
+        try {
+            const pat = await this.prisma.patient.findFirst({ where: { OR: [{ internal_id: enc.patientId }, { internal_id_uuid: enc.patientId }, { id: enc.patientId }] } });
+            if (pat)
+                patientUuid = pat.id;
+        }
+        catch { }
         await this.prisma.encounter.upsert({
             where: { internal_id: enc.internalId },
             update: {
                 patient_id: enc.patientId,
+                ...(patientUuid ? { patient_id_uuid: patientUuid } : {}),
                 status: enc.status,
                 encounter_class: encClass,
                 period_start: enc.period?.start ? new Date(enc.period.start) : null,
@@ -242,6 +254,7 @@ export class PrismaCanonicalStore {
             create: {
                 internal_id: enc.internalId,
                 patient_id: enc.patientId,
+                ...(patientUuid ? { patient_id_uuid: patientUuid } : {}),
                 status: enc.status,
                 encounter_class: encClass,
                 period_start: enc.period?.start ? new Date(enc.period.start) : null,
