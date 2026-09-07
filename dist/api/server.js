@@ -2,7 +2,6 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
-import cookieParser from 'cookie-parser';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import jwt from 'jsonwebtoken';
@@ -37,6 +36,7 @@ import { createHl7Routes } from '../modules/hl7/hl7.routes.js';
 import { createClinicalRoutes } from '../modules/clinical/clinical.routes.js';
 import { createAdminRoutes } from '../modules/admin/admin.routes.js';
 import { createSmartRoutes } from '../modules/smart/smart.routes.js';
+import crypto from 'crypto';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 import { prisma as prismaInstance } from '../lib/prisma.js';
@@ -90,15 +90,19 @@ async function resolvePatientInternalId(user, canonicalStore) {
 }
 export function createPlatformApp() {
     const app = express();
-    app.use(cookieParser());
+    app.use((req, res, next) => {
+        res.locals = res.locals || {};
+        res.locals.nonce = crypto.randomBytes(16).toString('base64');
+        next();
+    });
     app.use(helmet({
         contentSecurityPolicy: {
             directives: {
                 defaultSrc: ["'self'"],
-                scriptSrc: ["'self'", "'unsafe-inline'"],
-                scriptSrcAttr: ["'unsafe-inline'"],
-                styleSrc: ["'self'", "https://fonts.googleapis.com", "'unsafe-inline'"],
-                styleSrcAttr: ["'unsafe-inline'"],
+                scriptSrc: ["'self'", (req, res) => `'nonce-${res.locals.nonce}'`, "'strict-dynamic'"],
+                scriptSrcAttr: ["'unsafe-hashes'", "'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU='"],
+                styleSrc: ["'self'", "https://fonts.googleapis.com", (req, res) => `'nonce-${res.locals.nonce}'`],
+                styleSrcAttr: ["'unsafe-hashes'", "'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU='"],
                 fontSrc: ["https://fonts.gstatic.com", "https://fonts.googleapis.com", "data:"],
                 connectSrc: ["'self'"],
                 imgSrc: ["'self'", "data:", "https://fonts.gstatic.com"],

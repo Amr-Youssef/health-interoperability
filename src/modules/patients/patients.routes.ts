@@ -2,6 +2,9 @@ import { Router } from 'express';
 import { verifyToken } from '../../security/auth-middleware.js';
 import { requirePermission } from '../../security/authorize.js';
 import { prisma } from '../../lib/prisma.js';
+import rateLimit from 'express-rate-limit';
+
+const searchLimiter: any = process.env.DISABLE_RATE_LIMIT === 'true' && process.env.NODE_ENV !== 'production' ? ((req: any, _res: any, next: any) => next()) : rateLimit({ windowMs: 60*1000, max: 30, standardHeaders: true, legacyHeaders: false, message: { error: 'محاولات بحث كثيرة - حاول بعد دقيقة' } });
 
 async function resolvePatientInternalId(user: any, canonicalStore: any): Promise<string | null> {
   if (!user) return null;
@@ -22,7 +25,7 @@ async function resolvePatientInternalId(user: any, canonicalStore: any): Promise
 
 export function createPatientsRoutes(canonicalStore: any) {
   const router = Router();
-  router.get('/patients/search', verifyToken as any, requirePermission('PATIENT_READ_SELF','PATIENT_READ_ORG','PATIENT_READ_ALL','FHIR_READ_SELF','FHIR_READ_ORG','FHIR_READ_ALL') as any, async (req, res) => {
+  router.get('/patients/search', verifyToken as any, searchLimiter as any, requirePermission('PATIENT_READ_SELF','PATIENT_READ_ORG','PATIENT_READ_ALL','FHIR_READ_SELF','FHIR_READ_ORG','FHIR_READ_ALL') as any, async (req, res) => {
     const user: any = (req as any).user;
     if (user.role?.role_code === 'PATIENT') {
       const targetId = await resolvePatientInternalId(user, canonicalStore);
@@ -38,12 +41,14 @@ export function createPatientsRoutes(canonicalStore: any) {
     const sort = String(req.query.sort || 'recent');
     const skip = (page - 1) * limit;
     try {
-      const { items, total } = await (canonicalStore as any).searchPatients({ q, skip, take: limit, sort });
-      res.setHeader('Cache-Control', 'no-cache');
+      const orgId = ['HOSPITAL_ADMIN','CLINICIAN'].includes((req as any).user?.role?.role_code) ? (req as any).user.organization_id : undefined;
+      const { items, total } = await (canonicalStore as any).searchPatients({ q, skip, take: limit, sort, organizationId: orgId });
+      res.setHeader('Cache-Control', 'private, max-age=10, stale-while-revalidate=30');
+      try { await (prisma as any).auditLog.create({ data: { entity_type: 'Patient', entity_id: q || '*', action: 'QUERY', actor_id: (req as any).user?.id, organization_id: (req as any).user?.organization_id, details: `Search q="${q}" page=${page} total=${total}` } }).catch(()=>{}); } catch {}
       res.json({ items, total, page, pageSize: limit, totalPages: Math.ceil(total / limit), query: q });
     } catch (e: any) { res.status(500).json({ error: 'Search failed', details: e.message }); }
   });
-  router.get('/patients', verifyToken as any, requirePermission('PATIENT_READ_SELF','PATIENT_READ_ORG','PATIENT_READ_ALL','FHIR_READ_SELF','FHIR_READ_ORG','FHIR_READ_ALL') as any, async (req, res) => {
+  router.get('/patients', verifyToken as any, searchLimiter as any, requirePermission('PATIENT_READ_SELF','PATIENT_READ_ORG','PATIENT_READ_ALL','FHIR_READ_SELF','FHIR_READ_ORG','FHIR_READ_ALL') as any, async (req, res) => {
     const user: any = (req as any).user;
     if (user && user.role?.role_code === 'PATIENT') {
       const targetId = await resolvePatientInternalId(user, canonicalStore);
@@ -58,11 +63,13 @@ export function createPatientsRoutes(canonicalStore: any) {
       const page = Math.max(parseInt(String(req.query.page || '1'), 10) || 1, 1);
       const limit = Math.min(Math.max(parseInt(String(req.query.limit || '20'), 10) || 20, 5), 50);
       const skip = (page - 1) * limit;
-      const { items, total } = await (canonicalStore as any).searchPatients({ q, skip, take: limit, sort: String(req.query.sort || 'recent') });
+      const orgId2 = ['HOSPITAL_ADMIN','CLINICIAN'].includes((req as any).user?.role?.role_code) ? (req as any).user.organization_id : undefined;
+      const { items, total } = await (canonicalStore as any).searchPatients({ q, skip, take: limit, sort: String(req.query.sort || 'recent'), organizationId: orgId2 });
       return res.json({ items, total, page, pageSize: limit });
     }
     const limit = Math.min(parseInt(String(req.query.limit || '100'), 10) || 100, 100);
-    const { items } = await (canonicalStore as any).searchPatients({ q: '', skip: 0, take: limit, sort: 'recent' });
+    const orgId3 = ['HOSPITAL_ADMIN','CLINICIAN'].includes((req as any).user?.role?.role_code) ? (req as any).user.organization_id : undefined;
+    const { items } = await (canonicalStore as any).searchPatients({ q: '', skip: 0, take: limit, sort: 'recent', organizationId: orgId3 });
     res.json(items);
   });
   router.get('/patients/:id/longitudinal', verifyToken as any, requirePermission('PATIENT_READ_SELF','PATIENT_READ_ORG','PATIENT_READ_ALL','FHIR_READ_SELF','FHIR_READ_ORG','FHIR_READ_ALL') as any, async (req, res) => {

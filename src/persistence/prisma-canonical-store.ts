@@ -172,11 +172,12 @@ export class PrismaCanonicalStore implements ICanonicalStore {
     return patients.map(p => this.mapPatientToCanonical(p));
   }
 
-  async searchPatients(params: { q?: string; skip?: number; take?: number; sort?: string }): Promise<{ items: CanonicalPatient[]; total: number }> {
+  async searchPatients(params: { q?: string; skip?: number; take?: number; sort?: string; organizationId?: string }): Promise<{ items: CanonicalPatient[]; total: number }> {
     const q = (params.q || '').trim();
-    const take = Math.min(Math.max(params.take || 20, 1), 100);
-    const skip = Math.max(params.skip || 0, 0);
+    const take = Math.min(Math.max(params.take || 20, 1), 50);
+    const skip = Math.min(Math.max(params.skip || 0, 0), 10000);
     const hasQuery = q.length >= 2;
+    if (!hasQuery) return { items: [], total: 0 };
     let where: any = {};
     if (hasQuery) {
       const isNumeric = /^[0-9]+$/.test(q);
@@ -200,6 +201,10 @@ export class PrismaCanonicalStore implements ICanonicalStore {
             { identifiers: { some: { value: { contains: q } } } }
           ]
         };
+      }
+      if ((params as any).organizationId) {
+        const orgId = (params as any).organizationId;
+        where = { AND: [where, { OR: [{ source_system_id: orgId }, { organizations: { some: { organization_id: orgId, active: true } } }] }] };
       }
     }
     const orderBy: any = params.sort === 'name' ? [{ first_name_ar: 'asc' }, { first_name: 'asc' }] : { created_at: 'desc' };

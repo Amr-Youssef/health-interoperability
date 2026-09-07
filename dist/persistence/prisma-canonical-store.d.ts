@@ -27,6 +27,7 @@ export declare class PrismaCanonicalStore implements ICanonicalStore {
         skip?: number;
         take?: number;
         sort?: string;
+        organizationId?: string;
     }): Promise<{
         items: CanonicalPatient[];
         total: number;

@@ -104,7 +104,7 @@ router.post('/', async (req, res) => {
         });
         const consentType = consentTypeForAppointment(type);
         const expires = expiresForType(type);
-        const granted = type === 'EMERGENCY' ? true : isPatient;
+        const granted = type === 'EMERGENCY';
         const consent = await prisma.consent.create({
             data: {
                 patient_id: patientId,
@@ -123,20 +123,18 @@ router.post('/', async (req, res) => {
         await prisma.auditLog.create({ data: { entity_type: 'Appointment', entity_id: appt.id, action: 'APPOINTMENT_CREATED', actor_id: user.id, organization_id: org.id, new_values: JSON.stringify({ type, status: appt.status, patientId, organizationId: org.id }), details: `${type} appointment for patient ${patientId} at ${org.organization_name_ar}` } }).catch(() => { });
         if (type === 'EMERGENCY') {
             await prisma.auditLog.create({ data: { entity_type: 'Patient', entity_id: patientId, action: 'BREAK_GLASS', actor_id: user.id, organization_id: org.id, details: `Emergency appointment ${appt.id} granted immediate access` } }).catch(() => { });
-        }
-        try {
-            const patientRow = await prisma.patient.findFirst({ where: { internal_id: patientId } });
-            if (patientRow) {
-                const existingLink = await prisma.patientOrganization.findFirst({ where: { patient_id: patientRow.id, organization_id: org.id } });
-                if (!existingLink) {
-                    await prisma.patientOrganization.create({ data: { patient_id: patientRow.id, organization_id: org.id, relationship_type: type === 'EMERGENCY' ? 'emergency' : type === 'REFERRAL' ? 'referred' : 'registered', active: true } });
-                }
-                else if (!existingLink.active) {
-                    await prisma.patientOrganization.update({ where: { id: existingLink.id }, data: { active: true } });
+            try {
+                const patientRow = await prisma.patient.findFirst({ where: { internal_id: patientId } });
+                if (patientRow) {
+                    const existingLink = await prisma.patientOrganization.findFirst({ where: { patient_id: patientRow.id, organization_id: org.id } });
+                    if (!existingLink)
+                        await prisma.patientOrganization.create({ data: { patient_id: patientRow.id, organization_id: org.id, relationship_type: 'emergency', active: true } });
+                    else if (!existingLink.active)
+                        await prisma.patientOrganization.update({ where: { id: existingLink.id }, data: { active: true } });
                 }
             }
+            catch { }
         }
-        catch { }
         res.json({ success: true, appointment: appt, consent });
     }
     catch (e) {
@@ -227,6 +225,17 @@ router.patch('/:id/status', async (req, res) => {
         const updated = await prisma.appointment.update({ where: { id }, data: { status, clinician_id: targetClinicianId } });
         if (status === 'booked' && appt.consent) {
             await prisma.consent.update({ where: { id: appt.consent.id }, data: { granted: true, granted_at: new Date() } });
+            try {
+                const patientRow = await prisma.patient.findFirst({ where: { internal_id: appt.patient_id } });
+                if (patientRow) {
+                    const existingLink = await prisma.patientOrganization.findFirst({ where: { patient_id: patientRow.id, organization_id: appt.organization_id } });
+                    if (!existingLink)
+                        await prisma.patientOrganization.create({ data: { patient_id: patientRow.id, organization_id: appt.organization_id, relationship_type: appt.appointment_type === 'REFERRAL' ? 'referred' : appt.appointment_type === 'EMERGENCY' ? 'emergency' : 'registered', active: true } });
+                    else if (!existingLink.active)
+                        await prisma.patientOrganization.update({ where: { id: existingLink.id }, data: { active: true } });
+                }
+            }
+            catch { }
         }
         if (status === 'fulfilled' && appt.consent) {
             await prisma.consent.update({ where: { id: appt.consent.id }, data: { expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000) } });

@@ -726,6 +726,7 @@ function showToast(title, message, type = 'success') {
 document.addEventListener('DOMContentLoaded', () => {
   initThemeSwitcher();
   initSidebarToggle();
+  initMobileDrawer();
   initNavigation();
   // initAuth after navigation so applyRolePermissions click handlers are bound
   appAuth.init();
@@ -1086,11 +1087,23 @@ function initSidebarToggle() {
       const isCollapsed = document.body.classList.contains('sidebar-collapsed');
       localStorage.setItem('sidebar_collapsed', isCollapsed ? '1' : '0');
     });
-
-    if (localStorage.getItem('sidebar_collapsed') === '1') {
-      document.body.classList.add('sidebar-collapsed');
-    }
+    if (localStorage.getItem('sidebar_collapsed') === '1') document.body.classList.add('sidebar-collapsed');
   }
+}
+function initMobileDrawer() {
+  const btn = document.getElementById('mobile-menu-btn');
+  const sidebar = document.getElementById('sidebar');
+  const backdrop = document.getElementById('sidebar-backdrop');
+  if (!btn || !sidebar || !backdrop) return;
+  const open = () => { sidebar.classList.add('open'); backdrop.classList.add('open'); btn.setAttribute('aria-expanded','true'); backdrop.setAttribute('aria-hidden','false'); };
+  const close = () => { sidebar.classList.remove('open'); backdrop.classList.remove('open'); btn.setAttribute('aria-expanded','false'); backdrop.setAttribute('aria-hidden','true'); };
+  btn.addEventListener('click', () => sidebar.classList.contains('open') ? close() : open());
+  backdrop.addEventListener('click', close);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+  window.addEventListener('resize', () => { if (window.innerWidth > 1024) close(); });
+  document.querySelectorAll('.nav-item').forEach(el => el.addEventListener('click', () => { if (window.innerWidth <= 1024) close(); }));
+  let sx=0; sidebar.addEventListener('touchstart', e=> sx=e.touches[0].clientX, {passive:true});
+  sidebar.addEventListener('touchend', e=> { if (e.changedTouches[0].clientX - sx < -50) close(); }, {passive:true});
 }
 
 function initNavigation() {

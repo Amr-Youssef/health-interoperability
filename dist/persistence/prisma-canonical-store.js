@@ -152,9 +152,11 @@ export class PrismaCanonicalStore {
     }
     async searchPatients(params) {
         const q = (params.q || '').trim();
-        const take = Math.min(Math.max(params.take || 20, 1), 100);
-        const skip = Math.max(params.skip || 0, 0);
+        const take = Math.min(Math.max(params.take || 20, 1), 50);
+        const skip = Math.min(Math.max(params.skip || 0, 0), 10000);
         const hasQuery = q.length >= 2;
+        if (!hasQuery)
+            return { items: [], total: 0 };
         let where = {};
         if (hasQuery) {
             const isNumeric = /^[0-9]+$/.test(q);
@@ -179,6 +181,10 @@ export class PrismaCanonicalStore {
                         { identifiers: { some: { value: { contains: q } } } }
                     ]
                 };
+            }
+            if (params.organizationId) {
+                const orgId = params.organizationId;
+                where = { AND: [where, { OR: [{ source_system_id: orgId }, { organizations: { some: { organization_id: orgId, active: true } } }] }] };
             }
         }
         const orderBy = params.sort === 'name' ? [{ first_name_ar: 'asc' }, { first_name: 'asc' }] : { created_at: 'desc' };

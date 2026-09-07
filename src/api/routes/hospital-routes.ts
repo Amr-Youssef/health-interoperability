@@ -1,7 +1,9 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { verifyToken } from '../../security/auth-middleware.js';
+import { requirePermission } from '../../security/authorize.js';
 import { prisma } from '../../lib/prisma.js';
 import { PrismaCanonicalStore } from '../../persistence/prisma-canonical-store.js';
+import bcrypt from 'bcryptjs';
 
 const router = Router();
 const canonicalStore = new PrismaCanonicalStore(prisma as any);
@@ -509,6 +511,73 @@ router.post('/patients', requireHospitalAdmin as any, async (req, res) => {
 // Upload encounters (visits)
 router.post('/encounters', requireHospitalStaff as any, async (req, res) => {
   res.json({ message: 'Encounter registered successfully' });
+});
+
+// Hospital user management (HOSPITAL_ADMIN only — USER_MANAGE_ORG / ROLE_ASSIGN_ORG)
+router.get('/users', requireHospitalAdmin as any, requirePermission('USER_MANAGE_ORG') as any, async (req, res) => {
+  try {
+    const orgId = req.user!.organization_id;
+    const users = await prisma.user.findMany({ where: { organization_id: orgId }, include: { role: true }, orderBy: { created_at: 'desc' } });
+    res.json(users.map(u => ({ id: u.id, username: u.username, fullName: u.full_name, email: u.email, phone: u.phone, role: u.role.role_code, isActive: u.is_active, createdAt: u.created_at })));
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.post('/users', requireHospitalAdmin as any, requirePermission('USER_MANAGE_ORG','ROLE_ASSIGN_ORG') as any, async (req, res) => {
+  try {
+    const orgId = req.user!.organization_id;
+    const { username, password, full_name, email, phone, role_code } = req.body;
+    if (!username || !password || !full_name) return res.status(400).json({ error: 'username, password, full_name required' });
+    if (password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) return res.status(400).json({ error: 'كلمة المرور ضعيفة: 8+ حروف وأرقام' });
+    const existing = await prisma.user.findFirst({ where: { OR: [{ username: username.trim() }, ...(email ? [{ email: email.trim().toLowerCase() }] : [])] } });
+    if (existing) return res.status(400).json({ error: 'اسم المستخدم أو البريد مسجل مسبقاً' });
+    const allowedRoles = ['CLINICIAN','HOSPITAL_ADMIN'];
+    const rc = (role_code || 'CLINICIAN').toUpperCase();
+    if (!allowedRoles.includes(rc)) return res.status(400).json({ error: 'role_code must be CLINICIAN or HOSPITAL_ADMIN (org scope)' });
+    const role = await prisma.role.findUnique({ where: { role_code: rc as any } });
+    if (!role) return res.status(404).json({ error: 'Role not found' });
+    const hash = await bcrypt.hash(password, 10);
+    let phoneNorm: string | null = null;
+    if (phone) {
+      const c = String(phone).replace(/[\s\-\(\)]/g, '');
+      if (/^05\d{8}$/.test(c)) phoneNorm = '+966' + c.substring(1);
+      else if (/^5\d{8}$/.test(c)) phoneNorm = '+966' + c;
+      else if (/^9665\d{8}$/.test(c)) phoneNorm = '+' + c;
+      else if (/^\+9665\d{8}$/.test(c)) phoneNorm = c;
+    }
+    const user = await prisma.user.create({ data: { username: username.trim(), password_hash: hash, full_name: full_name.trim(), email: email ? email.trim().toLowerCase() : null, phone: phoneNorm, role_id: role.id, organization_id: orgId, is_active: true }, include: { role: true } });
+    await prisma.auditLog.create({ data: { entity_type: 'User', entity_id: user.id, action: 'HOSPITAL_USER_CREATED', actor_id: req.user!.id, organization_id: orgId, new_values: JSON.stringify({ username: user.username, role: rc }), details: `Hospital admin created user ${user.username} as ${rc}` } }).catch(()=>{});
+    res.json({ success: true, user: { id: user.id, username: user.username, fullName: user.full_name, role: user.role.role_code } });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.patch('/users/:id/status', requireHospitalAdmin as any, requirePermission('USER_MANAGE_ORG') as any, async (req, res) => {
+  try {
+    const orgId = req.user!.organization_id;
+    const target = await prisma.user.findUnique({ where: { id: req.params.id as string }, include: { role: true } });
+    if (!target || target.organization_id !== orgId) return res.status(404).json({ error: 'User not found in your organization' });
+    if (['SYS_ADMIN','MOH_ADMIN','MOH_AUDITOR'].includes(target.role.role_code)) return res.status(403).json({ error: 'Cannot manage national roles' });
+    const { is_active } = req.body;
+    const updated = await prisma.user.update({ where: { id: target.id }, data: { is_active: !!is_active } });
+    await prisma.auditLog.create({ data: { entity_type: 'User', entity_id: target.id, action: 'HOSPITAL_USER_STATUS_CHANGED', actor_id: req.user!.id, organization_id: orgId, old_values: JSON.stringify({ is_active: target.is_active }), new_values: JSON.stringify({ is_active: !!is_active }), details: `Status changed for ${target.username}` } }).catch(()=>{});
+    res.json({ success: true, user: { id: updated.id, isActive: updated.is_active } });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.patch('/users/:id/role', requireHospitalAdmin as any, requirePermission('ROLE_ASSIGN_ORG') as any, async (req, res) => {
+  try {
+    const orgId = req.user!.organization_id;
+    const target = await prisma.user.findUnique({ where: { id: req.params.id as string }, include: { role: true } });
+    if (!target || target.organization_id !== orgId) return res.status(404).json({ error: 'User not found in your organization' });
+    if (['SYS_ADMIN','MOH_ADMIN','MOH_AUDITOR'].includes(target.role.role_code)) return res.status(403).json({ error: 'Cannot manage national roles' });
+    const { role_code } = req.body;
+    const rc = String(role_code || '').toUpperCase();
+    if (!['CLINICIAN','HOSPITAL_ADMIN'].includes(rc)) return res.status(400).json({ error: 'role_code must be CLINICIAN or HOSPITAL_ADMIN' });
+    const role = await prisma.role.findUnique({ where: { role_code: rc as any } });
+    if (!role) return res.status(404).json({ error: 'Role not found' });
+    const updated = await prisma.user.update({ where: { id: target.id }, data: { role_id: role.id } });
+    await prisma.auditLog.create({ data: { entity_type: 'User', entity_id: target.id, action: 'HOSPITAL_USER_ROLE_CHANGED', actor_id: req.user!.id, organization_id: orgId, old_values: JSON.stringify({ role: target.role.role_code }), new_values: JSON.stringify({ role: rc }), details: `Role changed for ${target.username}` } }).catch(()=>{});
+    res.json({ success: true, user: { id: updated.id, role: rc } });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
 export const hospitalRoutes = router;

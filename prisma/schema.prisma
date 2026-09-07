@@ -178,6 +178,11 @@ model Patient {
   social_history        PatientReportedSocialHistory?
   vital_observations    PatientReportedVitalObservation[]
   uploaded_documents    PatientUploadedDocument[]
+
+  @@index([phone])
+  @@index([created_at])
+  @@index([first_name])
+  @@index([first_name_ar])
 }
 
 // Patient Identifiers (NID, Iqama, MRN)
@@ -191,6 +196,9 @@ model PatientIdentifier {
   source_system_id  String?
   is_active         Boolean  @default(true)
   first_seen_at     DateTime @default(now())
+
+  @@index([value])
+  @@index([patient_id, is_active])
 }
 
 // 4.7 PatientOrganizations
@@ -203,6 +211,9 @@ model PatientOrganization {
   relationship_type String       // e.g., 'PRIMARY_CARE', 'TREATED'
   assigned_at       DateTime     @default(now())
   active            Boolean      @default(true)
+
+  @@index([organization_id, active])
+  @@index([patient_id])
 }
 
 // 4.8 Encounters
