@@ -1881,6 +1881,7 @@
             <span style="font-size:0.78rem; color:var(--m3-on-surface-muted);">بوابة مخصصة لإدارة وترحيل بيانات منشأتك فقط • معزولة تنظيمياً وفق <code>NCA</code> و <code>PDPL</code></span>
           </div>
         </div>
+        <div id="hosp-quality-report" class="card" style="padding:10px 14px; background:var(--m3-surface-container-high); border:1px solid var(--m3-outline-variant); margin-bottom:12px; font-size:0.82rem;"></div>
 
         <!-- HMS Stats Grid (scoped) -->
         <div class="metrics-grid" id="hosp-stats-grid">
@@ -2234,6 +2235,14 @@
           <div class="card-body" id="mapping-configs-list">
             <!-- Populated by app.js -->
           </div>
+          <div class="card" style="margin-top:16px;">
+            <div class="card-header"><h3>اختبار تحويل (Test Mapping)</h3></div>
+            <div class="card-body" style="display:grid; gap:10px;">
+              <textarea id="mapping-test-input" class="form-input" rows="4" placeholder='{"sourceSystemId":"hospital-a","sourceEntityType":"patient_reg","payload":{"p_id":"TEST-1","nid":"1088445566","name_ar":"أحمد"}}'></textarea>
+              <div style="display:flex; gap:8px;"><button class="btn btn-primary btn-sm" id="btn-test-mapping">تشغيل اختبار التحويل</button><button class="btn btn-secondary btn-sm" onclick="document.getElementById('mapping-test-output').textContent=''">مسح</button></div>
+              <pre id="mapping-test-output" style="background:var(--m3-surface-container-low); padding:10px; max-height:200px; overflow:auto; font-size:0.78rem;"></pre>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -2261,6 +2270,15 @@
             <div class="fhir-sidebar-header">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
               <h4>نوافذ واجهة FHIR R4.0.1</h4>
+            </div>
+            <div style="padding:10px; display:grid; gap:8px; border-bottom:1px solid var(--m3-outline-variant);">
+              <input id="fhir-search-params" class="form-input" placeholder="برامترات البحث: patient=...&_count=20&_offset=0">
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+                <select id="fhir-validate-type" class="form-select"><option value="Patient">Patient</option><option value="Observation">Observation</option><option value="Condition">Condition</option></select>
+                <button class="btn btn-secondary btn-sm" onclick="validateFhirResource()">$validate</button>
+              </div>
+              <textarea id="fhir-validate-body" class="form-input" rows="3" placeholder='{"resourceType":"Patient","identifier":[{"value":"1088445566"}]}'></textarea>
+              <pre id="fhir-validate-output" style="background:var(--m3-surface-container-low); padding:8px; font-size:0.72rem; max-height:120px; overflow:auto;"></pre>
             </div>
 
             <div class="endpoint-list">
@@ -2371,7 +2389,8 @@
             <h2 class="page-title">الأمن السيبراني وسلسلة التدقيق المشفرة (NCA Cryptographic Audit Chain)</h2>
             <p class="page-subtitle">سجل كتل تدقيق مشفر غير قابل للتلاعب (Tamper-Proof) بروابط تجزئة SHA-256 متسلسلة للامتثال لضوابط الهيئة الوطنية للأمن السيبراني (NCA) ونظام حماية البيانات (PDPL).</p>
           </div>
-          <div class="actions-group">
+          <div class="actions-group" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <input id="audit-search" class="form-input" placeholder="بحث: إجراء/ممثل/كيان" style="width:200px;" oninput="loadSecurityAuditChain()">
             <button class="btn btn-primary" id="btn-verify-audit-chain">
               <svg class="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
               <span>التحقق من سلامة السلسلة المشفرة</span>

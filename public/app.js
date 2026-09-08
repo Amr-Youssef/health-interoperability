@@ -388,7 +388,7 @@ const appAuth = {
       if (patCard) patCard.style.display = 'block';
 
     } else if (this.currentRole === 'HOSPITAL_ADMIN') {
-      ['hospital-migration','hospital-global','hospital-profile','appointments','longitudinal','medications','cds','nphies','security','provenance','monitoring'].forEach(id => {
+      ['hospital-migration','hospital-global','hospital-profile','appointments'].forEach(id => {
         const t = document.getElementById(`tab-btn-${id}`);
         if(t) t.style.display = 'flex';
       });
@@ -436,9 +436,9 @@ const appAuth = {
 
 function getAllowedTabsForRole(role) {
   if (role === 'MOH_ADMIN' || role === 'SYS_ADMIN') return ['admin-governance','monitoring','onboarding','cds','nphies','medications','mpi','longitudinal','appointments','mapping','provenance','security','bulkexport','fhir'];
-  if (role === 'HOSPITAL_ADMIN') return ['hospital-migration','hospital-global','hospital-profile','appointments','longitudinal','medications','cds','nphies','security','provenance','monitoring'];
+  if (role === 'HOSPITAL_ADMIN') return ['hospital-migration','hospital-global','hospital-profile','appointments'];
   if (role === 'CLINICIAN') return ['longitudinal','medications','cds','nphies','appointments'];
-  if (role === 'PATIENT') return ['profile','longitudinal','medications','appointments'];
+  if (role === 'PATIENT') return ['profile','longitudinal','medications','appointments','patient-insurance','patient-access'];
   if (role === 'MOH_AUDITOR') return ['monitoring','longitudinal','security','provenance'];
   return [];
 }
@@ -3032,9 +3032,18 @@ async function loadHospitalMigrationTab() {
     }
   } catch (e) { console.warn('hospital me load failed', e); }
 
-  // Load scoped stats
+  // Load scoped stats + quality report
   loadHospitalScopedStats();
   loadHospitalImports();
+  const qualityEl=document.getElementById('hosp-quality-report');
+  if(qualityEl){
+    fetch('/api/hospital/me/stats').then(r=>r.json()).then(s=>{
+      const total=s.rawRecordsCount||0;
+      const failed=s.recentImports?.reduce((a,c)=>a+(c.recordsFailed||0),0)||0;
+      const rate= total? ((total-failed)/total*100).toFixed(1): '100';
+      qualityEl.innerHTML=`<div style="display:flex; gap:12px; flex-wrap:wrap; font-size:0.82rem;"><span class="badge badge-success">جودة: ${rate}%</span><span class="badge badge-info">إجمالي: ${total}</span><span class="badge ${failed?'badge-warning':'badge-success'}">فشل: ${failed}</span><button class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText(JSON.stringify(s,null,2))">نسخ تقرير</button><button class="btn btn-secondary btn-sm" onclick="window.open('/api/hospital/imports','_blank')">تصدير سجل</button></div>`;
+    }).catch(()=>{});
+  }
   loadHospitalPatientsList();
   initHospitalMigrationDropzone();
 }
@@ -4249,6 +4258,16 @@ function openMedicalReportPreview(patientId) {
 // 8. MAPPING STUDIO
 async function loadMappingStudio() {
   try {
+    const testBtn=document.getElementById('btn-test-mapping');
+    if(testBtn && !testBtn.dataset.bound){
+      testBtn.dataset.bound='1';
+      testBtn.addEventListener('click', async()=>{
+        const src=document.getElementById('mapping-test-input')?.value;
+        const out=document.getElementById('mapping-test-output');
+        if(!src) return;
+        try{ const j=JSON.parse(src); const r=await fetch('/api/mappings/test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(j)}); const d=await r.json(); if(out) out.textContent=JSON.stringify(d,null,2); }catch(e){ if(out) out.textContent='خطأ: '+e.message; }
+      });
+    }
     const resConcepts = await fetch('/api/terminology/concepts');
     const concepts = await resConcepts.json();
 
@@ -4316,13 +4335,16 @@ async function loadProvenanceRecords() {
       return;
     }
 
-    container.innerHTML = records.map((p) => `
-      <div class="card mb-6" style="padding:18px 20px;">
+    container.innerHTML = records.slice(0,50).map((p) => `
+      <div class="card mb-6" style="padding:18px 20px; border-right:4px solid var(--m3-tertiary);">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
           <div>
             <h4 style="font-size:1.02rem; color:var(--m3-on-surface);">${p.targetEntityType} (المعرف: <code>${p.targetEntityId.substring(0, 8)}...</code>)</h4>
-            <span class="metric-sub">${p.activityDescription}</span>
+            <span class="metric-sub">${p.activityDescription || p.mappingVersion || ''} • درجة جودة ${p.validationScore||100}%</span>
           </div>
+          <button class="btn btn-secondary btn-sm" onclick="fetch('/api/raw-store/${p.sourceRecordId}').then(r=>r.json()).then(j=>alert(JSON.stringify(j,null,2))).catch(()=>alert('لا توجد حمولة خام'))">عرض الخام</button>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; font-size:0.78rem; color:var(--m3-on-surface-variant); margin-bottom:8px;"><span style="background:var(--m3-surface-container-high); padding:2px 6px;">${p.sourceSystemId}</span> → <span style="background:var(--m3-primary-container); padding:2px 6px;">${p.targetEntityType}</span> → <span style="background:var(--m3-tertiary-container); padding:2px 6px;">MPI</span></div>
           <span class="badge badge-success">جودة التحقق: ${p.validationScore}/100</span>
         </div>
 
@@ -4351,29 +4373,49 @@ async function loadProvenanceRecords() {
   }
 }
 
-// 10. FHIR EXPLORER
+// 10. FHIR EXPLORER — with search params and $validate
 async function fetchFhirEndpoint(endpoint) {
   const displayUrl = document.getElementById('fhir-url-display');
   const displayJson = document.getElementById('fhir-json-output');
-  if (displayUrl) displayUrl.textContent = `GET ${endpoint}`;
+  const paramsEl = document.getElementById('fhir-search-params');
+  const params = paramsEl?.value?.trim();
+  let url = endpoint;
+  if (params) url += (endpoint.includes('?') ? '&' : '?') + params;
+  if (displayUrl) displayUrl.textContent = `GET ${url}`;
   if (displayJson) displayJson.textContent = 'جاري جلب استجابة FHIR R4...';
-
   try {
-    const res = await fetch(endpoint);
+    const res = await fetch(url);
     const data = await res.json();
-    if (displayJson) {
-      displayJson.textContent = JSON.stringify(data, null, 2);
+    if (data.link) {
+      const links = data.link.map(l=> `<a href="#" onclick="event.preventDefault(); fetchFhirEndpoint('${l.url.replace(/'/g,"\\'")}')">${l.relation}</a>`).join(' | ');
+      data._linksHtml = links;
     }
+    if (displayJson) displayJson.textContent = JSON.stringify(data, null, 2);
   } catch (err) {
     if (displayJson) displayJson.textContent = 'تعذر جلب بيانات FHIR من الخادم.';
   }
 }
+async function validateFhirResource(){
+  const typeEl=document.getElementById('fhir-validate-type');
+  const bodyEl=document.getElementById('fhir-validate-body');
+  const out=document.getElementById('fhir-validate-output');
+  if(!typeEl||!bodyEl||!out) return;
+  try{
+    const body=JSON.parse(bodyEl.value);
+    const res=await fetch(`/fhir/${typeEl.value}/$validate`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const j=await res.json();
+    out.textContent=JSON.stringify(j,null,2);
+    out.style.color = res.ok ? 'var(--m3-success)' : 'var(--m3-error)';
+  }catch(e){ if(out) out.textContent='خطأ: '+e.message; }
+}
 
-// 11. CYBERSECURITY & NCA AUDIT HASH CHAIN
+// 11. CYBERSECURITY & NCA AUDIT HASH CHAIN — with search and auto-verify
 async function loadSecurityAuditChain() {
   const tbody = document.getElementById('audit-chain-tbody');
   const totalBlocksEl = document.getElementById('audit-total-blocks');
   const statusEl = document.getElementById('audit-chain-status');
+  const searchEl = document.getElementById('audit-search');
+  const q = searchEl?.value?.trim().toLowerCase() || '';
 
   try {
     const [chainRes, verifyRes] = await Promise.all([
@@ -4396,15 +4438,18 @@ async function loadSecurityAuditChain() {
     }
 
     if (tbody && chain) {
-      tbody.innerHTML = chain.map((b) => `
+      let filtered = chain;
+      if (q) filtered = chain.filter(b=> JSON.stringify(b).toLowerCase().includes(q));
+      if (statusEl && !verification.isValid) statusEl.textContent += ' — انكسار!';
+      tbody.innerHTML = filtered.map((b) => `
         <tr>
           <td><span class="badge badge-info">Block #${b.index}</span></td>
           <td><span class="badge badge-success">${b.action}</span></td>
           <td><strong>${b.actor}</strong></td>
           <td>${b.entityType} <code>${b.entityId?.substring(0, 10)}...</code></td>
           <td><code>${new Date(b.timestamp).toLocaleTimeString('ar-SA')}</code></td>
-          <td title="${b.previousHash}"><code>${b.previousHash.substring(0, 14)}...</code></td>
-          <td title="${b.currentHash}"><strong style="color:var(--m3-tertiary);">${b.currentHash.substring(0, 14)}...</strong></td>
+          <td title="${b.previousHash}"><code>${b.previousHash.substring(0, 14)}...</code> <button class="btn btn-sm" onclick="navigator.clipboard.writeText('${b.previousHash}')">نسخ</button></td>
+          <td title="${b.currentHash}"><strong style="color:var(--m3-tertiary);">${b.currentHash.substring(0, 14)}...</strong> <button class="btn btn-sm" onclick="navigator.clipboard.writeText('${b.currentHash}')">نسخ</button></td>
         </tr>
       `).join('') || '<tr><td colspan="7" class="text-center py-4">لا توجد كتل تدقيق.</td></tr>';
     }

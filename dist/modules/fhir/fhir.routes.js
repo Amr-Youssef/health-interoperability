@@ -118,10 +118,23 @@ export function createFhirRoutes(canonicalStore, fhirSerializer, engine) {
             return res.status(404).json({ resourceType: 'OperationOutcome', issue: [{ severity: 'error', code: 'not-found', diagnostics: 'Patient not found' }] });
         res.json(fhirSerializer.serializeLongitudinalBundle(record));
     });
+    router.post('/:type/$validate', verifyToken, requirePermission('FHIR_READ_SELF', 'FHIR_READ_ORG', 'FHIR_READ_ALL'), async (req, res) => {
+        const type = req.params.type;
+        const resource = req.body;
+        if (!resource || resource.resourceType !== type)
+            return res.status(400).json({ resourceType: 'OperationOutcome', issue: [{ severity: 'error', code: 'invalid', diagnostics: `resourceType must be ${type}` }] });
+        const required = type === 'Patient' ? ['identifier'] : type === 'Observation' ? ['status', 'code'] : [];
+        const missing = required.filter(f => !resource[f]);
+        if (missing.length)
+            return res.status(400).json({ resourceType: 'OperationOutcome', issue: missing.map(f => ({ severity: 'error', code: 'required', diagnostics: `Missing ${f}` })) });
+        res.json({ resourceType: 'OperationOutcome', issue: [{ severity: 'information', code: 'informational', diagnostics: 'Validation passed (mock $validate)' }] });
+    });
     const bindSearch = (type, getter, serializer) => {
         router.get(`/${type}`, verifyToken, requirePermission('FHIR_READ_SELF', 'FHIR_READ_ORG', 'FHIR_READ_ALL'), async (req, res) => {
             const user = req.user;
             const patientId = getQueryString(req.query.patient);
+            const count = Math.min(parseInt(String(req.query._count || '20'), 10) || 20, 50);
+            const offset = Math.max(parseInt(String(req.query._offset || '0'), 10) || 0, 0);
             let list = await canonicalStore[getter]();
             if (patientId)
                 list = list.filter((e) => e.patientId === patientId);
@@ -134,7 +147,15 @@ export function createFhirRoutes(canonicalStore, fhirSerializer, engine) {
                 const allowedInternalIds = new Set([...Array.from(linkedIds).map(id => allPatients.find(p => p.id === id)?.internalId).filter(Boolean), ...direct.map(d => d.internal_id)]);
                 list = list.filter((e) => allowedInternalIds.has(e.patientId));
             }
-            res.json({ resourceType: 'Bundle', type: 'searchset', total: list.length, entry: list.map((e) => ({ fullUrl: `/fhir/${type}/${e.internalId}`, resource: fhirSerializer[serializer](e) })) });
+            const total = list.length;
+            const paged = list.slice(offset, offset + count);
+            const base = `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`;
+            const link = [{ relation: 'self', url: `${base}?_count=${count}&_offset=${offset}${patientId ? `&patient=${patientId}` : ''}` }];
+            if (offset + count < total)
+                link.push({ relation: 'next', url: `${base}?_count=${count}&_offset=${offset + count}${patientId ? `&patient=${patientId}` : ''}` });
+            if (offset > 0)
+                link.push({ relation: 'previous', url: `${base}?_count=${count}&_offset=${Math.max(0, offset - count)}${patientId ? `&patient=${patientId}` : ''}` });
+            res.json({ resourceType: 'Bundle', type: 'searchset', total, entry: paged.map((e) => ({ fullUrl: `/fhir/${type}/${e.internalId}`, resource: fhirSerializer[serializer](e) })), link });
         });
     };
     bindSearch('Encounter', 'getAllEncounters', 'serializeEncounter');

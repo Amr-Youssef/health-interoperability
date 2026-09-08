@@ -12,7 +12,7 @@ export function createPlatformRoutes(engine) {
             res.status(500).json({ success: false, error: e.message });
         }
     });
-    router.get('/monitoring/stats', verifyToken, requirePermission('ANALYTICS_READ_NATIONAL', 'ANALYTICS_READ_ORG', 'AUDIT_READ_CENTRAL', 'AUDIT_READ_ORG'), async (req, res) => {
+    router.get('/monitoring/stats', verifyToken, requirePermission('ANALYTICS_READ_NATIONAL', 'AUDIT_READ_CENTRAL'), async (req, res) => {
         const stats = await engine.getIntegrationMonitoringStats();
         res.json(stats);
     });
