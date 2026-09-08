@@ -776,7 +776,7 @@
 
       <!-- TAB: ADMIN GOVERNANCE (MOH National) -->
       <section class="tab-pane" id="pane-admin-governance">
-        <div class="banner-info" style="background:linear-gradient(135deg, var(--m3-primary-container), var(--m3-surface-container)); border:1px solid var(--m3-outline-variant);">
+        <div class="banner-info" style="background:var(--m3-surface-container); border-right:4px solid var(--m3-primary); border:1px solid var(--m3-outline-variant);">
           <div class="banner-icon" style="background:var(--m3-primary); color:var(--m3-on-primary);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg></div>
           <div class="banner-text">
             <h4>مركز الحوكمة الوطنية الموحد – ربط الأدمن بالمريض والمستشفى</h4>
@@ -853,7 +853,7 @@
           </div>
         </div>
 
-        <div style="background:var(--m3-surface-container); border:1px solid var(--m3-outline-variant); border-radius:12px; padding:12px 16px; margin-bottom:16px; display:flex; align-items:center; gap:12px; font-size:0.82rem;">
+        <div style="background:var(--m3-surface-container); border:1px solid var(--m3-outline-variant); border-radius:var(--radius-sharp); padding:12px 16px; margin-bottom:16px; display:flex; align-items:center; gap:12px; font-size:0.82rem;">
           <span class="badge badge-warning">1</span> <span>SYS/MOH ينشئ <strong>PENDING_APPROVAL</strong></span>
           <span style="color:var(--m3-outline);">→</span>
           <span class="badge badge-info">2</span> <span>MOH يعتمد في <strong>الحوكمة</strong></span>
@@ -2460,7 +2460,7 @@
           <div class="panel">
             <div class="panel-header">
               <h3 class="panel-title">معاينة تدفق البيانات NDJSON (Live Stream Preview)</h3>
-              <button class="btn btn-sm btn-secondary" id="btn-copy-bulk-ndjson">نسخ NDJSON</button>
+              <div style="display:flex; gap:6px;"><button class="btn btn-sm btn-secondary" id="btn-copy-bulk-ndjson">نسخ NDJSON</button><button class="btn btn-sm btn-primary" id="btn-download-bulk-ndjson" style="display:none;">تنزيل NDJSON</button></div>
             </div>
             <div class="panel-body">
               <pre class="json-display" id="bulk-ndjson-preview" style="max-height: 250px; overflow-y: auto;">لا توجد حزم معروضة حالياً.</pre>

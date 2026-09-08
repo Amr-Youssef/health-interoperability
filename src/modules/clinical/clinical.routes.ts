@@ -16,23 +16,39 @@ async function resolvePatientInternalId(user: any, canonicalStore: any): Promise
 export function createClinicalRoutes(canonicalStore: any) {
   const router = Router();
   router.get('/medications', verifyToken as any, requirePermission('FHIR_READ_SELF','FHIR_READ_ORG','FHIR_READ_ALL') as any, async (req, res) => {
+    const q = String(req.query.q || '').trim().toLowerCase();
+    const page = Math.max(parseInt(String(req.query.page || '1'), 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(String(req.query.limit || '20'), 10) || 20, 5), 50);
+    const skip = (page - 1) * limit;
     const user: any = (req as any).user;
-    const list = await canonicalStore.getAllMedicationRequests();
+    let list = await canonicalStore.getAllMedicationRequests();
     if (user?.role?.role_code === 'PATIENT') {
       const targetId = await resolvePatientInternalId(user, canonicalStore);
-      if (targetId) return res.json(list.filter((m: any) => m.patientId === targetId));
-      return res.json([]);
+      if (targetId) list = list.filter((m: any) => m.patientId === targetId);
+      else list = [];
     }
+    if (q) list = list.filter((m: any) => (m.medication?.code?.sourceCode||'').toLowerCase().includes(q) || (m.medication?.code?.sfdaDisplay||'').toLowerCase().includes(q));
+    const total = list.length;
+    list = list.slice(skip, skip+limit);
+    if (req.query.q || req.query.page) return res.json({ items: list, total, page, pageSize: limit, totalPages: Math.ceil(total/limit) });
     res.json(list);
   });
   router.get('/immunizations', verifyToken as any, requirePermission('FHIR_READ_SELF','FHIR_READ_ORG','FHIR_READ_ALL') as any, async (req, res) => {
+    const q = String(req.query.q || '').trim().toLowerCase();
+    const page = Math.max(parseInt(String(req.query.page || '1'), 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(String(req.query.limit || '20'), 10) || 20, 5), 50);
+    const skip = (page - 1) * limit;
     const user: any = (req as any).user;
-    const list = await canonicalStore.getAllImmunizations();
+    let list = await canonicalStore.getAllImmunizations();
     if (user?.role?.role_code === 'PATIENT') {
       const targetId = await resolvePatientInternalId(user, canonicalStore);
-      if (targetId) return res.json(list.filter((v: any) => v.patientId === targetId));
-      return res.json([]);
+      if (targetId) list = list.filter((v: any) => v.patientId === targetId);
+      else list = [];
     }
+    if (q) list = list.filter((v: any) => (v.vaccineCode?.sourceCode||'').toLowerCase().includes(q) || (v.vaccineCode?.sourceDisplay||'').toLowerCase().includes(q));
+    const total = list.length;
+    list = list.slice(skip, skip+limit);
+    if (req.query.q || req.query.page) return res.json({ items: list, total, page, pageSize: limit, totalPages: Math.ceil(total/limit) });
     res.json(list);
   });
   return router;

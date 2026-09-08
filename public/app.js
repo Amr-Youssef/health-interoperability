@@ -1840,7 +1840,14 @@ async function submitBreakGlass(){
   }catch(e){ window.showToast('خطأ',e.message,'error'); }
 }
 
+let monitoringInterval=null;
+function initMonitoringPolling(){
+  if(monitoringInterval) clearInterval(monitoringInterval);
+  monitoringInterval=setInterval(()=>{ if(document.visibilityState==='visible' && (currentTab==='monitoring' || document.getElementById('pane-monitoring')?.classList.contains('active'))) loadMonitoringStats(); }, 15000);
+  document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden' && monitoringInterval) clearInterval(monitoringInterval); else if(document.visibilityState==='visible') initMonitoringPolling(); });
+}
 async function loadAllData() {
+  initMonitoringPolling();
   await loadMonitoringStats();
   await fetchAndCachePatients();
   await loadPatientsDropdown();
@@ -2062,6 +2069,7 @@ async function loadCdsAndAnalyticsTab() {
         if (cdsData.cards.length === 0) {
           container.innerHTML = patientHeader + '<p class="text-center py-4 text-muted">لا توجد تعارضات أو تنبيهات دوائية حرجة مسجلة لهذا المريض.</p>';
         } else {
+          cdsData.cards.sort((a,b)=> (a.indicator==='critical'?0: a.indicator==='warning'?1:2) - (b.indicator==='critical'?0: b.indicator==='warning'?1:2));
           container.innerHTML = patientHeader + cdsData.cards.map((c) => {
             const indicatorBadge = c.indicator === 'critical' ? '<span class="badge badge-error">حرج - تدقيق فوري</span>' :
                                    c.indicator === 'warning' ? '<span class="badge badge-warning">تحذير سريري</span>' :
@@ -2212,12 +2220,13 @@ async function loadNphiesTab() {
       }).join('') || '<tr><td colspan="8" class="text-center py-4">لا توجد وثائق تأمين</td></tr>';
     }
 
-    // Claims Table
+    // Claims Table — with SBS breakdown per best practices
     const claimsTbody = document.getElementById('nphies-claims-tbody');
     if (claimsTbody && data.claims) {
       claimsTbody.innerHTML = data.claims.map((clm) => {
         const resp = data.claimResponses?.find((r) => r.claimId === clm.internalId);
-        const sbsCode = clm.items?.[0]?.serviceCode?.sbsCode || 'SBS-E11';
+        const sbsCode = clm.items?.map(i=>i.serviceCode?.sbsCode).join(', ') || 'SBS-E11';
+        const sbsDetails = clm.items?.map(i=> `${i.serviceCode?.sbsDisplay||i.serviceName} (${i.quantity}x${i.unitPriceSAR})`).join('<br>') || '—';
         const linkedPatient = cachedPatients.find(p => p.id === clm.patientId);
         const patientName = linkedPatient ? (linkedPatient.nameAr || linkedPatient.name) : 'مريض مسجل';
         const isCurrent = clm.patientId === currentPatientId;
@@ -4408,7 +4417,7 @@ document.getElementById('btn-verify-audit-chain')?.addEventListener('click', asy
   const btn = document.getElementById('btn-verify-audit-chain');
   if (btn) btn.disabled = true;
   await loadSecurityAuditChain();
-  alert('✅ تم التحقق التشفيري بنجاح: السلسلة المشفرة سليمة 100% وخالية من أي تلاعب (NCA Tamper-Proof Verified).');
+  showToast('تم التحقق','السلسلة المشفرة سليمة 100% وخالية من أي تلاعب (NCA Tamper-Proof Verified)','success');
   if (btn) btn.disabled = false;
 });
 
@@ -4440,8 +4449,27 @@ async function triggerBulkExport(anonymize) {
     }
 
     if (previewEl && data.output) {
-      const sampleNdjson = data.output.map(o => `# === ${o.type} NDJSON Stream (${o.count} items) ===\n${o.ndjson}`).join('\n\n');
+      const sampleNdjson = data.output.map(o => {
+        const lines = (o.ndjson||'').split('\n').slice(0,20).join('\n');
+        const more = o.count > 20 ? `\n# ... +${o.count-20} more lines (download full)` : '';
+        return `# === ${o.type} NDJSON Stream (${o.count} items) ===\n${lines}${more}`;
+      }).join('\n\n');
       previewEl.textContent = sampleNdjson;
+      const dlBtn = document.getElementById('btn-download-bulk-ndjson');
+      if (dlBtn) {
+        dlBtn.style.display='inline-flex';
+        dlBtn.onclick = () => {
+          const full = data.output.map(o=>o.ndjson).join('\n');
+          const blob=new Blob([full],{type:'application/x-ndjson'});
+          const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`bulk-${data.isAnonymized?'anon':'full'}-${Date.now()}.ndjson`; a.click(); URL.revokeObjectURL(url);
+        };
+      }
+      if(data.isAnonymized && summaryEl){
+        const rep=document.createElement('div');
+        rep.style.cssText='margin-top:10px; padding:8px; background:var(--m3-tertiary-container); border:1px solid var(--m3-tertiary); font-size:0.78rem;';
+        rep.innerHTML=`<strong>تقرير إخفاء الهوية PDPL:</strong> تم استبدال NID→ANON-*, الاسم→Anonymous Subject, birthDate→YYYY-01-01 — ${data.totalResourcesExported} مورد مجهل جاهز للذكاء الاصطناعي`;
+        summaryEl.appendChild(rep);
+      }
     }
   } catch (err) {
     if (summaryEl) summaryEl.textContent = 'فشل تصدير الحزم.';

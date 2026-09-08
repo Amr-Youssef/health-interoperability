@@ -15,11 +15,33 @@ export function createDataRoutes(rawStore, mpi, terminologyService, provenanceSe
         }
     });
     router.get('/mpi/identities', verifyToken, requirePermission('PATIENT_READ_ALL', 'PATIENT_READ_ORG', 'AUDIT_READ_CENTRAL'), async (req, res) => {
-        res.json(await mpi.getAllIdentities());
+        const page = Math.max(parseInt(String(req.query.page || '1'), 10) || 1, 1);
+        const limit = Math.min(Math.max(parseInt(String(req.query.limit || '20'), 10) || 20, 5), 50);
+        const skip = (page - 1) * limit;
+        const q = String(req.query.q || '').trim().toLowerCase();
+        let list = await mpi.getAllIdentities();
+        if (q)
+            list = list.filter((i) => (i.internalPatientId || '').toLowerCase().includes(q) || JSON.stringify(i.linkedIdentifiers || []).toLowerCase().includes(q));
+        const total = list.length;
+        list = list.slice(skip, skip + limit);
+        if (req.query.q || req.query.page)
+            return res.json({ items: list, total, page, pageSize: limit, totalPages: Math.ceil(total / limit) });
+        res.json(list);
     });
     router.get('/mpi/duplicate-candidates', verifyToken, requirePermission('PATIENT_READ_ALL', 'PATIENT_READ_ORG'), async (req, res) => {
         try {
-            res.json(await mpi.findDuplicateCandidates());
+            const page = Math.max(parseInt(String(req.query.page || '1'), 10) || 1, 1);
+            const limit = Math.min(Math.max(parseInt(String(req.query.limit || '20'), 10) || 20, 5), 50);
+            const skip = (page - 1) * limit;
+            let list = await mpi.findDuplicateCandidates();
+            const q = String(req.query.q || '').trim().toLowerCase();
+            if (q)
+                list = list.filter((c) => JSON.stringify(c).toLowerCase().includes(q));
+            const total = list.length;
+            list = list.slice(skip, skip + limit);
+            if (req.query.q || req.query.page)
+                return res.json({ items: list, total, page, pageSize: limit, totalPages: Math.ceil(total / limit) });
+            res.json(list);
         }
         catch (e) {
             res.status(500).json({ success: false, error: e.message });
@@ -52,9 +74,48 @@ export function createDataRoutes(rawStore, mpi, terminologyService, provenanceSe
             res.status(500).json({ success: false, error: e.message });
         }
     });
-    router.get('/terminology/concepts', verifyToken, async (req, res) => { res.json(await terminologyService.getAllConcepts()); });
-    router.get('/mappings', verifyToken, async (req, res) => { res.json(engine.mappingEngine.getAllConfigurations()); });
-    router.get('/provenance', verifyToken, async (req, res) => { res.json(await provenanceService.getAllProvenance()); });
+    router.get('/terminology/concepts', verifyToken, async (req, res) => {
+        const q = String(req.query.q || '').trim().toLowerCase();
+        const page = Math.max(parseInt(String(req.query.page || '1'), 10) || 1, 1);
+        const limit = Math.min(Math.max(parseInt(String(req.query.limit || '20'), 10) || 20, 5), 50);
+        const skip = (page - 1) * limit;
+        let list = await terminologyService.getAllConcepts();
+        if (q)
+            list = list.filter((c) => (c.preferred_term || '').toLowerCase().includes(q) || (c.preferred_term_ar || '').toLowerCase().includes(q) || c.id.toLowerCase().includes(q));
+        const total = list.length;
+        list = list.slice(skip, skip + limit);
+        if (req.query.q || req.query.page)
+            return res.json({ items: list, total, page, pageSize: limit, totalPages: Math.ceil(total / limit) });
+        res.json(list);
+    });
+    router.get('/mappings', verifyToken, async (req, res) => {
+        const q = String(req.query.q || '').trim().toLowerCase();
+        let list = engine.mappingEngine.getAllConfigurations();
+        if (q)
+            list = list.filter((m) => (m.id || '').toLowerCase().includes(q) || (m.sourceSystemId || '').toLowerCase().includes(q));
+        const page = Math.max(parseInt(String(req.query.page || '1'), 10) || 1, 1);
+        const limit = Math.min(Math.max(parseInt(String(req.query.limit || '20'), 10) || 20, 5), 50);
+        const skip = (page - 1) * limit;
+        const total = list.length;
+        list = list.slice(skip, skip + limit);
+        if (req.query.q || req.query.page)
+            return res.json({ items: list, total, page, pageSize: limit, totalPages: Math.ceil(total / limit) });
+        res.json(list);
+    });
+    router.get('/provenance', verifyToken, async (req, res) => {
+        const q = String(req.query.q || '').trim().toLowerCase();
+        const page = Math.max(parseInt(String(req.query.page || '1'), 10) || 1, 1);
+        const limit = Math.min(Math.max(parseInt(String(req.query.limit || '20'), 10) || 20, 5), 50);
+        const skip = (page - 1) * limit;
+        let list = await provenanceService.getAllProvenance();
+        if (q)
+            list = list.filter((p) => JSON.stringify(p).toLowerCase().includes(q));
+        const total = list.length;
+        list = list.slice(skip, skip + limit);
+        if (req.query.q || req.query.page)
+            return res.json({ items: list, total, page, pageSize: limit, totalPages: Math.ceil(total / limit) });
+        res.json(list);
+    });
     return router;
 }
 //# sourceMappingURL=data.routes.js.map

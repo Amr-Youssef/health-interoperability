@@ -268,8 +268,19 @@ router.post('/hospitals/:id/suspend', async (req: Request, res: Response) => {
 
 router.get('/users', async (req: Request, res: Response) => {
   try {
-    const users = await prisma.user.findMany({ include: { role: true, organization: true }, orderBy: { created_at: 'desc' }, take: 200 });
-    res.json(users.map((u: any) => ({
+    const q = String(req.query.q || '').trim();
+    const page = Math.max(parseInt(String(req.query.page || '1'), 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(String(req.query.limit || '20'), 10) || 20, 5), 50);
+    const skip = (page - 1) * limit;
+    const roleFilter = req.query.role as string | undefined;
+    const where: any = {};
+    if (q) where.OR = [{ username: { contains: q, mode: 'insensitive' } }, { full_name: { contains: q, mode: 'insensitive' } }, { email: { contains: q, mode: 'insensitive' } }];
+    if (roleFilter) where.role = { role_code: roleFilter };
+    const [total, users] = await Promise.all([
+      prisma.user.count({ where }),
+      prisma.user.findMany({ where, include: { role: true, organization: true }, orderBy: { created_at: 'desc' }, skip, take: limit })
+    ]);
+    const mapped = users.map((u: any) => ({
       id: u.id,
       username: u.username,
       fullName: u.full_name,
@@ -283,7 +294,9 @@ router.get('/users', async (req: Request, res: Response) => {
       isActive: u.is_active,
       patientProfileId: u.patient_profile_id,
       createdAt: u.created_at
-    })));
+    }));
+    if (req.query.q || req.query.page || req.query.role) return res.json({ items: mapped, total, page, pageSize: limit, totalPages: Math.ceil(total / limit) });
+    res.json(mapped);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
