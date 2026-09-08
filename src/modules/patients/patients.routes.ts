@@ -36,16 +36,17 @@ export function createPatientsRoutes(canonicalStore: any) {
       return res.json({ items: [], total: 0, page: 1, pageSize: 1 });
     }
     const q = String(req.query.q || '').trim();
+    const cursor = req.query.cursor as string | undefined;
     const page = Math.max(parseInt(String(req.query.page || '1'), 10) || 1, 1);
     const limit = Math.min(Math.max(parseInt(String(req.query.limit || '20'), 10) || 20, 5), 50);
     const sort = String(req.query.sort || 'recent');
-    const skip = (page - 1) * limit;
+    const skip = cursor ? 0 : (page - 1) * limit;
     try {
       const orgId = ['HOSPITAL_ADMIN','CLINICIAN'].includes((req as any).user?.role?.role_code) ? (req as any).user.organization_id : undefined;
-      const { items, total } = await (canonicalStore as any).searchPatients({ q, skip, take: limit, sort, organizationId: orgId });
+      const { items, total, nextCursor, hasMore } = await (canonicalStore as any).searchPatients({ q, skip, take: limit, sort, organizationId: orgId, cursor });
       res.setHeader('Cache-Control', 'private, max-age=10, stale-while-revalidate=30');
       try { await (prisma as any).auditLog.create({ data: { entity_type: 'Patient', entity_id: q || '*', action: 'QUERY', actor_id: (req as any).user?.id, organization_id: (req as any).user?.organization_id, details: `Search q="${q}" page=${page} total=${total}` } }).catch(()=>{}); } catch {}
-      res.json({ items, total, page, pageSize: limit, totalPages: Math.ceil(total / limit), query: q });
+      res.json({ items, total, page, pageSize: limit, totalPages: Math.ceil(total / limit), query: q, nextCursor, hasMore });
     } catch (e: any) { res.status(500).json({ error: 'Search failed', details: e.message }); }
   });
   router.get('/patients', verifyToken as any, searchLimiter as any, requirePermission('PATIENT_READ_SELF','PATIENT_READ_ORG','PATIENT_READ_ALL','FHIR_READ_SELF','FHIR_READ_ORG','FHIR_READ_ALL') as any, async (req, res) => {

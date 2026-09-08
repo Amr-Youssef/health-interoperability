@@ -37,6 +37,7 @@ import { createHl7Routes } from '../modules/hl7/hl7.routes.js';
 import { createClinicalRoutes } from '../modules/clinical/clinical.routes.js';
 import { createAdminRoutes } from '../modules/admin/admin.routes.js';
 import { createSmartRoutes } from '../modules/smart/smart.routes.js';
+import { createClinicalWriteRoutes } from '../modules/clinical-write/clinical-write.routes.js';
 import crypto from 'crypto';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -87,6 +88,7 @@ async function resolvePatientInternalId(user: any, canonicalStore: any): Promise
 
 export function createPlatformApp() {
   const app = express();
+  app.use(cookieParser());
   app.use((req, res, next) => {
     (res as any).locals = (res as any).locals || {};
     (res as any).locals.nonce = crypto.randomBytes(16).toString('base64');
@@ -96,10 +98,10 @@ export function createPlatformApp() {
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", (req, res) => `'nonce-${(res as any).locals.nonce}'`, "'strict-dynamic'"],
-        scriptSrcAttr: ["'unsafe-hashes'", "'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU='"],
-        styleSrc: ["'self'", "https://fonts.googleapis.com", (req, res) => `'nonce-${(res as any).locals.nonce}'`],
-        styleSrcAttr: ["'unsafe-hashes'", "'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU='"],
+        scriptSrc: ["'self'", (req, res) => `'nonce-${(res as any).locals.nonce}'`, "'unsafe-inline'"],
+        scriptSrcAttr: ["'unsafe-inline'"],
+        styleSrc: ["'self'", "https://fonts.googleapis.com", (req, res) => `'nonce-${(res as any).locals.nonce}'`, "'unsafe-inline'"],
+        styleSrcAttr: ["'unsafe-inline'"],
         fontSrc: ["https://fonts.gstatic.com", "https://fonts.googleapis.com", "data:"],
         connectSrc: ["'self'"],
         imgSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
@@ -170,15 +172,29 @@ export function createPlatformApp() {
 
   // Public routes (migrated to modules/public)
 
+  app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    next();
+  });
     // Serve static UI - auth pages are public, app shell is protected
   const publicDir = path.join(__dirname, '../../public');
-  app.use('/auth', express.static(path.join(publicDir, 'auth')));
+  const staticOpts = {
+    index: false as const,
+    setHeaders: (res: Response, filePath: string) => {
+      if (filePath.endsWith('.html')) res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      else if (filePath.endsWith('.js')) res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+      else if (filePath.endsWith('.css')) res.setHeader('Content-Type', 'text/css; charset=utf-8');
+      else if (filePath.endsWith('.json')) res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    }
+  };
+  app.use('/auth', express.static(path.join(publicDir, 'auth'), staticOpts));
   app.get(['/', '/index.html'], async (req: Request, res: Response, next) => {
     const user = await extractAuthUser(req);
     if (!user) return res.redirect('/auth/login.html');
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
     return res.sendFile(path.join(publicDir, 'index.html'));
   });
-  app.use(express.static(publicDir, { index: false }));
+  app.use(express.static(publicDir, staticOpts));
   app.use('/api/hospital', hospitalRoutes);
   app.use('/api/moh', mohRoutes);
   app.use('/api/patient', patientRoutes);
@@ -203,6 +219,7 @@ export function createPlatformApp() {
   app.use('/api', createPublicRoutes());
   app.use('/api', createHl7Routes(engine));
   app.use('/api', createClinicalRoutes(canonicalStore as any));
+  app.use('/api/clinical', createClinicalWriteRoutes(canonicalStore as any));
   app.use('/api', createAdminRoutes(canonicalStore, rawStore, mpi, engine));
   app.use('/', createSmartRoutes(engine));
 

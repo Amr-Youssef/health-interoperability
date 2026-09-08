@@ -81,8 +81,9 @@ export function createFhirRoutes(canonicalStore: ICanonicalStore & any, fhirSeri
       direct.forEach(d => linkedIds.add(d.id));
       patients = patients.filter((p: any) => linkedIds.has(p.id) || (p as any).sourceSystemId === orgId);
     }
+    const mask = ['HOSPITAL_ADMIN','CLINICIAN'].includes(user?.role?.role_code);
     if (identifier) patients = patients.filter((p: any) => p.identifiers.some((id: any) => id.value.includes(identifier)));
-    res.json({ resourceType: 'Bundle', type: 'searchset', total: patients.length, entry: patients.map((p: any) => ({ fullUrl: `/fhir/Patient/${p.internalId}`, resource: fhirSerializer.serializePatient(p) })) });
+    res.json({ resourceType: 'Bundle', type: 'searchset', total: patients.length, entry: patients.map((p: any) => ({ fullUrl: `/fhir/Patient/${p.internalId}`, resource: fhirSerializer.serializePatient(p, { maskNid: mask }) })) });
   });
 
   router.get('/Patient/:id', verifyToken as any, requirePermission('FHIR_READ_SELF','FHIR_READ_ORG','FHIR_READ_ALL') as any, async (req: Request, res: Response) => {
@@ -98,7 +99,8 @@ export function createFhirRoutes(canonicalStore: ICanonicalStore & any, fhirSeri
     }
     const patient = await canonicalStore.getPatient(patientId);
     if (!patient) return res.status(404).json({ resourceType: 'OperationOutcome', issue: [{ severity: 'error', code: 'not-found', diagnostics: 'Patient not found' }] });
-    res.json(fhirSerializer.serializePatient(patient));
+    const mask = ['HOSPITAL_ADMIN','CLINICIAN'].includes(user?.role?.role_code);
+    res.json(fhirSerializer.serializePatient(patient, { maskNid: mask }));
   });
 
   router.get('/Patient/:id/$everything', verifyToken as any, requirePermission('FHIR_READ_SELF','FHIR_READ_ORG','FHIR_READ_ALL') as any, async (req: Request, res: Response) => {

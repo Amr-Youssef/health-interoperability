@@ -12,7 +12,9 @@ export declare class FhirR4Serializer {
     /**
      * Serializes a CanonicalPatient to HL7 FHIR R4 Patient with NPHIES-aligned profiles
      */
-    serializePatient(patient: CanonicalPatient): Record<string, any>;
+    serializePatient(patient: CanonicalPatient, opts?: {
+        maskNid?: boolean;
+    }): Record<string, any>;
     /**
      * Serializes a CanonicalEncounter to HL7 FHIR R4 Encounter
      */

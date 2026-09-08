@@ -1707,9 +1707,14 @@ function handleTabSwitch(tab) {
   if (tab === 'nphies') loadNphiesTab();
   if (tab === 'medications') loadMedicationsTab();
   if (tab === 'mpi') loadMpiIdentities();
+  if (typeof applyLongitudinalPermissions !== 'function') window.applyLongitudinalPermissions = function(){};
   if (tab === 'longitudinal') {
     loadPatientsDropdown();
     applyLongitudinalPermissions();
+    const cwCard=document.getElementById('clinical-write-card');
+    if(cwCard) cwCard.style.display = (appAuth.currentRole==='CLINICIAN' || appAuth.currentRole==='HOSPITAL_ADMIN') ? 'block' : 'none';
+    const cwPatient=document.getElementById('clinical-write-patient');
+    if(cwPatient) cwPatient.value = currentPatientId || '';
     if (appAuth.currentRole === 'PATIENT') {
       loadPatientSelfReportedDashboard();
     }
@@ -1751,6 +1756,88 @@ function handleTabSwitch(tab) {
   if (tab === 'bulkexport') loadBulkExportTab();
   if (tab === 'fhir') fetchFhirEndpoint(currentFhirEndpoint);
   updateGlobalPatientBar();
+}
+document.getElementById('clinical-write-type')?.addEventListener('change', e=>{
+  document.querySelectorAll('.clinical-form').forEach(f=> f.style.display='none');
+  const v=e.target.value;
+  const map={encounter:'clinical-write-form-encounter', condition:'clinical-write-form-condition', observation:'clinical-write-form-observation', diagnostic:'clinical-write-form-diagnostic', allergy:'clinical-write-form-allergy', immunization:'clinical-write-form-immunization', medication:'clinical-write-form-medication'};
+  const el=document.getElementById(map[v]);
+  if(el) el.style.display='block';
+});
+let terminologyData=[];
+fetch('/data/terminology.json').then(r=>r.json()).then(j=>{
+  terminologyData=j;
+  const dlC=document.getElementById('terminology-conditions'); if(dlC) dlC.innerHTML=j.filter(x=>x.category==='condition').map(x=>`<option value="${x.displayAr} — ${x.display} (${x.code})">`).join('');
+  const dlO=document.getElementById('terminology-observations'); if(dlO) dlO.innerHTML=j.filter(x=>x.category==='observation').map(x=>`<option value="${x.displayAr} — ${x.display} (${x.code})">`).join('');
+  const dlA=document.getElementById('terminology-allergies'); if(dlA) dlA.innerHTML=j.filter(x=>x.category==='allergy').map(x=>`<option value="${x.displayAr} — ${x.display} (${x.code})">`).join('');
+  const dlI=document.getElementById('terminology-immunizations'); if(dlI) dlI.innerHTML=j.filter(x=>x.category==='immunization').map(x=>`<option value="${x.displayAr} — ${x.display} (${x.code})">`).join('');
+  const dlM=document.getElementById('terminology-medications'); if(dlM) dlM.innerHTML=j.filter(x=>x.category==='medication').map(x=>`<option value="${x.displayAr} — ${x.display} (${x.code})">`).join('');
+}).catch(()=>{});
+document.getElementById('cw-cond-search')?.addEventListener('input', e=>{
+  const v=e.target.value.toLowerCase();
+  const found=terminologyData.find(x=> x.category==='condition' && (x.display.toLowerCase().includes(v) || x.displayAr.includes(v) || x.code.includes(v)));
+  if(found){ document.getElementById('cw-cond-code').value=found.code; document.getElementById('cw-cond-display').value=found.displayAr + ' — ' + found.display; }
+});
+document.getElementById('cw-obs-search')?.addEventListener('input', e=>{
+  const v=e.target.value.toLowerCase();
+  const found=terminologyData.find(x=> x.category==='observation' && (x.display.toLowerCase().includes(v) || x.displayAr.includes(v) || x.code.includes(v)));
+  if(found){ document.getElementById('cw-obs-code').value=found.code; const unitEl=document.getElementById('cw-obs-unit'); if(unitEl && found.unit) unitEl.value=found.unit; }
+});
+document.getElementById('cw-diag-search')?.addEventListener('input', e=>{
+  const v=e.target.value.toLowerCase();
+  const found=terminologyData.find(x=> x.category==='observation' && (x.display.toLowerCase().includes(v) || x.displayAr.includes(v) || x.code.includes(v)));
+  if(found){ document.getElementById('cw-diag-code').value=found.code; }
+});
+document.getElementById('cw-allergy-search')?.addEventListener('input', e=>{
+  const v=e.target.value.toLowerCase();
+  const found=terminologyData.find(x=> x.category==='allergy' && (x.display.toLowerCase().includes(v) || x.displayAr.includes(v) || x.code.includes(v)));
+  if(found){ document.getElementById('cw-allergy-code').value=found.code; document.getElementById('cw-allergy-display').value=found.displayAr + ' — ' + found.display; }
+});
+document.getElementById('cw-imm-search')?.addEventListener('input', e=>{
+  const v=e.target.value.toLowerCase();
+  const found=terminologyData.find(x=> x.category==='immunization' && (x.display.toLowerCase().includes(v) || x.displayAr.includes(v) || x.code.includes(v)));
+  if(found){ document.getElementById('cw-imm-code').value=found.code; document.getElementById('cw-imm-display').value=found.displayAr + ' — ' + found.display; }
+});
+document.getElementById('cw-med-search')?.addEventListener('input', e=>{
+  const v=e.target.value.toLowerCase();
+  const found=terminologyData.find(x=> x.category==='medication' && (x.display.toLowerCase().includes(v) || x.displayAr.includes(v) || x.code.includes(v)));
+  if(found){ document.getElementById('cw-med-code').value=found.code; document.getElementById('cw-med-display').value=found.displayAr + ' — ' + found.display; }
+});
+async function submitClinicalWrite(){
+  const type=document.getElementById('clinical-write-type')?.value;
+  const pid=document.getElementById('clinical-write-patient')?.value || window.currentPatientId;
+  const statusEl=document.getElementById('clinical-write-status');
+  if(!pid) { if(statusEl) statusEl.textContent='اختر مريضاً أولاً'; return; }
+  if(statusEl) statusEl.textContent='جاري الحفظ...';
+  try{
+    let url='', body={ patientId: pid };
+    if(type==='encounter'){ url='/api/clinical/encounter'; body.encounterClass=document.getElementById('cw-enc-class')?.value; body.priority=document.getElementById('cw-enc-priority')?.value; body.department=document.getElementById('cw-enc-dept')?.value; body.periodStart=document.getElementById('cw-enc-start')?.value; body.periodEnd=document.getElementById('cw-enc-end')?.value; }
+    else if(type==='condition'){ url='/api/clinical/condition'; body.code=document.getElementById('cw-cond-code')?.value || document.getElementById('cw-cond-search')?.value.split('(').pop()?.replace(')','').trim() || document.getElementById('cw-cond-search')?.value; body.codeDisplay=document.getElementById('cw-cond-display')?.value || document.getElementById('cw-cond-search')?.value; body.clinicalStatus=document.getElementById('cw-cond-clinical')?.value; body.verificationStatus=document.getElementById('cw-cond-verif')?.value; body.onsetDate=document.getElementById('cw-cond-onset')?.value; body.severity=document.getElementById('cw-cond-severity')?.value; body.notes=document.getElementById('cw-cond-notes')?.value; }
+    else if(type==='observation'){ url='/api/clinical/observation'; body.code=document.getElementById('cw-obs-code')?.value || document.getElementById('cw-obs-search')?.value; body.display=document.getElementById('cw-obs-search')?.value; body.value=document.getElementById('cw-obs-value')?.value; body.unit=document.getElementById('cw-obs-unit')?.value; body.method=document.getElementById('cw-obs-method')?.value; body.interpretation=document.getElementById('cw-obs-interpret')?.value; }
+    else if(type==='diagnostic'){ url='/api/clinical/diagnostic-report'; body.code=document.getElementById('cw-diag-code')?.value || document.getElementById('cw-diag-search')?.value; body.display=document.getElementById('cw-diag-search')?.value; body.conclusion=document.getElementById('cw-diag-conclusion')?.value; body.category=document.getElementById('cw-diag-category')?.value; body.status=document.getElementById('cw-diag-status')?.value; }
+    else if(type==='allergy'){ url='/api/clinical/allergy'; body.code=document.getElementById('cw-allergy-code')?.value || document.getElementById('cw-allergy-search')?.value; body.display=document.getElementById('cw-allergy-display')?.value || document.getElementById('cw-allergy-search')?.value; body.criticality=document.getElementById('cw-allergy-criticality')?.value; body.allergyType=document.getElementById('cw-allergy-type')?.value; body.category=document.getElementById('cw-allergy-category')?.value; body.onsetDate=document.getElementById('cw-allergy-onset')?.value; body.reaction=document.getElementById('cw-allergy-reaction')?.value; }
+    else if(type==='immunization'){ url='/api/clinical/immunization'; body.vaccineCode=document.getElementById('cw-imm-code')?.value || document.getElementById('cw-imm-search')?.value; body.display=document.getElementById('cw-imm-display')?.value || document.getElementById('cw-imm-search')?.value; body.lotNumber=document.getElementById('cw-imm-lot')?.value; body.site=document.getElementById('cw-imm-site')?.value; body.route=document.getElementById('cw-imm-route')?.value; body.occurrenceDate=document.getElementById('cw-imm-date')?.value; }
+    else if(type==='medication'){ url='/api/clinical/medication'; body.code=document.getElementById('cw-med-code')?.value || document.getElementById('cw-med-search')?.value; body.display=document.getElementById('cw-med-display')?.value || document.getElementById('cw-med-search')?.value; body.status=document.getElementById('cw-med-status')?.value; body.dosage=document.getElementById('cw-med-dosage')?.value; body.route=document.getElementById('cw-med-route')?.value; body.frequency=document.getElementById('cw-med-frequency')?.value; body.instructions=document.getElementById('cw-med-instructions')?.value; }
+    const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const d=await r.json();
+    if(!r.ok) throw new Error(d.error||'فشل الحفظ');
+    if(statusEl){ statusEl.style.color='var(--m3-success)'; statusEl.textContent='✓ تم الحفظ بنجاح'; }
+    window.showToast('تم الحفظ','تمت إضافة البيانات السريرية','success');
+    if(window.currentPatientId) { const rec=await fetch('/api/patients/'+pid+'/longitudinal').then(r=>r.json()); if(rec) { const content=document.getElementById('longitudinal-content'); if(content) content.innerHTML='<pre style="white-space:pre-wrap; font-size:0.82rem;">'+JSON.stringify(rec,null,2)+'</pre>'; } }
+  }catch(e){ if(statusEl){ statusEl.style.color='var(--m3-error)'; statusEl.textContent=e.message; } window.showToast('خطأ',e.message,'error'); }
+}
+function toggleBreakGlass(){ const p=document.getElementById('break-glass-panel'); if(p) p.style.display = p.style.display==='none'?'block':'none'; }
+async function submitBreakGlass(){
+  const pid=document.getElementById('clinical-write-patient')?.value || window.currentPatientId;
+  const reason=document.getElementById('break-glass-reason')?.value.trim();
+  if(!pid||!reason) { window.showToast('خطأ','المريض والسبب مطلوبان','error'); return; }
+  try{
+    const r=await fetch('/api/security/break-glass',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({patientId:pid, practitionerId: window.appAuth?.user?.id||'unknown', requestingOrgId: window.appAuth?.user?.orgId, emergencyReason: reason})});
+    const d=await r.json();
+    if(!r.ok) throw new Error(d.error);
+    window.showToast('تم كسر الزجاج','تم تسجيل الوصول الطارئ','success');
+    document.getElementById('break-glass-panel').style.display='none';
+  }catch(e){ window.showToast('خطأ',e.message,'error'); }
 }
 
 async function loadAllData() {
@@ -2471,6 +2558,8 @@ async function selectLongitudinalPatient(patientId) {
   currentPatientId = patientId;
   saveRecentLongitudinal(patientId);
   updateGlobalPatientBar();
+  const cwPatient=document.getElementById('clinical-write-patient');
+  if(cwPatient) cwPatient.value = patientId;
   await loadLongitudinalRecord(patientId);
   document.getElementById('longitudinal-content')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   // re-render to highlight
@@ -4514,12 +4603,21 @@ async function loadAppointments(){
       const clinName = a.clinician?.full_name ? `${a.clinician.full_name} (@${a.clinician.username})` : (a.clinician_id ? a.clinician_id.substring(0,8) : 'غير محدد - أي طبيب');
       const clinicianBadge = a.clinician ? `<span class="badge badge-info">${clinName}</span>` : '<span class="badge badge-secondary">غير محدد</span>';
       let actions='';
-      if(['HOSPITAL_ADMIN','CLINICIAN'].includes(appAuth.currentRole) && a.status==='proposed'){
-        actions+=`<button class="btn btn-primary btn-sm" onclick="promptAssignClinician('${a.id}')">تأكيد + تعيين طبيب</button> `;
-        actions+=`<button class="btn btn-secondary btn-sm" onclick="updateAppointment('${a.id}','booked')">تأكيد بدون تحديد</button> `;
+      if(a.status==='proposed'){
+        if(appAuth.currentRole==='HOSPITAL_ADMIN'){
+          actions+=`<button class="btn btn-primary btn-sm" onclick="promptAssignClinician('${a.id}')">تأكيد + تعيين طبيب</button> `;
+          actions+=`<button class="btn btn-secondary btn-sm" onclick="updateAppointment('${a.id}','booked')">تأكيد بدون تحديد</button> `;
+        } else if(appAuth.currentRole==='CLINICIAN'){
+          actions+=`<button class="btn btn-primary btn-sm" onclick="updateAppointment('${a.id}','booked','${appAuth.user?.id||''}')">تأكيد (تعيين نفسي)</button> `;
+        }
       }
-      if(['HOSPITAL_ADMIN','CLINICIAN'].includes(appAuth.currentRole) && a.status==='booked') actions+=`<button class="btn btn-warning btn-sm" onclick="updateAppointment('${a.id}','arrived')">وصول</button> `;
-      if(['HOSPITAL_ADMIN','CLINICIAN'].includes(appAuth.currentRole) && a.status==='arrived') actions+=`<button class="btn btn-success btn-sm" onclick="updateAppointment('${a.id}','fulfilled')">إتمام</button> `;
+      if(a.status==='booked'){
+        if(appAuth.currentRole==='HOSPITAL_ADMIN') actions+=`<button class="btn btn-warning btn-sm" onclick="updateAppointment('${a.id}','arrived')">وصول</button> `;
+        else if(appAuth.currentRole==='CLINICIAN' && a.clinician_id===appAuth.user?.id) actions+=`<button class="btn btn-warning btn-sm" onclick="updateAppointment('${a.id}','arrived')">وصول</button> `;
+      }
+      if(a.status==='arrived'){
+        if(appAuth.currentRole==='HOSPITAL_ADMIN' || (appAuth.currentRole==='CLINICIAN' && a.clinician_id===appAuth.user?.id)) actions+=`<button class="btn btn-success btn-sm" onclick="updateAppointment('${a.id}','fulfilled')">إتمام</button> `;
+      }
       if(appAuth.currentRole==='PATIENT' && ['proposed','booked'].includes(a.status)) actions+=`<button class="btn btn-secondary btn-sm" onclick="updateAppointment('${a.id}','cancelled')">إلغاء</button>`;
       return `<tr><td><small>${a.patient_id?.substring(0,8)}...</small></td><td>${orgName}</td><td><span class="badge ${typeBadge}">${a.appointment_type}</span><br>${clinicianBadge}</td><td><span class="badge ${statusBadge}">${a.status}</span></td><td>${dateStr}</td><td>${consentBadge} <small>${a.consent?.consent_type||''}</small></td><td>${actions||'--'}</td></tr>`;
     }).join('');

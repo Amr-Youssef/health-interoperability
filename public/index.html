@@ -37,11 +37,11 @@
       </div>
 
       <div class="auth-tabs">
-        <button type="button" class="auth-tab-btn active" id="tab-login" onclick="appAuth.switchTab('login')">تسجيل الدخول</button>
-        <button type="button" class="auth-tab-btn" id="tab-register" onclick="appAuth.switchTab('register')">إنشاء حساب</button>
+        <button type="button" class="auth-tab-btn active" id="tab-login" data-action="switch-tab" data-tab="login">تسجيل الدخول</button>
+        <button type="button" class="auth-tab-btn" id="tab-register" data-action="switch-tab" data-tab="register">إنشاء حساب</button>
       </div>
 
-      <form id="login-form" class="auth-form" onsubmit="event.preventDefault(); appAuth.login();">
+      <form id="login-form" class="auth-form">
         <div class="auth-form-group">
           <label for="login-username">
             <svg class="auth-label-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -415,6 +415,20 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-5"/><path d="M12 12l8-8a2.18 2.18 0 0 1 3 3l-8 8a2 2 0 0 1-1 .59l-3 1 1-3a2 2 0 0 1 .59-1z"/><circle cx="12" cy="7" r="2"/></svg>
           </span>
           <span class="label">بياناتي الشخصية</span>
+        </button>
+
+        <button class="nav-item" data-tab="patient-insurance" id="tab-btn-patient-insurance" title="تأميني - وثائق ومطالبات نفيس">
+          <span class="nav-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="8" y="1" width="8" height="4"/><path d="M12 11a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg>
+          </span>
+          <span class="label">تأميني</span>
+        </button>
+
+        <button class="nav-item" data-tab="patient-access" id="tab-btn-patient-access" title="سجل وصولي وتصدير بياناتي">
+          <span class="nav-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          </span>
+          <span class="label">سجل وصولي</span>
         </button>
 
         <button class="nav-item" data-tab="hospital-migration" id="tab-btn-hospital-migration" title="نظام المستشفى - ترحيل البيانات القديمة">
@@ -1522,6 +1536,52 @@
         </div>
 
         <div id="patient-self-reported-dashboard" class="mt-4" style="display:none;"></div>
+        <div id="clinical-write-card" class="card mb-4" style="display:block; border:1px solid var(--m3-outline-variant); background:var(--m3-surface-container);">
+          <div class="card-header" style="background:var(--m3-surface-container-high);"><h3>إضافة بيانات سريرية — الطبيب</h3><span class="badge badge-info">CLINICAL_WRITE_ORG</span></div>
+          <div class="card-body" style="display:grid; gap:12px;">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;" class="grid-2">
+              <div><label style="font-size:0.78rem;">نوع الإضافة</label><select id="clinical-write-type" class="form-select"><option value="encounter">زيارة/فحص (Encounter)</option><option value="condition">تشخيص (Condition)</option><option value="observation">فحص مخبري/قياس (Observation)</option><option value="diagnostic">تقرير تشخيصي (DiagnosticReport)</option><option value="allergy">حساسية (Allergy)</option><option value="immunization">تطعيم (Immunization)</option><option value="medication">وصفة دوائية (Medication)</option></select></div>
+              <div><label style="font-size:0.78rem;">المريض النشط</label><input id="clinical-write-patient" class="form-input" readonly placeholder="اختر مريضاً من البحث أعلاه"><small style="font-size:0.68rem; color:var(--m3-on-surface-variant);">يُملأ تلقائياً من المريض النشط</small></div>
+            </div>
+            <div id="clinical-write-form-encounter" class="clinical-form">
+              <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;" class="grid-2"><div><label style="font-size:0.78rem;">نوع الزيارة *</label><select id="cw-enc-class" class="form-select"><option value="AMB">عيادة (AMB)</option><option value="IMP">تنويم (IMP)</option><option value="EMER">طوارئ (EMER)</option><option value="VR">افتراضية (VR)</option></select></div><div><label style="font-size:0.78rem;">الأولوية</label><select id="cw-enc-priority" class="form-select"><option value="routine">روتين</option><option value="urgent">عاجل</option><option value="asap">فوري</option></select></div><div><label style="font-size:0.78rem;">القسم *</label><input id="cw-enc-dept" class="form-input" placeholder="الباطنية"></div></div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:8px;" class="grid-2"><div><label style="font-size:0.78rem;">تاريخ البداية</label><input id="cw-enc-start" type="datetime-local" class="form-input"></div><div><label style="font-size:0.78rem;">تاريخ النهاية</label><input id="cw-enc-end" type="datetime-local" class="form-input"></div></div>
+            </div>
+            <div id="clinical-write-form-condition" class="clinical-form" style="display:none;">
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;" class="grid-2"><div><label style="font-size:0.78rem;">ابحث عن التشخيص (عربي/إنجليزي) *</label><input id="cw-cond-search" class="form-input" list="terminology-conditions" placeholder="اكتب سكري أو diabetes"><datalist id="terminology-conditions"></datalist><input type="hidden" id="cw-cond-code"><small style="font-size:0.68rem; color:var(--m3-on-surface-variant);">50+ تشخيص SNOMED/ICD10 — يُملأ الكود تلقائياً</small></div><div><label style="font-size:0.78rem;">الوصف</label><input id="cw-cond-display" class="form-input" placeholder="يُملأ تلقائياً" readonly style="background:var(--m3-surface-container-low);"></div></div>
+              <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-top:8px;" class="grid-2"><div><label style="font-size:0.78rem;">الحالة السريرية</label><select id="cw-cond-clinical" class="form-select"><option value="active">نشط</option><option value="recurrence">انتكاس</option><option value="resolved">متعافى</option></select></div><div><label style="font-size:0.78rem;">التحقق</label><select id="cw-cond-verif" class="form-select"><option value="confirmed">مؤكد</option><option value="provisional">مبدئي</option><option value="differential">تفريقي</option></select></div><div><label style="font-size:0.78rem;">تاريخ الظهور</label><input id="cw-cond-onset" type="date" class="form-input"></div></div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:8px;" class="grid-2"><div><label style="font-size:0.78rem;">الشدة</label><select id="cw-cond-severity" class="form-select"><option value="">-- بدون --</option><option value="mild">خفيفة</option><option value="moderate">متوسطة</option><option value="severe">شديدة</option></select></div><div><label style="font-size:0.78rem;">ملاحظات</label><input id="cw-cond-notes" class="form-input" placeholder="ملاحظات إضافية"></div></div>
+            </div>
+            <div id="clinical-write-form-observation" class="clinical-form" style="display:none;">
+              <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;" class="grid-2"><div><label style="font-size:0.78rem;">ابحث عن الفحص (LOINC)</label><input id="cw-obs-search" class="form-input" list="terminology-observations" placeholder="السكر التراكمي"><datalist id="terminology-observations"></datalist><input type="hidden" id="cw-obs-code"></div><div><label style="font-size:0.78rem;">القيمة</label><input id="cw-obs-value" type="number" class="form-input" placeholder="7.2"></div><div><label style="font-size:0.78rem;">الوحدة</label><input id="cw-obs-unit" class="form-input" placeholder="%" readonly style="background:var(--m3-surface-container-low);"></div></div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:8px;" class="grid-2"><div><label style="font-size:0.78rem;">طريقة القياس</label><select id="cw-obs-method" class="form-select"><option value="manual">يدوي</option><option value="device">جهاز</option><option value="calculated">محسوب</option></select></div><div><label style="font-size:0.78rem;">التفسير</label><select id="cw-obs-interpret" class="form-select"><option value="">-- بدون --</option><option value="NORMAL">طبيعي</option><option value="HIGH">مرتفع</option><option value="LOW">منخفض</option></select></div></div>
+            </div>
+            <div id="clinical-write-form-diagnostic" class="clinical-form" style="display:none;">
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;" class="grid-2"><div><label style="font-size:0.78rem;">ابحث عن التقرير (LOINC)</label><input id="cw-diag-search" class="form-input" list="terminology-observations" placeholder="تقرير مخبري"><input type="hidden" id="cw-diag-code"><small style="font-size:0.68rem; color:var(--m3-on-surface-variant);">LOINC — يُملأ تلقائياً</small></div><div><label style="font-size:0.78rem;">الخلاصة</label><input id="cw-diag-conclusion" class="form-input" placeholder="طبيعي — لا يوجد شذوذ"></div></div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:8px;" class="grid-2"><div><label style="font-size:0.78rem;">الفئة</label><select id="cw-diag-category" class="form-select"><option value="LAB">مختبري</option><option value="RAD">أشعة</option><option value="PAT">أنسجة</option></select></div><div><label style="font-size:0.78rem;">الحالة</label><select id="cw-diag-status" class="form-select"><option value="final">نهائي</option><option value="preliminary">مبدئي</option></select></div></div>
+            </div>
+            <div id="clinical-write-form-allergy" class="clinical-form" style="display:none;">
+              <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;" class="grid-2"><div><label style="font-size:0.78rem;">ابحث عن المادة (SNOMED)</label><input id="cw-allergy-search" class="form-input" list="terminology-allergies" placeholder="بنسلين"><datalist id="terminology-allergies"></datalist><input type="hidden" id="cw-allergy-code"></div><div><label style="font-size:0.78rem;">الوصف</label><input id="cw-allergy-display" class="form-input" placeholder="يُملأ تلقائياً" readonly style="background:var(--m3-surface-container-low);"></div><div><label style="font-size:0.78rem;">الخطورة</label><select id="cw-allergy-criticality" class="form-select"><option value="high">عالية</option><option value="low">منخفضة</option><option value="unable-to-assess">غير محددة</option></select></div></div>
+              <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-top:8px;" class="grid-2"><div><label style="font-size:0.78rem;">النوع</label><select id="cw-allergy-type" class="form-select"><option value="allergy">حساسية</option><option value="intolerance">عدم تحمل</option></select></div><div><label style="font-size:0.78rem;">الفئة</label><select id="cw-allergy-category" class="form-select"><option value="medication">دوائية</option><option value="food">غذائية</option><option value="environment">بيئية</option></select></div><div><label style="font-size:0.78rem;">تاريخ الظهور</label><input id="cw-allergy-onset" type="date" class="form-input"></div></div>
+              <div style="margin-top:8px;"><label style="font-size:0.78rem;">رد الفعل</label><input id="cw-allergy-reaction" class="form-input" placeholder="طفح جلدي، ضيق تنفس"></div>
+            </div>
+            <div id="clinical-write-form-immunization" class="clinical-form" style="display:none;">
+              <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;" class="grid-2"><div><label style="font-size:0.78rem;">ابحث عن اللقاح (CVX)</label><input id="cw-imm-search" class="form-input" list="terminology-immunizations" placeholder="إنفلونزا"><datalist id="terminology-immunizations"></datalist><input type="hidden" id="cw-imm-code"></div><div><label style="font-size:0.78rem;">الوصف</label><input id="cw-imm-display" class="form-input" placeholder="يُملأ تلقائياً" readonly style="background:var(--m3-surface-container-low);"></div><div><label style="font-size:0.78rem;">رقم التشغيلة</label><input id="cw-imm-lot" class="form-input" placeholder="LOT123"></div></div>
+              <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-top:8px;" class="grid-2"><div><label style="font-size:0.78rem;">الموقع</label><select id="cw-imm-site" class="form-select"><option value="LA">ذراع أيسر</option><option value="RA">ذراع أيمن</option><option value="LG">فخذ أيسر</option><option value="RG">فخذ أيمن</option></select></div><div><label style="font-size:0.78rem;">المسار</label><select id="cw-imm-route" class="form-select"><option value="IM">عضلي</option><option value="SC">تحت الجلد</option><option value="PO">فموي</option></select></div><div><label style="font-size:0.78rem;">تاريخ الإعطاء</label><input id="cw-imm-date" type="date" class="form-input"></div></div>
+            </div>
+            <div id="clinical-write-form-medication" class="clinical-form" style="display:none;">
+              <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;" class="grid-2"><div><label style="font-size:0.78rem;">ابحث عن الدواء (SFDA)</label><input id="cw-med-search" class="form-input" list="terminology-medications" placeholder="باراسيتامول"><datalist id="terminology-medications"></datalist><input type="hidden" id="cw-med-code"></div><div><label style="font-size:0.78rem;">الوصف</label><input id="cw-med-display" class="form-input" placeholder="يُملأ تلقائياً" readonly style="background:var(--m3-surface-container-low);"></div><div><label style="font-size:0.78rem;">الحالة</label><select id="cw-med-status" class="form-select"><option value="active">نشط</option><option value="on-hold">موقوف</option><option value="completed">مكتمل</option></select></div></div>
+              <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-top:8px;" class="grid-2"><div><label style="font-size:0.78rem;">الجرعة</label><input id="cw-med-dosage" class="form-input" placeholder="500mg BID"></div><div><label style="font-size:0.78rem;">المسار</label><select id="cw-med-route" class="form-select"><option value="PO">فموي</option><option value="IV">وريدي</option><option value="IM">عضلي</option><option value="SC">تحت الجلد</option></select></div><div><label style="font-size:0.78rem;">التكرار</label><select id="cw-med-frequency" class="form-select"><option value="QD">مرة يومياً</option><option value="BID">مرتين يومياً</option><option value="TID">3 مرات يومياً</option><option value="QID">4 مرات يومياً</option></select></div></div>
+              <div style="margin-top:8px;"><label style="font-size:0.78rem;">تعليمات إضافية</label><input id="cw-med-instructions" class="form-input" placeholder="بعد الأكل، مع كوب ماء"></div>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button class="btn btn-primary" onclick="submitClinicalWrite()">حفظ البيانات السريرية</button>
+              <button class="btn btn-secondary" onclick="toggleBreakGlass()" style="margin-inline-start:auto; background:var(--m3-error-container); color:var(--m3-on-error-container);">كسر زجاج طوارئ</button>
+              <span id="clinical-write-status" style="font-size:0.82rem; align-self:center;"></span>
+            </div>
+            <div id="break-glass-panel" style="display:none; border:1px solid var(--m3-error); padding:10px; background:var(--m3-error-container);"><input id="break-glass-reason" class="form-input" placeholder="سبب الطوارئ — إلزامي"><button class="btn btn-primary" onclick="submitBreakGlass()" style="background:var(--m3-error); margin-top:8px;">تأكيد كسر الزجاج</button></div>
+          </div>
+        </div>
         <div id="longitudinal-content" class="longitudinal-content">
         </div>
       </section>
@@ -1750,6 +1810,37 @@
             </div>
           </div>
 
+        </div>
+      </section>
+
+      <!-- TAB: PATIENT INSURANCE (NPHIES) — PATIENT only -->
+      <section class="tab-pane" id="pane-patient-insurance">
+        <div class="card">
+          <div class="card-header"><h3>تأميني — وثائق ومطالبات نفيس</h3><span class="badge badge-info">قراءة ذاتية</span></div>
+          <div class="card-body">
+            <div id="patient-insurance-loading" style="text-align:center; padding:30px; color:var(--m3-on-surface-variant);">جاري تحميل بيانات التأمين...</div>
+            <div id="patient-insurance-content" style="display:none;">
+              <div id="patient-insurance-eligibility" style="margin-bottom:16px;"></div>
+              <h4 style="margin:12px 0 8px;">الوثائق</h4>
+              <div class="table-wrap"><table class="data-table"><thead><tr><th>شركة التأمين</th><th>رقم الوثيقة</th><th>الفئة</th><th>الحالة</th></tr></thead><tbody id="patient-insurance-tbody"></tbody></table></div>
+              <h4 style="margin:16px 0 8px;">المطالبات</h4>
+              <div class="table-wrap"><table class="data-table"><thead><tr><th>رقم المطالبة</th><th>الإجمالي</th><th>تحملي</th><th>الحالة</th></tr></thead><tbody id="patient-claims-tbody"></tbody></table></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB: PATIENT ACCESS HISTORY & EXPORT — PATIENT only -->
+      <section class="tab-pane" id="pane-patient-access">
+        <div class="card">
+          <div class="card-header"><h3>سجل وصولي وتصدير بياناتي</h3><span class="badge badge-success">خصوصية تامة</span></div>
+          <div class="card-body">
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
+              <button class="btn btn-secondary" onclick="loadPatientAccessLog()">تحديث سجل الوصول</button>
+              <button class="btn btn-primary" onclick="exportPatientData()">تصدير بياناتي (مجهولة)</button>
+            </div>
+            <div class="table-wrap"><table class="data-table"><thead><tr><th>التاريخ</th><th>الإجراء</th><th>الجهة</th><th>التفاصيل</th></tr></thead><tbody id="patient-access-tbody"><tr><td colspan="4" style="text-align:center; padding:20px;">لم يتم تحميل السجل بعد</td></tr></tbody></table></div>
+          </div>
         </div>
       </section>
 
@@ -2025,6 +2116,16 @@
                 <strong style="font-size:0.88rem;">ماذا لا يمكنك تعديله؟</strong>
                 <p style="font-size:0.8rem; color:var(--m3-on-surface-variant); line-height:1.6; margin-top:4px;">معرف المنشأة، نوعها (مستشفى/عيادة/مختبر)، وحالة الاعتماد <strong>محمية</strong> وتتطلب طلب اعتماد عبر وزارة الصحة. المنطقة واسم المنشأة متاح للتعديل ذاتياً لكن مع تدقيق إداري لاحق وضمان عدم تكرار الأسماء.</p>
               </div>
+            </div>
+          </div>
+          <div class="card" id="hospital-users-card" style="margin-top:18px;">
+            <div class="card-header"><h3>إدارة مستخدمي المنشأة</h3><span class="badge" style="background:var(--m3-secondary);">HOSPITAL_ADMIN فقط</span></div>
+            <div class="card-body">
+              <div style="display:flex; gap:8px; margin-bottom:12px;"><input id="hospital-new-username" placeholder="اسم المستخدم" class="form-input" style="flex:1"><input id="hospital-new-fullname" placeholder="الاسم الكامل" class="form-input" style="flex:1"><select id="hospital-new-role" class="form-select" style="flex:1"><option value="CLINICIAN">طبيب CLINICIAN</option><option value="HOSPITAL_ADMIN">أدمن HOSPITAL_ADMIN</option></select></div>
+              <div style="display:flex; gap:8px; margin-bottom:12px;"><input id="hospital-new-password" placeholder="كلمة المرور 8+ حروف وأرقام" type="password" class="form-input" style="flex:1"><input id="hospital-new-email" placeholder="البريد (اختياري)" class="form-input" style="flex:1"><input id="hospital-new-phone" placeholder="جوال 05xxxxxxxx" class="form-input" style="flex:1"></div>
+              <button class="btn btn-primary" onclick="createHospitalUser()" style="background:var(--m3-secondary);">إنشاء مستخدم</button>
+              <div id="hospital-users-status" style="margin-top:8px; font-size:0.8rem;"></div>
+              <div class="table-wrap" style="margin-top:12px; max-height:320px; overflow:auto;"><table class="data-table"><thead><tr><th>المستخدم</th><th>الدور</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody id="hospital-users-tbody"><tr><td colspan="4" style="text-align:center; padding:20px;">جاري التحميل...</td></tr></tbody></table></div>
             </div>
           </div>
         </div>

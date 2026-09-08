@@ -13,11 +13,13 @@ export class FhirR4Serializer {
   /**
    * Serializes a CanonicalPatient to HL7 FHIR R4 Patient with NPHIES-aligned profiles
    */
-  serializePatient(patient: CanonicalPatient): Record<string, any> {
+  serializePatient(patient: CanonicalPatient, opts?: { maskNid?: boolean }): Record<string, any> {
+    const mask = (v: string) => v.length >= 7 ? v[0] + 'XXXXX' + v.slice(-4) : 'XXXX';
     const fhirIdentifiers: any[] = [];
 
     for (const id of patient.identifiers) {
       if (id.type === 'NID') {
+        const val = opts?.maskNid ? mask(id.value) : id.value;
         fhirIdentifiers.push({
           use: 'official',
           type: {
@@ -30,9 +32,10 @@ export class FhirR4Serializer {
             ]
           },
           system: 'urn:sa:nid',
-          value: id.value
+          value: val
         });
       } else if (id.type === 'IQAMA') {
+        const iqVal = opts?.maskNid ? mask(id.value) : id.value;
         fhirIdentifiers.push({
           use: 'official',
           type: {
@@ -45,7 +48,7 @@ export class FhirR4Serializer {
             ]
           },
           system: 'urn:sa:iqama',
-          value: id.value
+          value: iqVal
         });
       } else if (id.type === 'MRN') {
         fhirIdentifiers.push({
@@ -103,7 +106,7 @@ export class FhirR4Serializer {
 
     return {
       resourceType: 'Patient',
-      id: patient.internalId,
+      id: (patient as any).internalIdUuid || patient.internalId,
       meta: {
         profile: ['http://nphies.sa/fhir/ksa/nphies-fs/StructureDefinition/NphiesPatient'],
         lastUpdated: patient.updatedAt

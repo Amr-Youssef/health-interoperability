@@ -159,11 +159,20 @@ router.patch('/:id/status', async (req: Request, res: Response) => {
     if (clinician_id) {
       const clin = await prisma.user.findUnique({ where: { id: clinician_id }, include: { role: true } });
       if (!clin || clin.role?.role_code !== 'CLINICIAN') return res.status(400).json({ error: 'clinician_id must be CLINICIAN' });
+      if (clin.organization_id !== (await prisma.appointment.findUnique({ where: { id }, select: { organization_id: true } }))?.organization_id) {
+        return res.status(403).json({ error: 'الطبيب لا يتبع نفس المنشأة' });
+      }
+    }
+    if (user.role?.role_code === 'CLINICIAN' && clinician_id && clinician_id !== user.id) {
+      return res.status(403).json({ error: 'الطبيب لا يمكنه تعيين طبيب آخر — فقط أدمن المنشأة يخصص الأطباء' });
     }
     const appt = await prisma.appointment.findUnique({ where: { id }, include: { consent: true } });
     if (!appt) return res.status(404).json({ error: 'Appointment not found' });
     if (user.role?.role_code === 'CLINICIAN' || user.role?.role_code === 'HOSPITAL_ADMIN') {
       if (appt.organization_id !== user.organization_id) return res.status(403).json({ error: 'Cross-org denied' });
+      if (user.role?.role_code === 'CLINICIAN' && appt.clinician_id && appt.clinician_id !== user.id) {
+        return res.status(403).json({ error: 'الموعد مخصص لطبيب آخر — لا يمكنك تأكيده' });
+      }
       if (status === 'booked' && !appt.clinician_id && !clinician_id) {
         return res.status(400).json({ error: 'يجب تخصيص الطبيب المسؤول عند التأكيد - المستشفى تختار المتاح (الدمج: رغبة المريض اختيارية والتخصيص النهائي للمنشأة)' });
       }

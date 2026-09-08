@@ -39,7 +39,10 @@
       const c=map[v]; if(!c) return;
       const u=$('#login-username'), p=$('#login-password');
       if(u) u.value=c[0]; if(p) p.value=c[1];
-      $('#login-form')?.requestSubmit();
+      const form=$('#login-form');
+      if(!form) return;
+      if(typeof form.requestSubmit==='function') try{ form.requestSubmit(); return; }catch{}
+      form.dispatchEvent(new Event('submit', {cancelable:true, bubbles:true}));
     });
   });
 

@@ -14,6 +14,10 @@ import { CanonicalDiagnosticReport } from '../core/domain/diagnostic-report.js';
 import type { LongitudinalRecord } from '../core/domain/longitudinal-record.js';
 import type { ICanonicalStore } from './canonical-store.interface.js';
 
+const searchCache = new Map<string, { data: any; ts: number }>();
+const SEARCH_CACHE_TTL = 30 * 1000;
+const SEARCH_CACHE_MAX = 500;
+
 export type { LongitudinalRecord };
 
 export class PrismaCanonicalStore implements ICanonicalStore {
@@ -172,12 +176,14 @@ export class PrismaCanonicalStore implements ICanonicalStore {
     return patients.map(p => this.mapPatientToCanonical(p));
   }
 
-  async searchPatients(params: { q?: string; skip?: number; take?: number; sort?: string; organizationId?: string }): Promise<{ items: CanonicalPatient[]; total: number }> {
+  async searchPatients(params: { q?: string; skip?: number; take?: number; sort?: string; organizationId?: string; cursor?: string }): Promise<{ items: CanonicalPatient[]; total: number; nextCursor?: string|null }> {
     const q = (params.q || '').trim();
     const take = Math.min(Math.max(params.take || 20, 1), 50);
-    const skip = Math.min(Math.max(params.skip || 0, 0), 10000);
+    const skip = (params as any).cursor ? 0 : Math.min(Math.max(params.skip || 0, 0), 10000);
     const hasQuery = q.length >= 2;
-    if (!hasQuery) return { items: [], total: 0 };
+    const cacheKey = `${q}|${skip}|${take}|${params.sort||'recent'}|${(params as any).organizationId||''}|${(params as any).cursor||''}`;
+    const cached = searchCache.get(cacheKey);
+    if (cached && Date.now() - cached.ts < SEARCH_CACHE_TTL) return cached.data as any;
     let where: any = {};
     if (hasQuery) {
       const isNumeric = /^[0-9]+$/.test(q);
@@ -202,17 +208,33 @@ export class PrismaCanonicalStore implements ICanonicalStore {
           ]
         };
       }
+      }
       if ((params as any).organizationId) {
         const orgId = (params as any).organizationId;
-        where = { AND: [where, { OR: [{ source_system_id: orgId }, { organizations: { some: { organization_id: orgId, active: true } } }] }] };
+        const orgFilter: any = { OR: [{ source_system_id: orgId }, { organizations: { some: { organization_id: orgId, active: true } } }] };
+        if (Object.keys(where).length === 0) where = orgFilter;
+        else where = { AND: [where, orgFilter] };
       }
-    }
-    const orderBy: any = params.sort === 'name' ? [{ first_name_ar: 'asc' }, { first_name: 'asc' }] : { created_at: 'desc' };
-    const [total, rows] = await Promise.all([
-      this.prisma.patient.count({ where }),
-      this.prisma.patient.findMany({ where, include: { identifiers: true }, orderBy, skip, take })
+      if ((params as any).cursor) {
+        try {
+          const decoded = JSON.parse(Buffer.from((params as any).cursor, 'base64').toString('utf8'));
+          const cursorWhere: any = { OR: [{ created_at: { lt: new Date(decoded.created_at) } }, { created_at: decoded.created_at, id: { lt: decoded.id } }] };
+          where = Object.keys(where).length ? { AND: [where, cursorWhere] } : cursorWhere;
+        } catch {}
+      }
+    const orderBy: any = params.sort === 'name' ? [{ first_name_ar: 'asc' }, { first_name: 'asc' }] : [{ created_at: 'desc' }, { id: 'desc' }];
+    const fetchTake = (params as any).cursor ? take + 1 : take;
+    const [total, rowsAll] = await Promise.all([
+      (params as any).cursor ? Promise.resolve(0) : this.prisma.patient.count({ where }),
+      this.prisma.patient.findMany({ where, include: { identifiers: true }, orderBy, skip: (params as any).cursor ? 0 : skip, take: fetchTake })
     ]);
-    return { items: rows.map(p => this.mapPatientToCanonical(p)), total };
+    const hasMore = rowsAll.length > take;
+    const rows = hasMore ? rowsAll.slice(0, take) : rowsAll;
+    const nextCursor = hasMore ? Buffer.from(JSON.stringify({ created_at: rows[rows.length-1].created_at, id: rows[rows.length-1].id })).toString('base64') : null;
+    const result: any = { items: rows.map(p => this.mapPatientToCanonical(p)), total: (params as any).cursor ? rows.length : total, nextCursor, hasMore };
+    searchCache.set(cacheKey, { data: result, ts: Date.now() });
+    if (searchCache.size > SEARCH_CACHE_MAX) searchCache.delete(searchCache.keys().next().value);
+    return result;
   }
 
   async countPatients(): Promise<number> {
@@ -257,6 +279,7 @@ export class PrismaCanonicalStore implements ICanonicalStore {
       update: {
         patient_id: enc.patientId,
         ...(patientUuid ? { patient_id_uuid: patientUuid } as any : {}),
+        ...(patientUuid ? { patient_id_uuid: patientUuid } as any : {}),
         status: enc.status,
         encounter_class: encClass,
         period_start: enc.period?.start ? new Date(enc.period.start) : null,
@@ -268,6 +291,7 @@ export class PrismaCanonicalStore implements ICanonicalStore {
       create: {
         internal_id: enc.internalId,
         patient_id: enc.patientId,
+        ...(patientUuid ? { patient_id_uuid: patientUuid } as any : {}),
         ...(patientUuid ? { patient_id_uuid: patientUuid } as any : {}),
         status: enc.status,
         encounter_class: encClass,
@@ -342,10 +366,13 @@ export class PrismaCanonicalStore implements ICanonicalStore {
   }
 
   async saveCondition(cond: CanonicalCondition): Promise<string> {
+        let patientUuid: string | null = null;
+    try { const pat = await this.prisma.patient.findFirst({ where: { OR: [{ internal_id: (arguments[0] as any).patientId }, { internal_id_uuid: (arguments[0] as any).patientId } as any, { id: (arguments[0] as any).patientId }] } }); if (pat) patientUuid = (pat as any).id; } catch {}
     await this.prisma.condition.upsert({
       where: { internal_id: cond.internalId },
       update: {
         patient_id: cond.patientId,
+        ...(patientUuid ? { patient_id_uuid: patientUuid } as any : {}),
         encounter_id: cond.encounterId,
         clinical_status: cond.clinicalStatus,
         verification_status: cond.verificationStatus,
@@ -363,6 +390,7 @@ export class PrismaCanonicalStore implements ICanonicalStore {
       create: {
         internal_id: cond.internalId,
         patient_id: cond.patientId,
+        ...(patientUuid ? { patient_id_uuid: patientUuid } as any : {}),
         encounter_id: cond.encounterId,
         clinical_status: cond.clinicalStatus,
         verification_status: cond.verificationStatus,
@@ -435,10 +463,13 @@ export class PrismaCanonicalStore implements ICanonicalStore {
     const valUnit = (obs as any).valueQuantity?.unit ?? (obs as any).value?.unit;
     const valStr = (obs as any).valueString ?? (obs as any).value?.stringValue;
 
+        let patientUuid: string | null = null;
+    try { const pat = await this.prisma.patient.findFirst({ where: { OR: [{ internal_id: (arguments[0] as any).patientId }, { internal_id_uuid: (arguments[0] as any).patientId } as any, { id: (arguments[0] as any).patientId }] } }); if (pat) patientUuid = (pat as any).id; } catch {}
     await this.prisma.observation.upsert({
       where: { internal_id: obs.internalId },
       update: {
         patient_id: obs.patientId,
+        ...(patientUuid ? { patient_id_uuid: patientUuid } as any : {}),
         encounter_id: obs.encounterId,
         status: obs.status,
         code_source_code: obs.code.sourceCode,
@@ -458,6 +489,7 @@ export class PrismaCanonicalStore implements ICanonicalStore {
       create: {
         internal_id: obs.internalId,
         patient_id: obs.patientId,
+        ...(patientUuid ? { patient_id_uuid: patientUuid } as any : {}),
         encounter_id: obs.encounterId,
         status: obs.status,
         code_source_code: obs.code.sourceCode,
@@ -532,10 +564,13 @@ export class PrismaCanonicalStore implements ICanonicalStore {
     const subId = (cov as any).policyNumber || (cov as any).subscriberId || 'POL-001';
     const benId = (cov as any).memberId || (cov as any).beneficiaryId || 'MEM-001';
 
+        let patientUuid: string | null = null;
+    try { const pat = await this.prisma.patient.findFirst({ where: { OR: [{ internal_id: (arguments[0] as any).patientId }, { internal_id_uuid: (arguments[0] as any).patientId } as any, { id: (arguments[0] as any).patientId }] } }); if (pat) patientUuid = (pat as any).id; } catch {}
     await this.prisma.coverage.upsert({
       where: { internal_id: cov.internalId },
       update: {
         patient_id: cov.patientId,
+        ...(patientUuid ? { patient_id_uuid: patientUuid } as any : {}),
         status: cov.status,
         type: 'health',
         subscriber_id: subId,
@@ -549,6 +584,7 @@ export class PrismaCanonicalStore implements ICanonicalStore {
       create: {
         internal_id: cov.internalId,
         patient_id: cov.patientId,
+        ...(patientUuid ? { patient_id_uuid: patientUuid } as any : {}),
         status: cov.status,
         type: 'health',
         subscriber_id: subId,
@@ -611,10 +647,13 @@ export class PrismaCanonicalStore implements ICanonicalStore {
   async saveClaim(claim: CanonicalClaim): Promise<string> {
     const totalGross = (claim as any).totalGrossSAR ?? (claim as any).total?.value ?? 0;
     const claimType = (claim as any).claimType ?? (claim as any).type ?? 'institutional';
+        let patientUuid: string | null = null;
+    try { const pat = await this.prisma.patient.findFirst({ where: { OR: [{ internal_id: (arguments[0] as any).patientId }, { internal_id_uuid: (arguments[0] as any).patientId } as any, { id: (arguments[0] as any).patientId }] } }); if (pat) patientUuid = (pat as any).id; } catch {}
     await this.prisma.claim.upsert({
       where: { internal_id: claim.internalId },
       update: {
         patient_id: claim.patientId,
+        ...(patientUuid ? { patient_id_uuid: patientUuid } as any : {}),
         encounter_id: claim.encounterId,
         coverage_id: claim.coverageId,
         status: claim.status,
@@ -629,6 +668,7 @@ export class PrismaCanonicalStore implements ICanonicalStore {
       create: {
         internal_id: claim.internalId,
         patient_id: claim.patientId,
+        ...(patientUuid ? { patient_id_uuid: patientUuid } as any : {}),
         encounter_id: claim.encounterId,
         coverage_id: claim.coverageId,
         status: claim.status,
@@ -737,6 +777,8 @@ export class PrismaCanonicalStore implements ICanonicalStore {
 
   async saveMedicationRequest(rx: CanonicalMedicationRequest): Promise<string> {
     const medCode = (rx as any).medication?.code || (rx as any).medicationCode || {};
+        let patientUuid: string | null = null;
+    try { const pat = await this.prisma.patient.findFirst({ where: { OR: [{ internal_id: (arguments[0] as any).patientId }, { internal_id_uuid: (arguments[0] as any).patientId } as any, { id: (arguments[0] as any).patientId }] } }); if (pat) patientUuid = (pat as any).id; } catch {}
     await this.prisma.medicationRequest.upsert({
       where: { internal_id: rx.internalId },
       update: {
@@ -829,10 +871,13 @@ export class PrismaCanonicalStore implements ICanonicalStore {
 
   async saveImmunization(imm: CanonicalImmunization): Promise<string> {
     const vaxCode: any = imm.vaccineCode || {};
+        let patientUuid: string | null = null;
+    try { const pat = await this.prisma.patient.findFirst({ where: { OR: [{ internal_id: (arguments[0] as any).patientId }, { internal_id_uuid: (arguments[0] as any).patientId } as any, { id: (arguments[0] as any).patientId }] } }); if (pat) patientUuid = (pat as any).id; } catch {}
     await this.prisma.immunization.upsert({
       where: { internal_id: imm.internalId },
       update: {
         patient_id: imm.patientId,
+        ...(patientUuid ? { patient_id_uuid: patientUuid } as any : {}),
         encounter_id: imm.encounterId,
         status: imm.status,
         code_source_code: vaxCode.sourceCode,
@@ -846,6 +891,7 @@ export class PrismaCanonicalStore implements ICanonicalStore {
       create: {
         internal_id: imm.internalId,
         patient_id: imm.patientId,
+        ...(patientUuid ? { patient_id_uuid: patientUuid } as any : {}),
         encounter_id: imm.encounterId,
         status: imm.status,
         code_source_code: vaxCode.sourceCode,
@@ -911,10 +957,13 @@ export class PrismaCanonicalStore implements ICanonicalStore {
 
   async saveAllergyIntolerance(alg: CanonicalAllergyIntolerance): Promise<string> {
     const algCode = (alg as any).substanceCode || (alg as any).code || {};
+        let patientUuid: string | null = null;
+    try { const pat = await this.prisma.patient.findFirst({ where: { OR: [{ internal_id: (arguments[0] as any).patientId }, { internal_id_uuid: (arguments[0] as any).patientId } as any, { id: (arguments[0] as any).patientId }] } }); if (pat) patientUuid = (pat as any).id; } catch {}
     await this.prisma.allergyIntolerance.upsert({
       where: { internal_id: alg.internalId },
       update: {
         patient_id: alg.patientId,
+        ...(patientUuid ? { patient_id_uuid: patientUuid } as any : {}),
         clinical_status: alg.clinicalStatus,
         verification_status: alg.verificationStatus,
         type: alg.type,
@@ -930,6 +979,7 @@ export class PrismaCanonicalStore implements ICanonicalStore {
       create: {
         internal_id: alg.internalId,
         patient_id: alg.patientId,
+        ...(patientUuid ? { patient_id_uuid: patientUuid } as any : {}),
         clinical_status: alg.clinicalStatus,
         verification_status: alg.verificationStatus,
         type: alg.type,
@@ -991,10 +1041,13 @@ export class PrismaCanonicalStore implements ICanonicalStore {
   }
 
   async saveDiagnosticReport(rep: CanonicalDiagnosticReport): Promise<string> {
+        let patientUuid: string | null = null;
+    try { const pat = await this.prisma.patient.findFirst({ where: { OR: [{ internal_id: (arguments[0] as any).patientId }, { internal_id_uuid: (arguments[0] as any).patientId } as any, { id: (arguments[0] as any).patientId }] } }); if (pat) patientUuid = (pat as any).id; } catch {}
     await this.prisma.diagnosticReport.upsert({
       where: { internal_id: rep.internalId },
       update: {
         patient_id: rep.patientId,
+        ...(patientUuid ? { patient_id_uuid: patientUuid } as any : {}),
         encounter_id: rep.encounterId,
         status: rep.status,
         code_source_code: rep.code.sourceCode,
@@ -1009,6 +1062,7 @@ export class PrismaCanonicalStore implements ICanonicalStore {
       create: {
         internal_id: rep.internalId,
         patient_id: rep.patientId,
+        ...(patientUuid ? { patient_id_uuid: patientUuid } as any : {}),
         encounter_id: rep.encounterId,
         status: rep.status,
         code_source_code: rep.code.sourceCode,
