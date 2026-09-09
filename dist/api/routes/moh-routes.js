@@ -455,6 +455,46 @@ router.patch('/users/:id/role', async (req, res) => {
         res.status(500).json({ error: e.message });
     }
 });
+router.get('/organization-changes', async (req, res) => {
+    try {
+        const list = await prisma.organizationChangeRequest.findMany({ where: { status: 'PENDING' }, include: { organization: true, requester: true }, orderBy: { created_at: 'desc' }, take: 50 });
+        res.json(list.map((r) => ({ id: r.id, organizationId: r.organization_id, organizationName: r.organization?.organization_name, organizationNameAr: r.organization?.organization_name_ar, field: r.field, oldValue: r.old_value, newValue: r.new_value, status: r.status, requestedBy: r.requester?.full_name || r.requested_by, createdAt: r.created_at })));
+    }
+    catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+router.post('/organization-changes/:id/approve', async (req, res) => {
+    try {
+        const r = await prisma.organizationChangeRequest.findUnique({ where: { id: req.params.id }, include: { organization: true } });
+        if (!r || r.status !== 'PENDING')
+            return res.status(404).json({ error: 'Request not found or not pending' });
+        const fieldMap = { organizationName: 'organization_name', organizationNameAr: 'organization_name_ar', region: 'region' };
+        const col = fieldMap[r.field];
+        if (!col)
+            return res.status(400).json({ error: 'Unknown field' });
+        await prisma.organization.update({ where: { id: r.organization_id }, data: { [col]: r.new_value } });
+        await prisma.organizationChangeRequest.update({ where: { id: r.id }, data: { status: 'APPROVED', reviewed_by: req.user.id, reviewed_at: new Date() } });
+        await prisma.auditLog.create({ data: { entity_type: 'Organization', entity_id: r.organization_id, action: 'ORG_CHANGE_APPROVED', actor_id: req.user.id, organization_id: req.user.organization_id, new_values: JSON.stringify({ field: r.field, newValue: r.new_value }), details: `MOH approved ${r.field} change for ${r.organization?.organization_name}` } }).catch(() => { });
+        res.json({ success: true });
+    }
+    catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+router.post('/organization-changes/:id/reject', async (req, res) => {
+    try {
+        const r = await prisma.organizationChangeRequest.findUnique({ where: { id: req.params.id } });
+        if (!r || r.status !== 'PENDING')
+            return res.status(404).json({ error: 'Request not found or not pending' });
+        await prisma.organizationChangeRequest.update({ where: { id: r.id }, data: { status: 'REJECTED', reviewed_by: req.user.id, reviewed_at: new Date() } });
+        await prisma.auditLog.create({ data: { entity_type: 'Organization', entity_id: r.organization_id, action: 'ORG_CHANGE_REJECTED', actor_id: req.user.id, organization_id: req.user.organization_id, details: `MOH rejected ${r.field} change` } }).catch(() => { });
+        res.json({ success: true });
+    }
+    catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
 router.get('/patients', async (req, res) => {
     try {
         const take = Math.min(parseInt(req.query.take) || 100, 200);

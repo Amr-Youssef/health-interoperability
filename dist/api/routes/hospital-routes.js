@@ -212,23 +212,20 @@ router.patch('/me', async (req, res) => {
         if (data.organizationName !== undefined) {
             oldValues.organizationName = freshOrg.organization_name;
             newValues.organizationName = data.organizationName;
-            orgUpdates.organization_name = data.organizationName;
+            await prisma.organizationChangeRequest.create({ data: { organization_id: user.organization_id, requested_by: user.id, field: 'organizationName', old_value: freshOrg.organization_name, new_value: data.organizationName, status: 'PENDING' } });
         }
         if (data.organizationNameAr !== undefined) {
             oldValues.organizationNameAr = freshOrg.organization_name_ar;
             newValues.organizationNameAr = data.organizationNameAr;
-            orgUpdates.organization_name_ar = data.organizationNameAr;
+            await prisma.organizationChangeRequest.create({ data: { organization_id: user.organization_id, requested_by: user.id, field: 'organizationNameAr', old_value: freshOrg.organization_name_ar || '', new_value: data.organizationNameAr, status: 'PENDING' } });
         }
         if (data.region !== undefined) {
             oldValues.region = freshOrg.region;
             newValues.region = data.region;
-            orgUpdates.region = data.region;
+            await prisma.organizationChangeRequest.create({ data: { organization_id: user.organization_id, requested_by: user.id, field: 'region', old_value: freshOrg.region || '', new_value: data.region, status: 'PENDING' } });
         }
         if (Object.keys(userUpdates).length > 0) {
             await prisma.user.update({ where: { id: user.id }, data: userUpdates });
-        }
-        if (Object.keys(orgUpdates).length > 0) {
-            await prisma.organization.update({ where: { id: user.organization_id }, data: orgUpdates });
         }
         const [updatedUser, updatedOrg] = await Promise.all([
             prisma.user.findUnique({ where: { id: user.id }, include: { role: true, organization: true } }),
@@ -249,9 +246,12 @@ router.patch('/me', async (req, res) => {
             });
         }
         catch (e) { /* best effort */ }
+        const pendingOrgFields = Object.keys(newValues).filter(k => ['organizationName', 'organizationNameAr', 'region'].includes(k));
+        const immediateFields = Object.keys(newValues).filter(k => !['organizationName', 'organizationNameAr', 'region'].includes(k));
         res.json({
-            message: 'تم تحديث بيانات المنشأة المصرح بها بنجاح وسيتم توثيقها في سجل التدقيق',
+            message: pendingOrgFields.length ? `تم حفظ ${immediateFields.join(', ') || 'بيانات التواصل'} — تغييرات المنشأة (${pendingOrgFields.join(', ')}) بانتظار موافقة الوزارة` : 'تم تحديث بيانات المنشأة المصرح بها بنجاح وسيتم توثيقها في سجل التدقيق',
             updatedFields: Object.keys(newValues),
+            pendingFields: pendingOrgFields,
             user: {
                 id: updatedUser.id,
                 username: updatedUser.username,
@@ -471,6 +471,16 @@ router.get('/patients/:id/longitudinal', async (req, res) => {
         res.status(500).json({ error: 'Failed to load longitudinal record' });
     }
 });
+// Hospital pending change requests
+router.get('/me/change-requests', async (req, res) => {
+    try {
+        const list = await prisma.organizationChangeRequest.findMany({ where: { organization_id: req.user.organization_id }, orderBy: { created_at: 'desc' }, take: 20 });
+        res.json(list);
+    }
+    catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
 // Hospital imports history
 router.get('/imports', async (req, res) => {
     try {
@@ -595,6 +605,103 @@ router.patch('/users/:id/role', requireHospitalAdmin, requirePermission('ROLE_AS
         const updated = await prisma.user.update({ where: { id: target.id }, data: { role_id: role.id } });
         await prisma.auditLog.create({ data: { entity_type: 'User', entity_id: target.id, action: 'HOSPITAL_USER_ROLE_CHANGED', actor_id: req.user.id, organization_id: orgId, old_values: JSON.stringify({ role: target.role.role_code }), new_values: JSON.stringify({ role: rc }), details: `Role changed for ${target.username}` } }).catch(() => { });
         res.json({ success: true, user: { id: updated.id, role: rc } });
+    }
+    catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+router.patch('/users/:id', requireHospitalAdmin, requirePermission('USER_MANAGE_ORG'), async (req, res) => {
+    try {
+        const orgId = req.user.organization_id;
+        const target = await prisma.user.findUnique({ where: { id: req.params.id }, include: { role: true } });
+        if (!target || target.organization_id !== orgId)
+            return res.status(404).json({ error: 'User not found in your organization' });
+        if (['SYS_ADMIN', 'MOH_ADMIN', 'MOH_AUDITOR'].includes(target.role.role_code))
+            return res.status(403).json({ error: 'Cannot manage national roles' });
+        const { full_name, email, phone } = req.body;
+        const updates = {};
+        const oldValues = {};
+        const newValues = {};
+        if (full_name !== undefined) {
+            const v = String(full_name).trim();
+            if (v.length < 3 || v.length > 80)
+                return res.status(400).json({ error: 'الاسم الكامل بين 3 و 80' });
+            if (v.split(/\s+/).length < 2)
+                return res.status(400).json({ error: 'الاسم يجب أن يحتوي على الأول والعائلة' });
+            oldValues.full_name = target.full_name;
+            newValues.full_name = v;
+            updates.full_name = v;
+        }
+        if (email !== undefined) {
+            const v = String(email).trim().toLowerCase();
+            if (v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v))
+                return res.status(400).json({ error: 'صيغة البريد غير صحيحة' });
+            if (v) {
+                const dup = await prisma.user.findFirst({ where: { email: v, NOT: { id: target.id } } });
+                if (dup)
+                    return res.status(400).json({ error: 'البريد مسجل لمستخدم آخر' });
+            }
+            oldValues.email = target.email;
+            newValues.email = v || null;
+            updates.email = v || null;
+        }
+        if (phone !== undefined) {
+            const raw = String(phone).trim();
+            let norm = null;
+            if (raw) {
+                const c = raw.replace(/[\s\-\(\)]/g, '');
+                if (/^05\d{8}$/.test(c))
+                    norm = '+966' + c.substring(1);
+                else if (/^5\d{8}$/.test(c))
+                    norm = '+966' + c;
+                else if (/^9665\d{8}$/.test(c))
+                    norm = '+' + c;
+                else if (/^\+9665\d{8}$/.test(c))
+                    norm = c;
+                else
+                    return res.status(400).json({ error: 'رقم الجوال غير صحيح: 05xxxxxxxx' });
+            }
+            oldValues.phone = target.phone;
+            newValues.phone = norm;
+            updates.phone = norm;
+        }
+        if (Object.keys(updates).length === 0)
+            return res.status(400).json({ error: 'لا توجد حقول للتعديل' });
+        const updated = await prisma.user.update({ where: { id: target.id }, data: updates });
+        await prisma.auditLog.create({ data: { entity_type: 'User', entity_id: target.id, action: 'HOSPITAL_USER_UPDATED', actor_id: req.user.id, organization_id: orgId, old_values: JSON.stringify(oldValues), new_values: JSON.stringify(newValues), details: `Updated user ${target.username}` } }).catch(() => { });
+        res.json({ success: true, user: { id: updated.id, fullName: updated.full_name, email: updated.email, phone: updated.phone } });
+    }
+    catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+router.post('/users/:id/reset-password', requireHospitalAdmin, requirePermission('USER_MANAGE_ORG'), async (req, res) => {
+    try {
+        const orgId = req.user.organization_id;
+        const target = await prisma.user.findUnique({ where: { id: req.params.id }, include: { role: true } });
+        if (!target || target.organization_id !== orgId)
+            return res.status(404).json({ error: 'User not found in your organization' });
+        if (['SYS_ADMIN', 'MOH_ADMIN', 'MOH_AUDITOR'].includes(target.role.role_code))
+            return res.status(403).json({ error: 'Cannot manage national roles' });
+        const { new_password } = req.body;
+        if (!new_password || new_password.length < 8 || !/[A-Za-z]/.test(new_password) || !/\d/.test(new_password))
+            return res.status(400).json({ error: 'كلمة المرور ضعيفة: 8+ حروف وأرقام' });
+        const hash = await bcrypt.hash(new_password, 10);
+        await prisma.user.update({ where: { id: target.id }, data: { password_hash: hash } });
+        await prisma.auditLog.create({ data: { entity_type: 'User', entity_id: target.id, action: 'HOSPITAL_USER_PASSWORD_RESET', actor_id: req.user.id, organization_id: orgId, details: `Password reset for ${target.username}` } }).catch(() => { });
+        res.json({ success: true, message: 'تمت إعادة تعيين كلمة المرور' });
+    }
+    catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+router.get('/users/:id', requireHospitalAdmin, requirePermission('USER_MANAGE_ORG'), async (req, res) => {
+    try {
+        const orgId = req.user.organization_id;
+        const u = await prisma.user.findUnique({ where: { id: req.params.id }, include: { role: true, organization: true } });
+        if (!u || u.organization_id !== orgId)
+            return res.status(404).json({ error: 'User not found' });
+        res.json({ id: u.id, username: u.username, fullName: u.full_name, email: u.email, phone: u.phone, role: u.role.role_code, isActive: u.is_active, createdAt: u.created_at, organization: u.organization?.organization_name });
     }
     catch (e) {
         res.status(500).json({ error: e.message });

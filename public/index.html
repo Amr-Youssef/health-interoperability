@@ -828,6 +828,10 @@
             <div class="card-body" id="gov-users-list" style="max-height:400px; overflow:auto;">جاري التحميل...</div>
           </div>
           <div class="card">
+            <div class="card-header"><div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l11 0"/><path d="M9 12l-3 3"/><path d="M9 12l-3 -3"/></svg><h3>طلبات تغيير بيانات المنشآت (بانتظار موافقة الوزارة)</h3></div><button class="btn btn-secondary btn-sm" onclick="loadOrgChangeRequests()">تحديث</button></div>
+            <div class="card-body" id="gov-org-changes-list" style="max-height:300px; overflow:auto;">جاري التحميل...</div>
+          </div>
+          <div class="card">
             <div class="card-header"><div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><h3>طابور التحقق – بيانات المرضى المبلغة</h3></div><button class="btn btn-secondary btn-sm" onclick="loadVerificationQueue()">تحديث</button></div>
             <div class="card-body" id="gov-verify-list" style="max-height:400px; overflow:auto;">جاري التحميل...</div>
           </div>
@@ -2003,36 +2007,20 @@
               </div>
               <span class="badge badge-warning">محمية - لا يمكن تعديل النوع/المعرف</span>
             </div>
-            <div class="card-body">
-              <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px;">
-                <div class="metric-card" style="padding:14px; background:var(--m3-surface-container); border:1px dashed var(--m3-outline-variant);">
-                  <span class="metric-label">معرف المنشأة</span>
-                  <strong id="hosp-ro-id" style="font-family:'JetBrains Mono', monospace; font-size:0.92rem;">—</strong>
-                  <small style="display:block; color:var(--m3-on-surface-muted); font-size:0.72rem; margin-top:4px;">المعرف الداخلي الموحد</small>
+            <div class="card-body" style="padding:0;">
+              <div style="display:flex; flex-wrap:wrap; gap:24px; padding:18px 20px; border-bottom:1px solid var(--m3-outline-variant); align-items:flex-start;">
+                <div style="flex:1; min-width:220px;">
+                  <div style="font-size:0.72rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--m3-on-surface-muted);">المعرف الموحد</div>
+                  <div id="hosp-ro-id" style="font-family:'JetBrains Mono', monospace; font-size:1.25rem; font-weight:700; margin-top:4px; color:var(--m3-on-surface);">—</div>
+                  <div style="font-size:0.78rem; color:var(--m3-on-surface-variant); margin-top:2px;"><span id="hosp-ro-type">—</span> • <span id="hosp-ro-status" class="badge badge-success">—</span></div>
                 </div>
-                <div class="metric-card" style="padding:14px; background:var(--m3-surface-container); border:1px dashed var(--m3-outline-variant);">
-                  <span class="metric-label">نوع المنشأة</span>
-                  <strong id="hosp-ro-type">—</strong>
-                  <small style="display:block; color:var(--m3-on-surface-muted); font-size:0.72rem; margin-top:4px;">يتطلب اعتماد الوزارة لتغييره</small>
-                </div>
-                <div class="metric-card" style="padding:14px; background:var(--m3-surface-container); border:1px dashed var(--m3-outline-variant);">
-                  <span class="metric-label">حالة الاعتماد</span>
-                  <strong><span id="hosp-ro-status" class="badge badge-success">—</span></strong>
-                  <small style="display:block; color:var(--m3-on-surface-muted); font-size:0.72rem; margin-top:4px;">حالة التفعيل في المنصة الوطنية</small>
-                </div>
-                <div class="metric-card" style="padding:14px; background:var(--m3-surface-container); border:1px dashed var(--m3-outline-variant);">
-                  <span class="metric-label">تاريخ التسجيل</span>
-                  <strong id="hosp-ro-created">—</strong>
-                </div>
-                <div class="metric-card" style="padding:14px; background:var(--m3-surface-container); border:1px dashed var(--m3-outline-variant);">
-                  <span class="metric-label">اسم المستخدم (مسؤول)</span>
-                  <strong id="hosp-ro-username" style="font-family:'JetBrains Mono', monospace;">—</strong>
-                </div>
-                <div class="metric-card" style="padding:14px; background:var(--m3-surface-container); border:1px dashed var(--m3-outline-variant);">
-                  <span class="metric-label">الدور</span>
-                  <strong>HOSPITAL_ADMIN</strong>
+                <div style="flex:1; min-width:220px; border-right:1px solid var(--m3-outline-variant); padding-right:24px;">
+                  <div style="font-size:0.72rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--m3-on-surface-muted);">المسؤول</div>
+                  <div id="hosp-ro-username" style="font-family:'JetBrains Mono', monospace; font-size:0.95rem; font-weight:600; margin-top:4px;">—</div>
+                  <div style="font-size:0.78rem; color:var(--m3-on-surface-variant);">HOSPITAL_ADMIN • <span id="hosp-ro-created">—</span></div>
                 </div>
               </div>
+              <div id="hosp-pending-requests" style="margin:0; padding:12px 20px; background:var(--m3-surface-container-low); border-top:1px solid var(--m3-outline-variant); font-size:0.82rem; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">جاري تحميل الطلبات المعلقة...</div>
             </div>
           </div>
 

@@ -27,6 +27,8 @@ model User {
 
   permissions        UserPermission[]
   clinician_appointments Appointment[]
+  requested_changes      OrganizationChangeRequest[]
+  reviewed_changes       OrganizationChangeRequest[] @relation("Reviewer")
 }
 
 // 4.2 Organizations
@@ -55,6 +57,7 @@ model Organization {
   audit_logs             AuditLog[]
   data_imports           DataImport[]
   appointments           Appointment[]
+  change_requests        OrganizationChangeRequest[]
 }
 
 enum RoleCode {
@@ -1114,5 +1117,29 @@ model DynamicHospital {
   sourceSchema          String
   defaultMappingConfigs String
   createdAt             String
+}
+
+// -------------------------------------------------------------------
+// ORGANIZATION CHANGE REQUESTS (Hospital self-service pending MOH approval)
+// -------------------------------------------------------------------
+model OrganizationChangeRequest {
+  id              String   @id @default(uuid())
+  organization_id String
+  organization    Organization @relation(fields: [organization_id], references: [id])
+  requested_by    String
+  requester       User     @relation(fields: [requested_by], references: [id])
+  field           String   // organizationName, organizationNameAr, region
+  old_value       String?
+  new_value       String
+  reason          String?
+  status          String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  reviewed_by     String?
+  reviewer        User?    @relation("Reviewer", fields: [reviewed_by], references: [id])
+  reviewed_at     DateTime?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  @@index([organization_id, status])
+  @@index([status])
 }
 

@@ -2912,6 +2912,8 @@ async function loadHospitalProfileTab() {
     document.getElementById('edit-hosp-fullname') && (document.getElementById('edit-hosp-fullname').value = data.user?.fullName || '');
     document.getElementById('edit-hosp-phone') && (document.getElementById('edit-hosp-phone').value = data.user?.phone || '');
     document.getElementById('edit-hosp-email') && (document.getElementById('edit-hosp-email').value = data.user?.email || '');
+    loadHospitalUsers();
+    try{ const crRes=await fetch('/api/hospital/me/change-requests'); if(crRes.ok){ const list=await crRes.json(); const pending=list.filter((r)=>r.status==='PENDING'); const pendingEl=document.getElementById('hosp-pending-requests'); if(pendingEl){ if(pending.length===0) pendingEl.innerHTML='<span style="color:var(--m3-success);">لا توجد طلبات معلقة</span>'; else pendingEl.innerHTML=pending.map((r)=>`<span class="badge badge-warning">${r.field}: ${r.new_value} (بانتظار الوزارة)</span>`).join(' '); } } }catch{}
 
     loadingEl.style.display = 'none';
     contentEl.style.display = 'block';
@@ -2925,6 +2927,24 @@ async function loadHospitalProfileTab() {
   }
 }
 
+async function loadHospitalUsers(){
+  const tbody=document.getElementById('hospital-users-tbody');
+  if(!tbody) return;
+  tbody.innerHTML='<tr><td colspan="4" style="text-align:center; padding:12px;">جاري التحميل...</td></tr>';
+  try{
+    const r=await fetch('/api/hospital/users');
+    const d=await r.json();
+    if(!r.ok) throw new Error(d.error||'فشل التحميل');
+    const list=Array.isArray(d)?d:(d.items||d);
+    tbody.innerHTML = list.map(u=>`<tr><td><strong>${u.fullName}</strong><br><small>${u.username} • ${u.email||'لا بريد'}</small></td><td><span class="badge ${u.role==='CLINICIAN'?'badge-success':'badge-warning'}">${u.role}</span><br><small>${u.phone||''}</small></td><td>${u.isActive?'<span style="color:var(--m3-success)">نشط</span>':'<span style="color:var(--m3-error)">موقوف</span>'}<br><small>${new Date(u.createdAt).toLocaleDateString('ar-SA')}</small></td><td style="display:flex; gap:4px; flex-wrap:wrap; align-items:center;"><button class="btn btn-sm" style="background:var(--m3-surface-container-high); color:var(--m3-on-surface); border:1px solid var(--m3-outline-variant);" onclick="viewHospitalUser('${u.id}')">عرض</button><button class="btn btn-sm" style="background:var(--m3-secondary-container); color:var(--m3-on-secondary-container); border:1px solid var(--m3-outline-variant);" onclick="editHospitalUser('${u.id}')">تعديل</button><button class="btn btn-sm" style="background:${u.isActive?'var(--m3-warning-container)':'var(--m3-primary-container)'}; color:${u.isActive?'var(--m3-on-warning-container)':'var(--m3-on-primary-container)'}; border:1px solid var(--m3-outline-variant);" onclick="toggleHospitalUser('${u.id}',${!u.isActive})">${u.isActive?'إيقاف':'تفعيل'}</button><select onchange="changeHospitalUserRole('${u.id}',this.value)" class="form-select" style="padding:4px 8px; min-width:90px; font-size:0.78rem;"><option value="">دور</option><option value="CLINICIAN">CLINICIAN</option><option value="HOSPITAL_ADMIN">HOSPITAL_ADMIN</option></select><button class="btn btn-sm" style="background:var(--m3-error); color:var(--m3-on-error); border:1px solid var(--m3-error);" onclick="resetHospitalUserPassword('${u.id}')">إعادة تعيين</button></td></tr>`).join('') || '<tr><td colspan="4" style="text-align:center">لا يوجد مستخدمون</td></tr>';
+  }catch(e){ tbody.innerHTML=`<tr><td colspan="4" style="color:var(--m3-error)">${e.message}</td></tr>`; }
+}
+async function viewHospitalUser(id){ try{ const r=await fetch('/api/hospital/users/'+id); const u=await r.json(); if(!r.ok) throw new Error(u.error); alert(`المستخدم: ${u.fullName} (@${u.username})\nالدور: ${u.role}\nالبريد: ${u.email||'—'}\nالجوال: ${u.phone||'—'}\nالحالة: ${u.isActive?'نشط':'موقوف'}\nالمنشأة: ${u.organization||''}`); }catch(e){ showToast('خطأ',e.message,'error'); } }
+async function editHospitalUser(id){ const full_name=prompt('الاسم الكامل الجديد:'); if(full_name===null) return; const email=prompt('البريد الجديد (اتركه فارغاً للإبقاء):'); const phone=prompt('الجوال الجديد 05xxxxxxxx (اتركه فارغاً للإبقاء):'); const body={}; if(full_name) body.full_name=full_name; if(email!==null) body.email=email; if(phone!==null) body.phone=phone; if(Object.keys(body).length===0) return; try{ const r=await fetch('/api/hospital/users/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); const j=await r.json(); if(!r.ok) throw new Error(j.error); showToast('تم التحديث','تم تعديل بيانات المستخدم','success'); loadHospitalUsers(); }catch(e){ showToast('خطأ',e.message,'error'); } }
+async function createHospitalUser(){ const status=document.getElementById('hospital-users-status'); const payload={ username: document.getElementById('hospital-new-username')?.value.trim(), password: document.getElementById('hospital-new-password')?.value, full_name: document.getElementById('hospital-new-fullname')?.value.trim(), email: document.getElementById('hospital-new-email')?.value.trim(), phone: document.getElementById('hospital-new-phone')?.value.trim(), role_code: document.getElementById('hospital-new-role')?.value }; if(!payload.username||!payload.password||!payload.full_name) { if(status) status.textContent='اسم المستخدم وكلمة المرور والاسم الكامل مطلوبة'; return; } try{ const r=await fetch('/api/hospital/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); const d=await r.json(); if(!r.ok) throw new Error(d.error||'فشل الإنشاء'); if(status) {status.style.color='var(--m3-success)'; status.textContent='✓ تم إنشاء '+d.user.username;} loadHospitalUsers(); }catch(e){ if(status){status.style.color='var(--m3-error)'; status.textContent=e.message;} } }
+async function toggleHospitalUser(id,isActive){ try{ const r=await fetch('/api/hospital/users/'+id+'/status',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({is_active:isActive})}); const j=await r.json(); if(!r.ok) throw new Error(j.error); showToast('تم التحديث','تغيرت حالة المستخدم','success'); loadHospitalUsers(); }catch(e){ showToast('خطأ',e.message,'error'); } }
+async function changeHospitalUserRole(id,role){ if(!role) return; try{ const r=await fetch('/api/hospital/users/'+id+'/role',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({role_code:role})}); const j=await r.json(); if(!r.ok) throw new Error(j.error); showToast('تم التحديث','تغير الدور إلى '+role,'success'); loadHospitalUsers(); }catch(e){ showToast('خطأ',e.message,'error'); } }
+async function resetHospitalUserPassword(id){ const np=prompt('كلمة المرور الجديدة (8+ حروف وأرقام):'); if(!np) return; try{ const r=await fetch('/api/hospital/users/'+id+'/reset-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({new_password:np})}); const j=await r.json(); if(!r.ok) throw new Error(j.error); showToast('تم','تمت إعادة تعيين كلمة المرور','success'); }catch(e){ showToast('خطأ',e.message,'error'); } }
 async function saveHospitalProfile() {
   const btn = document.getElementById('btn-save-hospital-profile');
   const statusEl = document.getElementById('hospital-profile-edit-status');
@@ -4612,6 +4632,7 @@ async function loadAdminGovernance() {
        if (patients.length===0) patientsEl.innerHTML = '<div class="text-center py-3" style="color:var(--m3-on-surface-variant);">لا يوجد مرضى بعد - البيانات مرتبطة مباشرة بجدول Patient الحقيقي</div>';
        else patientsEl.innerHTML = `<div style="font-size:0.75rem; color:var(--m3-on-surface-variant); margin-bottom:6px;">${patients.length} مريض من قاعدة البيانات الموحدة (NID/HUID حقيقي)</div>` + patients.slice(0,50).map((p)=> `<div style="padding:6px 8px; border-bottom:1px solid var(--m3-outline-variant); display:flex; justify-content:space-between; align-items:center;"><span><strong>${p.firstNameAr||p.firstName||''} ${p.lastNameAr||p.lastName||''}</strong> <small>${p.internalId} • ${p.gender||''} • ${p.birthDate||''} • ${p.phone||''}</small></span><span class="badge badge-info">${p.identifiers?.[0]?.value||p.internalId}</span> <span class="badge badge-secondary">${p.status||'ACTIVE'}</span></div>`).join('');
        }
+    loadOrgChangeRequests();
     }
   } catch (e) {
     if (pendingEl) pendingEl.innerHTML = `<div style="color:var(--m3-error);">فشل تحميل الحوكمة: ${e.message}</div>`;
@@ -4624,6 +4645,19 @@ async function approveHospital(id){ try{ const r=await fetch('/api/moh/hospitals
 async function rejectHospital(id){ try{ const r=await fetch('/api/moh/hospitals/'+id+'/reject',{method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({reason:'Rejected by MOH'})}); const j=await r.json(); if(r.ok){ showToast('تم الرفض','تم رفض المنشأة','info'); loadAdminGovernance(); } else showToast('خطأ', j.error,'error'); } catch(e){ showToast('خطأ', e.message,'error'); } }
 async function toggleUserStatus(id, isActive){ try{ const r=await fetch('/api/moh/users/'+id+'/status',{method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({is_active: !isActive})}); const j=await r.json(); if(r.ok){ showToast('تم التحديث','تم تغيير حالة المستخدم','success'); loadAdminGovernance(); } else showToast('خطأ', j.error,'error'); } catch(e){ showToast('خطأ', e.message,'error'); } }
 async function verifyItem(type,id,decision){ try{ const r=await fetch('/api/moh/verification/'+type+'/'+id+'/verify',{method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({decision})}); const j=await r.json(); if(r.ok){ showToast('تم التحقق','تم تحديث حالة التحقق','success'); loadVerificationQueue(); loadAdminGovernance(); } else showToast('خطأ', j.error,'error'); } catch(e){ showToast('خطأ', e.message,'error'); } }
+async function loadOrgChangeRequests(){
+  const el=document.getElementById('gov-org-changes-list');
+  if(!el) return;
+  el.innerHTML='<div class="text-center py-3">جاري التحميل...</div>';
+  try{
+    const r=await fetch('/api/moh/organization-changes');
+    const list=await r.json();
+    if(!Array.isArray(list) || list.length===0) el.innerHTML='<div class="text-center py-3" style="color:var(--m3-on-surface-variant);">لا توجد طلبات تغيير معلقة</div>';
+    else el.innerHTML=list.map(o=>`<div style="padding:8px; border:1px solid var(--m3-outline-variant); border-radius:6px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;"><div><strong>${o.organizationNameAr||o.organizationName}</strong> <span class="badge badge-warning">${o.field}</span><br><small>${o.oldValue||'—'} → <strong>${o.newValue}</strong> • بواسطة ${o.requestedBy} • ${new Date(o.createdAt).toLocaleDateString('ar-SA')}</small></div><div style="display:flex; gap:6px;"><button class="btn btn-primary btn-sm" onclick="approveOrgChange('${o.id}')">اعتماد</button><button class="btn btn-secondary btn-sm" onclick="rejectOrgChange('${o.id}')">رفض</button></div></div>`).join('');
+  }catch(e){ el.innerHTML=`<div style="color:var(--m3-error);">${e.message}</div>`; }
+}
+async function approveOrgChange(id){ try{ const r=await fetch('/api/moh/organization-changes/'+id+'/approve',{method:'POST'}); const j=await r.json(); if(r.ok){ showToast('تم الاعتماد','تم تطبيق التغيير','success'); loadOrgChangeRequests(); loadAdminGovernance(); } else showToast('خطأ',j.error,'error'); }catch(e){ showToast('خطأ',e.message,'error'); } }
+async function rejectOrgChange(id){ try{ const r=await fetch('/api/moh/organization-changes/'+id+'/reject',{method:'POST'}); const j=await r.json(); if(r.ok){ showToast('تم الرفض','تم رفض الطلب','info'); loadOrgChangeRequests(); } else showToast('خطأ',j.error,'error'); }catch(e){ showToast('خطأ',e.message,'error'); } }
 async function loadVerificationQueue(){ loadAdminGovernance(); }
 document.getElementById('moh-admin-role')?.addEventListener('change', (e)=>{
   const role=e.target.value;

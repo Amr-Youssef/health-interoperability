@@ -1223,16 +1223,18 @@ body.light-theme .bg-cyan,
   border-collapse: collapse;
   text-align: right;
   font-size: 0.85rem;
+  border: 1px solid var(--m3-outline-variant);
 }
 
 .data-table th {
   padding: 12px 16px;
   background: var(--m3-surface-container-high);
-  color: var(--m3-on-surface-variant);
+  color: var(--m3-on-surface);
   font-weight: 700;
   white-space: nowrap;
   font-size: 0.76rem;
   text-transform: uppercase;
+  border-bottom: 1px solid var(--m3-outline-variant);
 }
 
 .data-table td {
@@ -1240,6 +1242,7 @@ body.light-theme .bg-cyan,
   color: var(--m3-on-surface);
   vertical-align: middle;
   background: var(--m3-surface-container);
+  border-bottom: 1px solid var(--m3-outline-variant);
 }
 
 .data-table tbody tr:hover td {
@@ -1453,22 +1456,26 @@ body.light-theme .bg-cyan,
   color: var(--m3-on-surface-variant);
 }
 
+.form-input,
 .form-select {
   width: 100%;
   padding: 9px 14px;
   background: var(--m3-surface-container-low);
+  border: 1px solid var(--m3-outline-variant);
   border-radius: var(--radius-sharp);
   color: var(--m3-on-surface);
   font-family: inherit;
   font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
+  font-weight: 400;
   outline: none;
-  transition: background-color 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
-
+.form-input::placeholder { color: var(--m3-on-surface-muted); }
+.form-select { font-weight: 600; cursor: pointer; }
+.form-input:focus,
 .form-select:focus {
   background: var(--m3-surface-container-high);
+  border-color: var(--m3-primary);
 }
 
 .timeline {
