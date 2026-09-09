@@ -29,26 +29,27 @@
       <a href="./login.html" class="auth-tab active">تسجيل الدخول</a>
       <a href="./register.html" class="auth-tab">إنشاء حساب</a>
     </div>
-    <form id="login-form" class="auth-form" autocomplete="on">
-      <div class="auth-form-group">
-        <label for="login-username">اسم المستخدم / الهوية الوطنية</label>
-        <div class="auth-input-wrap"><input id="login-username" name="username" type="text" required autocomplete="username" placeholder="مثال: admin" class="auth-input"></div>
+     <form id="login-form" class="auth-form" autocomplete="on" style="display:flex; flex-direction:column; gap:16px;">
+      <div class="auth-form-group" style="margin-bottom:0;">
+        <label for="login-username" style="font-weight:700; letter-spacing:-0.01em;">اسم المستخدم</label>
+        <div class="auth-input-wrap"><input id="login-username" name="username" type="text" required autocomplete="username" placeholder="admin  •  moh_admin  •  3mrr" class="auth-input" style="padding:12px 14px;"></div>
+        <small style="font-size:0.72rem; color:var(--m3-on-surface-muted);">هويتك الوطنية أو اسم المستخدم المخصص</small>
       </div>
-      <div class="auth-form-group">
-        <label for="login-password">كلمة المرور</label>
-        <div class="auth-input-wrap"><input id="login-password" name="password" type="password" required autocomplete="current-password" placeholder="••••••••" class="auth-input"></div>
+      <div class="auth-form-group" style="margin-bottom:0;">
+        <label for="login-password" style="font-weight:700; letter-spacing:-0.01em;">كلمة المرور</label>
+        <div class="auth-input-wrap"><input id="login-password" name="password" type="password" required autocomplete="current-password" placeholder="••••••••" class="auth-input" style="padding:12px 14px;"></div>
       </div>
       <div id="login-error" class="auth-error-box" style="display:none"><span id="login-error-text"></span></div>
-      <button type="submit" id="btn-login" class="auth-submit-btn"><span>تسجيل الدخول الآمن</span></button>
-      <div class="auth-demo-links" style="margin-top:14px">
-        <span>دخول تجريبي (بيئة تطوير فقط):</span>
-        <div class="auth-demo-buttons">
-          <button type="button" data-fill="sys_admin" title="admin / admin123">النظام SYS_ADMIN</button>
-          <button type="button" data-fill="moh_admin" title="moh_admin / moh123456">الوزارة MOH_ADMIN</button>
-          <button type="button" data-fill="moh_auditor" title="moh_auditor / auditor123">مدقق MOH_AUDITOR</button>
-          <button type="button" data-fill="hospital_a" title="hospital_a / pass123">مستشفى HOSPITAL</button>
-          <button type="button" data-fill="clinician" title="clinician / clinician123">طبيب CLINICIAN</button>
-          <button type="button" data-fill="patient" title="patient / patient123">مريض PATIENT</button>
+      <button type="submit" id="btn-login" class="auth-submit-btn" style="margin-top:4px; padding:13px; font-weight:700; letter-spacing:0.01em;">تسجيل الدخول الآمن</button>
+      <div class="auth-demo-links" style="margin-top:6px; padding-top:14px; border-top:1px solid var(--m3-outline-variant);">
+        <div style="font-size:0.72rem; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:var(--m3-on-surface-muted); margin-bottom:8px;">بيئة التطوير — دخول سريع</div>
+        <div class="auth-demo-buttons" style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+          <button type="button" data-fill="sys_admin" class="btn btn-secondary" style="justify-content:center; padding:8px; font-size:0.78rem; font-weight:600;">النظام</button>
+          <button type="button" data-fill="moh_admin" class="btn btn-secondary" style="justify-content:center; padding:8px; font-size:0.78rem; font-weight:600;">الوزارة</button>
+          <button type="button" data-fill="moh_auditor" class="btn btn-secondary" style="justify-content:center; padding:8px; font-size:0.78rem; font-weight:600;">المدقق</button>
+          <button type="button" data-fill="hospital_a" class="btn btn-secondary" style="justify-content:center; padding:8px; font-size:0.78rem; font-weight:600;">المستشفى</button>
+          <button type="button" data-fill="clinician" class="btn btn-secondary" style="justify-content:center; padding:8px; font-size:0.78rem; font-weight:600;">الطبيب</button>
+          <button type="button" data-fill="patient" class="btn btn-secondary" style="justify-content:center; padding:8px; font-size:0.78rem; font-weight:600;">المريض</button>
         </div>
       </div>
     </form>

@@ -388,10 +388,12 @@ const appAuth = {
       if (patCard) patCard.style.display = 'block';
 
     } else if (this.currentRole === 'HOSPITAL_ADMIN') {
-      ['hospital-migration','hospital-global','hospital-profile','appointments'].forEach(id => {
+      ['hospital-migration','hospital-profile','appointments'].forEach(id => {
         const t = document.getElementById(`tab-btn-${id}`);
         if(t) t.style.display = 'flex';
       });
+      const globalBtn=document.getElementById('tab-btn-hospital-global');
+      if(globalBtn) globalBtn.style.display='none';
       defaultTab = 'hospital-migration';
     } else if (this.currentRole === 'CLINICIAN') {
       ['longitudinal','medications','cds','nphies','appointments'].forEach(id => {
@@ -436,7 +438,7 @@ const appAuth = {
 
 function getAllowedTabsForRole(role) {
   if (role === 'MOH_ADMIN' || role === 'SYS_ADMIN') return ['admin-governance','monitoring','onboarding','cds','nphies','medications','mpi','longitudinal','appointments','mapping','provenance','security','bulkexport','fhir'];
-  if (role === 'HOSPITAL_ADMIN') return ['hospital-migration','hospital-global','hospital-profile','appointments'];
+  if (role === 'HOSPITAL_ADMIN') return ['hospital-migration','hospital-profile','appointments'];
   if (role === 'CLINICIAN') return ['longitudinal','medications','cds','nphies','appointments'];
   if (role === 'PATIENT') return ['profile','longitudinal','medications','appointments','patient-insurance','patient-access'];
   if (role === 'MOH_AUDITOR') return ['monitoring','longitudinal','security','provenance'];
@@ -3110,28 +3112,37 @@ async function loadHospitalImports() {
   }
 }
 
-async function loadHospitalPatientsList() {
-  const tbody = document.getElementById('hosp-patients-tbody');
-  if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4">جاري التحميل...</td></tr>';
-  try {
-    const res = await fetch('/api/hospital/patients');
-    const list = await res.json();
-    if (!res.ok) throw new Error(list.error);
-    if (!list || list.length===0) {
-      tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4" style="color:var(--m3-on-surface-muted);">لا يوجد مرضى مرتبطون بمنشأتك بعد — البيانات المرحّلة ستظهر هنا بعد التطبيع.</td></tr>';
+async function loadHospitalPatientsList(q='', page=1){
+  const tbody=document.getElementById('hosp-patients-tbody');
+  const countEl=document.getElementById('hosp-patients-count');
+  const pagEl=document.getElementById('hosp-patients-pagination');
+  if(!tbody) return;
+  tbody.innerHTML='<tr><td colspan="5" class="text-center py-4">جاري التحميل...</td></tr>';
+  try{
+    const res=await fetch(`/api/hospital/patients?q=${encodeURIComponent(q)}&page=${page}&limit=8`);
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.error);
+    const list=Array.isArray(data)?data:(data.items||[]);
+    const total=data.total ?? list.length;
+    if(countEl) countEl.textContent=String(total);
+    if(!list || list.length===0){
+      tbody.innerHTML='<tr><td colspan="5" class="text-center py-4" style="color:var(--m3-on-surface-muted);">لا يوجد مرضى مرتبطون بمنشأتك بعد — البيانات المرحّلة ستظهر هنا بعد التطبيع.</td></tr>';
+      if(pagEl) pagEl.innerHTML='';
       return;
     }
-    tbody.innerHTML = list.slice(0,8).map((p)=>{
-      const name = `${p.firstNameAr || p.firstName || ''} ${p.lastNameAr || p.lastName || ''}`.trim() || p.internalId;
-      const nid = p.identifiers?.find((i)=>i.type==='NID'||i.type==='IQAMA')?.value || p.internalId.substring(0,8);
-      return `<tr><td><strong>${name}</strong></td><td><code>${nid}</code></td><td>${p.gender==='male'?'ذكر':p.gender==='female'?'أنثى':'—'}</td><td><code>${new Date(p.assignedAt).toLocaleDateString('ar-SA')}</code></td></tr>`;
+    tbody.innerHTML=list.map((p)=>{
+      const name=`${p.firstNameAr || p.firstName || ''} ${p.lastNameAr || p.lastName || ''}`.trim() || p.internalId;
+      const nid=p.identifiers?.find((i)=>i.type==='NID'||i.type==='IQAMA')?.value || p.internalId.substring(0,8);
+      return `<tr><td><strong>${name}</strong></td><td><code>${nid}</code></td><td>${p.gender==='male'?'ذكر':p.gender==='female'?'أنثى':'—'}</td><td><code>${new Date(p.assignedAt).toLocaleDateString('ar-SA')}</code></td><td><button class="btn btn-sm btn-secondary" onclick="selectHospitalPatient('${p.internalId}')">عرض</button></td></tr>`;
     }).join('');
-    if (list.length>8) tbody.innerHTML += `<tr><td colspan="4" class="text-center py-2" style="color:var(--m3-on-surface-muted); font-size:0.78rem;">+ ${list.length-8} مرضى آخرون</td></tr>`;
-  } catch (e) {
-    tbody.innerHTML = `<tr><td colspan="4" class="text-center py-4" style="color:var(--m3-error);">تعذر تحميل المرضى</td></tr>`;
-  }
+    if(pagEl){
+      const totalPages=Math.ceil(total/8);
+      pagEl.innerHTML=`<span>صفحة ${page} من ${totalPages} — ${total} مريض</span><span><button class="btn btn-sm btn-secondary" ${page<=1?'disabled':''} onclick="loadHospitalPatientsList('${q.replace(/'/g,"\\'")}',${page-1})">السابق</button> <button class="btn btn-sm btn-secondary" ${page>=totalPages?'disabled':''} onclick="loadHospitalPatientsList('${q.replace(/'/g,"\\'")}',${page+1})">التالي</button></span>`;
+    }
+  }catch(e){ tbody.innerHTML=`<tr><td colspan="5" class="text-center py-4" style="color:var(--m3-error);">تعذر تحميل المرضى</td></tr>`; }
 }
+function selectHospitalPatient(id){ currentPatientId=id; document.getElementById('clinical-write-patient') && (document.getElementById('clinical-write-patient').value=id); const pane=document.getElementById('pane-longitudinal'); if(pane) { document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active')); pane.classList.add('active'); document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active')); document.getElementById('tab-btn-longitudinal')?.classList.add('active'); loadLongitudinalRecord(id); } }
+document.getElementById('hosp-patients-search')?.addEventListener('input', e=>{ const v=e.target.value; clearTimeout(window._hospSearchT); window._hospSearchT=setTimeout(()=> loadHospitalPatientsList(v,1), 300); });
 
 let _hospDropzoneInit = false;
 function initHospitalMigrationDropzone() {
@@ -3227,20 +3238,18 @@ async function loadHospitalGlobalRegistry() {
   if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4">جاري تحميل السجل العام...</td></tr>';
   if (detailEl) detailEl.style.display='none';
   try {
+    const qEl = document.getElementById('hosp-global-search');
+    const q = qEl?.value?.trim() || '';
     const [globalRes, myRes] = await Promise.all([
-      fetch('/api/hospital/global-patients'),
+      fetch(`/api/hospital/global-patients?q=${encodeURIComponent(q)}&page=1&limit=12`),
       fetch('/api/hospital/patients')
     ]);
-    const globalList = await globalRes.json();
+    const globalData = await globalRes.json();
     const myList = await myRes.json();
     const myIds = new Set((Array.isArray(myList)?myList:[]).map(p=>p.id || p.internalId));
     _hospMyIds = myIds;
-    const list = Array.isArray(globalList) ? globalList : (globalList.entry?.map(e=>e.resource) || []);
-    // Normalize canonical vs FHIR shapes: globalList from /api/patients is canonical {internalId, givenName, familyName, identifiers...}
-    // For hospital global we expect canonical shape; if FHIR shape, map it
-    const normalized = list.map(p=>{
-      // canonical store shape: internalId, givenName, familyName, givenNameAr, familyNameAr, gender, birthDate, identifiers
-      // FHIR shape: id, name[0], gender, birthDate, identifier
+    const listRaw = Array.isArray(globalData) ? globalData : (globalData.items || globalData.entry?.map(e=>e.resource) || []);
+    const normalized = listRaw.map(p=>{
       if (p.internalId) return p;
       const nameObj = p.name?.[0] || {};
       const nid = p.identifier?.find(i=>i.system?.includes('nid'))?.value || '';
@@ -3257,15 +3266,16 @@ async function loadHospitalGlobalRegistry() {
       };
     });
     _hospGlobalPatients = normalized;
-    if (countEl) countEl.textContent = String(normalized.length);
+    const total = globalData.total ?? normalized.length;
+    if (countEl) countEl.textContent = String(total);
     renderHospGlobalTable('');
-    // Search listener
     const searchEl = document.getElementById('hosp-global-search');
     if (searchEl && !searchEl.dataset.bound) {
       searchEl.dataset.bound='1';
-      searchEl.addEventListener('input', (e)=> renderHospGlobalTable(e.target.value));
+      let t=null;
+      searchEl.addEventListener('input', (e)=>{ clearTimeout(t); t=setTimeout(()=> loadHospitalGlobalRegistry(), 350); });
     }
-    document.getElementById('btn-refresh-hosp-global')?.addEventListener('click', ()=> loadHospitalGlobalRegistry());
+    document.getElementById('btn-refresh-hosp-global')?.addEventListener('click', ()=> loadHospitalGlobalRegistry(), {once:true});
   } catch (err) {
     if (tbody) tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4" style="color:var(--m3-error);">تعذر تحميل السجل العام: ${err.message}</td></tr>`;
   }
@@ -3531,10 +3541,13 @@ function renderLongitudinalContent(data, patientId) {
     const phone = p.phone || p.telecom?.[0]?.value || '+966 50 123 4567';
     const address = p.city || p.addresses?.[0]?.city || (p.nationalityCode === 'SAU' ? 'الرياض' : 'جدة');
 
-    // Calculate lab trend data (HbA1c & Fasting Glucose)
+    // Lab trends — real data only, no fabrication
     const hba1cObs = observations.find(o => o.code?.loincCode === '4548-4' || o.code?.sourceCode?.includes('HbA1c') || o.code?.sourceCode?.includes('السكر التراكمي'));
-    const hba1cVal = hba1cObs?.valueQuantity?.value || (conditions.some(c => c.code?.snomedCode === '44054006') ? '8.4' : '5.4');
-    const isDiabetic = parseFloat(hba1cVal) >= 6.5;
+    const hasHba1c = !!hba1cObs?.valueQuantity?.value;
+    const hba1cVal = hasHba1c ? String(hba1cObs.valueQuantity.value) : null;
+    const isDiabetic = hasHba1c ? parseFloat(hba1cVal) >= 6.5 : conditions.some(c => c.code?.snomedCode === '44054006');
+    const glucoseObs = observations.find(o => o.code?.loincCode === '1558-6' || o.code?.sourceCode?.includes('Glucose'));
+    const hasGlucose = !!glucoseObs?.valueQuantity?.value;
 
     const patientArName = `${p.givenNameAr || p.givenName || ''} ${p.familyNameAr || p.familyName || ''}`.trim() || 'مريض مسجل';
     const patientEnName = `${p.givenName || ''} ${p.familyName || ''}`.trim();
@@ -3589,20 +3602,12 @@ function renderLongitudinalContent(data, patientId) {
           <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px; margin-bottom:14px;">
             <div style="background:var(--m3-surface-container); padding:12px 14px; border-radius:var(--radius-xs); border:1px solid var(--m3-outline-variant);">
               <span style="font-size:0.75rem; color:var(--m3-on-surface-muted); display:block;">السكر التراكمي (HbA1c LOINC 4548-4):</span>
-              <div style="display:flex; align-items:baseline; gap:6px; margin:4px 0;">
-                <span style="font-size:1.4rem; font-weight:800; color:${parseFloat(hba1cVal) >= 7.0 ? 'var(--m3-error)' : 'var(--m3-primary-light)'};">${hba1cVal}%</span>
-                <small style="font-size:0.75rem; color:var(--m3-on-surface-variant);">(الهدف: &lt; 7.0%)</small>
-              </div>
-              <div style="font-size:0.72rem; color:var(--m3-on-surface-variant);">الحالة: ${parseFloat(hba1cVal) >= 8.0 ? '<span style="color:var(--m3-error); font-weight:700;">غير منضبط سريرياً</span>' : '<span style="color:var(--m3-primary-light); font-weight:700;">ضمن النطاق المستهدف</span>'}</div>
+              ${hasHba1c ? `<div style="display:flex; align-items:baseline; gap:6px; margin:4px 0;"><span style="font-size:1.4rem; font-weight:800; color:${parseFloat(hba1cVal) >= 7.0 ? 'var(--m3-error)' : 'var(--m3-primary-light)'};">${hba1cVal}%</span><small style="font-size:0.75rem; color:var(--m3-on-surface-variant);">(الهدف: &lt; 7.0%)</small></div><div style="font-size:0.72rem; color:var(--m3-on-surface-variant);">الحالة: ${parseFloat(hba1cVal) >= 8.0 ? '<span style="color:var(--m3-error); font-weight:700;">غير منضبط سريرياً</span>' : '<span style="color:var(--m3-primary-light); font-weight:700;">ضمن النطاق المستهدف</span>'} • ${hba1cObs?.effectiveDateTime ? new Date(hba1cObs.effectiveDateTime).toLocaleDateString('ar-SA') : ''}</div>` : `<div style="padding:8px 0; color:var(--m3-on-surface-muted); font-size:0.85rem;">لا يوجد فحص HbA1c مسجل لهذا المريض</div>`}
             </div>
 
             <div style="background:var(--m3-surface-container); padding:12px 14px; border-radius:var(--radius-xs); border:1px solid var(--m3-outline-variant);">
               <span style="font-size:0.75rem; color:var(--m3-on-surface-muted); display:block;">سكر الدم الصائم (Fasting Glucose LOINC 1558-6):</span>
-              <div style="display:flex; align-items:baseline; gap:6px; margin:4px 0;">
-                <span style="font-size:1.4rem; font-weight:800; color:var(--m3-on-surface);">${isDiabetic ? '142' : '94'} mg/dL</span>
-                <small style="font-size:0.75rem; color:var(--m3-on-surface-variant);">(المرجع: 70 - 99)</small>
-              </div>
-              <div style="font-size:0.72rem; color:var(--m3-on-surface-variant);">آخر فحص: <code>${new Date().toLocaleDateString('ar-SA')}</code></div>
+              ${hasGlucose ? `<div style="display:flex; align-items:baseline; gap:6px; margin:4px 0;"><span style="font-size:1.4rem; font-weight:800; color:var(--m3-on-surface);">${glucoseObs.valueQuantity.value} ${glucoseObs.valueQuantity.unit||'mg/dL'}</span><small style="font-size:0.75rem; color:var(--m3-on-surface-variant);">(المرجع: 70 - 99)</small></div><div style="font-size:0.72rem; color:var(--m3-on-surface-variant);">آخر فحص: <code>${new Date(glucoseObs.effectiveDateTime).toLocaleDateString('ar-SA')}</code></div>` : `<div style="padding:8px 0; color:var(--m3-on-surface-muted); font-size:0.85rem;">لا يوجد فحص صائم مسجل</div>`}
             </div>
 
             <div style="background:var(--m3-surface-container); padding:12px 14px; border-radius:var(--radius-xs); border:1px solid var(--m3-outline-variant);">
@@ -4700,7 +4705,9 @@ async function loadAppointments(){
     const r=await fetch(url);
     if(!r.ok){ tbody.innerHTML=`<tr><td colspan="7" class="text-center py-4" style="color:var(--m3-error);">فشل التحميل (${r.status})</td></tr>`; return; }
     const list=await r.json();
-    if(!list || list.length===0){ tbody.innerHTML='<tr><td colspan="7" class="text-center py-4">لا توجد مواعيد - البيانات من جدول Appointment الحقيقي</td></tr>'; return; }
+    const countEl=document.getElementById('appointments-count');
+    if(countEl) countEl.textContent = `${list?.length||0} موعد`;
+    if(!list || list.length===0){ tbody.innerHTML='<tr><td colspan="7" class="text-center py-4" style="color:var(--m3-on-surface-variant);">لا توجد مواعيد — احجز أول موعد من النموذج أعلاه</td></tr>'; return; }
     tbody.innerHTML=list.map(a=>{
       const typeBadge = a.appointment_type==='ROUTINE'?'badge-info':a.appointment_type==='EMERGENCY'?'badge-error':a.appointment_type==='REFERRAL'?'badge-warning':'badge-success';
       const statusBadge = a.status==='proposed'?'badge-secondary':a.status==='booked'?'badge-info':a.status==='arrived'?'badge-warning':a.status==='fulfilled'?'badge-success':'badge-error';
@@ -4849,7 +4856,12 @@ document.getElementById('form-book-appointment')?.addEventListener('submit', asy
     const r=await fetch('/api/appointments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const j=await r.json();
     if(r.ok){ if(resEl) resEl.innerHTML='<span style="color:var(--m3-primary);">✅ تم حجز الموعد ('+type+') مع الطبيب '+(clinician_id||'غير محدد')+' وإذن '+j.consent.consent_type+' - '+new Date(j.appointment.scheduled_start).toLocaleString('ar-SA',{timeZone:'Asia/Riyadh'})+'</span>'; showToast('تم الحجز','الموعد والإذن منشآن','success'); loadAppointments(); e.target.reset(); initAppointmentDateTime(); }
-    else { if(resEl) resEl.innerHTML='<span style="color:var(--m3-error);">'+(j.error||'فشل')+'</span>'; showToast('خطأ', j.error,'error'); }
+    else {
+      const msg=j.error||'فشل';
+      const isConflict=r.status===409;
+      if(resEl) resEl.innerHTML=`<span style="color:var(--m3-error);">${msg}</span>${isConflict?'<br><small style="color:var(--m3-on-surface-variant);">الشريحة ممتلئة (30 دقيقة) — اختر شريحة أخرى أو تواصل مع المنشأة لقائمة الانتظار</small>':''}`;
+      showToast(isConflict?'تعارض موعد':'خطأ', msg, isConflict?'warning':'error');
+    }
   }catch(err){ if(resEl) resEl.textContent=err.message; }
 });
 

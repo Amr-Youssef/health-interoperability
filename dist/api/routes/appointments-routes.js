@@ -88,6 +88,21 @@ router.post('/', async (req, res) => {
             if (!clin.is_active)
                 return res.status(403).json({ error: 'حساب الطبيب غير نشط' });
         }
+        // Best practice: check overlapping appointments (same patient or same clinician at same 30-min slot)
+        const slotStart = new Date(start);
+        const slotEnd = end || new Date(slotStart.getTime() + 30 * 60 * 1000);
+        const overlapWhere = {
+            organization_id: org.id,
+            status: { in: ['proposed', 'booked', 'arrived'] },
+            OR: [
+                { patient_id: patientId, scheduled_start: { gte: new Date(slotStart.getTime() - 30 * 60 * 1000), lte: slotEnd } },
+                ...(clinician_id ? [{ clinician_id, scheduled_start: { gte: new Date(slotStart.getTime() - 30 * 60 * 1000), lte: slotEnd } }] : [])
+            ]
+        };
+        const existingOverlap = await prisma.appointment.findFirst({ where: overlapWhere });
+        if (existingOverlap) {
+            return res.status(409).json({ error: `تعارض موعد: يوجد موعد آخر ${existingOverlap.appointment_type} بنفس الشريحة الزمنية (30 دقيقة) للمريض أو الطبيب — اختر شريحة أخرى أو انتظر قائمة الانتظار` });
+        }
         const appt = await prisma.appointment.create({
             data: {
                 patient_id: patientId,

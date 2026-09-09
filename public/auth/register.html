@@ -12,23 +12,25 @@
 <link rel="stylesheet" href="../style.css">
 <link rel="stylesheet" href="./auth.css">
 <style>
-.reg-wrap{max-width:760px !important}
-.stepper{display:flex;gap:8px;align-items:center;justify-content:center;margin:14px 0 18px}
-.step{display:flex;align-items:center;gap:8px;color:var(--m3-on-surface-muted);font-size:.78rem;font-weight:600}
-.step b{width:26px;height:26px;display:grid;place-items:center;border-radius:50%;background:var(--m3-surface-container-high);color:var(--m3-on-surface-variant);font-size:.8rem}
+.reg-wrap{max-width:680px !important}
+.stepper{display:flex;gap:0;align-items:center;justify-content:space-between;margin:18px 0 24px; padding:0 12px}
+.step{display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--m3-on-surface-muted);font-size:.72rem;font-weight:600; flex:1}
+.step b{width:28px;height:28px;display:grid;place-items:center;border-radius:50%;background:var(--m3-surface-container-high);color:var(--m3-on-surface-variant);font-size:.8rem; border:1px solid var(--m3-outline-variant)}
 .step.active{color:var(--m3-on-surface)}
-.step.active b{background:var(--m3-primary);color:var(--m3-on-primary)}
-.step.done b{background:var(--m3-primary-container);color:var(--m3-on-primary-container)}
-.stepper-line{height:2px;flex:1;max-width:40px;background:var(--m3-surface-container-high)}
+.step.active b{background:var(--m3-on-surface);color:var(--m3-surface);border-color:var(--m3-on-surface)}
+.step.done b{background:var(--m3-primary);color:var(--m3-on-primary);border-color:var(--m3-primary)}
+.stepper-line{height:1px;flex:1;background:var(--m3-outline-variant); margin:0 8px; margin-bottom:18px}
 .stepper-line.done{background:var(--m3-primary)}
-.role-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
-.role-card{padding:14px 12px;background:var(--m3-surface-container-high);cursor:pointer;display:flex;flex-direction:column;gap:6px;position:relative}
-.role-card.selected{background:var(--m3-surface-container-highest);outline:2px solid var(--m3-primary)}
-.role-card h4{font-size:.92rem;font-weight:800}
-.role-card p{font-size:.75rem;color:var(--m3-on-surface-variant);line-height:1.4}
-.role-card .check{position:absolute;inset-inline-start:10px;top:10px;width:18px;height:18px;border-radius:50%;border:2px solid var(--m3-outline-variant);display:grid;place-items:center;font-size:.65rem}
-.role-card.selected .check{background:var(--m3-primary);border-color:var(--m3-primary);color:#fff}
-.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.role-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
+.role-card{padding:18px 14px;background:var(--m3-surface-container);border:1px solid var(--m3-outline-variant);cursor:pointer;display:flex;flex-direction:column;gap:8px;position:relative; transition:all 0.15s ease}
+.role-card:hover{border-color:var(--m3-primary); background:var(--m3-surface-container-high);}
+.role-card.selected{background:var(--m3-surface-container);border-color:var(--m3-primary); box-shadow:0 1px 0 var(--m3-primary)}
+.role-card.selected::after{content:'';position:absolute;inset:0; border:1.5px solid var(--m3-primary); pointer-events:none}
+.role-card h4{font-size:0.95rem;font-weight:700; letter-spacing:-0.01em}
+.role-card p{font-size:.76rem;color:var(--m3-on-surface-variant);line-height:1.5; margin:0}
+.role-card .check{position:absolute;inset-inline-end:10px;top:10px;width:20px;height:20px;border-radius:50%;border:1.5px solid var(--m3-outline-variant);display:grid;place-items:center;font-size:.7rem; color:transparent}
+.role-card.selected .check{background:var(--m3-primary);border-color:var(--m3-primary);color:var(--m3-on-primary)}
+.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 @media(max-width:640px){.field-grid{grid-template-columns:1fr}.role-cards{grid-template-columns:1fr}}
 .auth-form-group{margin-bottom:10px}
 .auth-form-group label{font-size:.8rem;font-weight:700;display:flex;gap:4px;margin-bottom:5px}
@@ -87,24 +89,24 @@
     </div>
 
     <form id="register-form" class="auth-form" novalidate>
-      <div class="role-cards" id="role-cards" style="grid-template-columns:1fr 1fr 1fr">
+      <div class="role-cards" id="role-cards">
         <div class="role-card selected" data-role="PATIENT" tabindex="0" role="button" aria-pressed="true">
           <span class="check">✓</span>
-          <h4>👤 فرد / مريض</h4>
-          <p>سجل بهويتك الوطنية للوصول لسجلك الصحي الموحد</p>
-          <span class="hint-badge">يتطلب هوية + جوال سعودي</span>
+          <h4>فرد — سجل صحي</h4>
+          <p>هويتك الوطنية تفتح ملفك الموحد بكل المنشآت. بياناتك محمية وتحتاج موافقتك للمشاركة.</p>
+          <span class="hint-badge">هوية + جوال</span>
         </div>
         <div class="role-card" data-role="HOSPITAL_ADMIN" tabindex="0" role="button" aria-pressed="false">
           <span class="check">✓</span>
-          <h4>🏥 منشأة صحية</h4>
-          <p>تسجيل منشأة جديدة يخضع لموافقة وزارة الصحة</p>
-          <span class="hint-badge">الاسم عربي+إنجليزي + ترخيص</span>
+          <h4>منشأة صحية</h4>
+          <p>سجل منشأتك ككيان معتمد. يخضع لمراجعة الوزارة قبل التفعيل والربط.</p>
+          <span class="hint-badge">عربي + إنجليزي</span>
         </div>
         <div class="role-card" data-role="CLINICIAN" tabindex="0" role="button" aria-pressed="false">
           <span class="check">✓</span>
-          <h4>🩺 طبيب / ممارس</h4>
-          <p>حساب طبي مرتبط بمنشأة معتمدة - يتبع منشأة</p>
-          <span class="hint-badge">يتبع منشأة نشطة فقط</span>
+          <h4>ممارس صحي</h4>
+          <p>حساب مهني مرتبط بمنشأة معتمدة. يرث صلاحيات المنشأة ولا يعمل منفرداً.</p>
+          <span class="hint-badge">يتبع منشأة</span>
         </div>
       </div>
       <input type="hidden" id="register-role" value="PATIENT">

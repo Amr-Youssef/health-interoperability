@@ -335,17 +335,23 @@ router.get('/me/stats', async (req, res) => {
         res.status(500).json({ error: 'Failed to load hospital stats' });
     }
 });
-// Global unified registry (read-only) for hospital - scoped, requires BREAK_GLASS outside org
+// Global unified registry — removed for HOSPITAL_ADMIN per product decision (use /patients org-scoped only)
 router.get('/global-patients', async (req, res) => {
     try {
-        if (req.user?.role?.role_code === 'CLINICIAN')
-            return res.status(403).json({ error: 'CLINICIAN cannot access global registry - use /patients (org-scoped) or break-glass' });
-        const patients = await prisma.patient.findMany({
-            include: { identifiers: true },
-            orderBy: { created_at: 'desc' },
-            take: 20
-        });
-        res.json(patients.map((p) => ({
+        if (['HOSPITAL_ADMIN', 'CLINICIAN'].includes(req.user?.role?.role_code))
+            return res.status(403).json({ error: 'Global registry hidden for hospital roles — use /patients (org-scoped) only' });
+        const q = String(req.query.q || '').trim();
+        const page = Math.max(parseInt(String(req.query.page || '1'), 10) || 1, 1);
+        const limit = Math.min(Math.max(parseInt(String(req.query.limit || '12'), 10) || 12, 5), 50);
+        const skip = (page - 1) * limit;
+        const where = {};
+        if (q)
+            where.OR = [{ internal_id: { contains: q, mode: 'insensitive' } }, { first_name: { contains: q, mode: 'insensitive' } }, { first_name_ar: { contains: q, mode: 'insensitive' } }, { identifiers: { some: { value: { contains: q } } } }];
+        const [total, patients] = await Promise.all([
+            prisma.patient.count({ where }),
+            prisma.patient.findMany({ where, include: { identifiers: true }, orderBy: { created_at: 'desc' }, skip, take: limit })
+        ]);
+        const mapped = patients.map((p) => ({
             id: p.id,
             internalId: p.internal_id,
             firstName: p.first_name,
@@ -360,17 +366,28 @@ router.get('/global-patients', async (req, res) => {
             sourceSystemId: p.source_system_id,
             status: p.status,
             createdAt: p.created_at
-        })));
+        }));
+        try {
+            await prisma.auditLog.create({ data: { entity_type: 'Patient', entity_id: q || '*', action: 'HOSPITAL_GLOBAL_SEARCH', actor_id: req.user.id, organization_id: req.user.organization_id, details: `Global search q="${q}" page=${page} total=${total}` } }).catch(() => { });
+        }
+        catch { }
+        if (req.query.q || req.query.page)
+            return res.json({ items: mapped, total, page, pageSize: limit, totalPages: Math.ceil(total / limit) });
+        res.json(mapped);
     }
     catch (error) {
         console.error('Hospital global patients error:', error);
         res.status(500).json({ error: 'Failed to load global registry' });
     }
 });
-// Hospital patients (scoped) - UNION of PatientOrganization links + source_system_id direct records (deduplicated Single Source of Truth)
+// Hospital patients (scoped) — search + pagination, deduplicated, no global scan
 router.get('/patients', async (req, res) => {
     try {
         const orgId = req.user.organization_id;
+        const q = String(req.query.q || '').trim().toLowerCase();
+        const page = Math.max(parseInt(String(req.query.page || '1'), 10) || 1, 1);
+        const limit = Math.min(Math.max(parseInt(String(req.query.limit || '8'), 10) || 8, 5), 50);
+        const skip = (page - 1) * limit;
         const links = await prisma.patientOrganization.findMany({
             where: { organization_id: orgId, active: true },
             include: { patient: { include: { identifiers: true } } }
@@ -379,7 +396,7 @@ router.get('/patients', async (req, res) => {
             where: { source_system_id: orgId },
             include: { identifiers: true },
             orderBy: { created_at: 'desc' },
-            take: 100
+            take: 500
         });
         const merged = new Map();
         for (const l of links) {
@@ -418,8 +435,15 @@ router.get('/patients', async (req, res) => {
                 });
             }
         }
-        const patients = Array.from(merged.values()).sort((a, b) => new Date(b.assignedAt).getTime() - new Date(a.assignedAt).getTime());
-        res.json(patients.slice(0, 100));
+        let patients = Array.from(merged.values()).sort((a, b) => new Date(b.assignedAt).getTime() - new Date(a.assignedAt).getTime());
+        if (q) {
+            patients = patients.filter(p => (`${p.firstName || ''} ${p.lastName || ''} ${p.firstNameAr || ''} ${p.lastNameAr || ''} ${p.identifiers?.[0]?.value || ''} ${p.phone || ''}`.toLowerCase().includes(q)));
+        }
+        const total = patients.length;
+        patients = patients.slice(skip, skip + limit);
+        if (req.query.q || req.query.page)
+            return res.json({ items: patients, total, page, pageSize: limit, totalPages: Math.ceil(total / limit) });
+        res.json(patients);
     }
     catch (error) {
         console.error('Hospital patients error:', error);

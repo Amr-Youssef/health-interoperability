@@ -289,7 +289,7 @@ pre {
 .sidebar {
   width: var(--sidebar-width);
   background-color: var(--sidebar-bg);
-  padding: 18px 14px;
+  padding: 20px 12px;
   display: flex;
   flex-direction: column;
   position: fixed;
@@ -298,6 +298,7 @@ pre {
   right: 0;
   z-index: 100;
   transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1), padding 0.2s ease, background-color 0.2s ease;
+  gap: 16px;
 }
 
 .brand {
@@ -414,22 +415,26 @@ pre {
 .nav-menu {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   flex-grow: 1;
   overflow-y: auto;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  margin-top: 8px;
 }
 
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
+  gap: 12px;
+  padding: 10px 14px;
   border-radius: var(--radius-sharp);
   background: transparent;
   color: var(--sidebar-on-surface-variant);
   font-family: inherit;
-  font-size: 0.88rem;
-  font-weight: 600;
+  font-size: 0.86rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
   cursor: pointer;
   text-align: right;
   transition: background 0.15s ease, color 0.15s ease;
@@ -472,16 +477,8 @@ pre {
 .nav-item.active {
   background: var(--sidebar-item-active);
   color: var(--sidebar-on-surface);
+  font-weight: 600;
 }
-
-.nav-item.active::before {
-  content: '';
-  position: absolute;
-  right: -14px;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: var(--m3-primary-light);
 }
 
 .nav-item.active .nav-icon-wrap {

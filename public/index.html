@@ -1591,18 +1591,24 @@
       </section>
 
       <section class="tab-pane" id="pane-appointments">
-        <div class="banner-info" style="border-right:4px solid var(--m3-primary); background:var(--m3-surface-container);">
-          <div class="banner-icon" style="background:var(--m3-primary); color:var(--m3-on-primary);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
-          <div class="banner-text">
-            <h4>المواعيد والكشف - الدمج الرباعي (موعد + إذن)</h4>
-            <p>روتيني (حجز مسبق + إذن مؤقت) • طوارئ (كسر زجاج فوري) • تحويل (إذن للمنشأة المحوّلة) • متابعة مزمنة (إذن دائم) — صلاحية القراءة مرتبطة بموعد/إذن نشط فقط</p>
+        <div style="margin-bottom:24px;">
+          <div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;">
+            <h2 style="font-size:1.55rem; font-weight:800; letter-spacing:-0.02em; color:var(--m3-on-surface); margin:0;">المواعيد والكشف</h2>
+            <span style="font-size:0.78rem; color:var(--m3-on-surface-variant); background:var(--m3-surface-container-high); padding:4px 8px; border-radius:var(--radius-sharp);">الدمج الرباعي — موعد + إذن</span>
+          </div>
+          <p style="margin-top:8px; font-size:0.88rem; color:var(--m3-on-surface-variant); max-width:65ch; line-height:1.6;">اختر المنشأة ونوع الزيارة، وحدد شريحة زمنية (08:00–17:00). النظام يتحقق من التضارب (30 دقيقة) ويُنشئ إذناً مؤقتاً مرتبطاً بالموعد — لا قراءة للسجل بدون موعد/إذن نشط.</p>
+          <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; font-size:0.76rem;">
+            <span style="background:var(--m3-primary-container); color:var(--m3-on-primary-container); padding:4px 8px; border-radius:var(--radius-sharp);">روتيني — إذن 48 ساعة</span>
+            <span style="background:var(--m3-error-container); color:var(--m3-on-error-container); padding:4px 8px; border-radius:var(--radius-sharp);">طوارئ — كسر زجاج فوري</span>
+            <span style="background:var(--m3-warning-container); color:var(--m3-on-warning-container); padding:4px 8px; border-radius:var(--radius-sharp);">تحويل — إذن للمنشأة المحوّلة</span>
+            <span style="background:var(--m3-tertiary-container); color:var(--m3-on-tertiary-container); padding:4px 8px; border-radius:var(--radius-sharp);">مزمن — إذن دائم</span>
           </div>
         </div>
 
-        <div id="appointments-patient-card" class="card mb-4" style="display:none;">
-          <div class="card-header"><div class="card-header-title"><h3>حجز موعد جديد (المريض)</h3></div></div>
-          <div class="card-body">
-            <form id="form-book-appointment" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+        <div id="appointments-patient-card" class="card mb-4" style="display:none; border:1px solid var(--m3-outline-variant);">
+          <div class="card-header" style="background:var(--m3-surface-container-high);"><div class="card-header-title"><h3>حجز موعد جديد</h3><span class="badge badge-info">للمريض فقط</span></div><span style="font-size:0.72rem; color:var(--m3-on-surface-variant);">المنشأة + النوع + الشريحة — 3 خطوات</span></div>
+          <div class="card-body" style="padding:18px;">
+            <form id="form-book-appointment" style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
               <div><label style="font-size:0.78rem; display:block; margin-bottom:4px;">المنشأة *</label><select id="appt-org" class="form-select" required><option value="">-- اختر المنشأة النشطة --</option></select></div>
               <div><label style="font-size:0.78rem; display:block; margin-bottom:4px;">نوع الموعد *</label><select id="appt-type" class="form-select"><option value="ROUTINE">ROUTINE - كشف روتيني</option><option value="CHRONIC">CHRONIC - متابعة مزمنة</option><option value="REFERRAL">REFERRAL - تحويل</option><option value="EMERGENCY">EMERGENCY - طوارئ (فوري)</option></select></div>
               <div><label style="font-size:0.78rem; display:block; margin-bottom:4px;">التاريخ * <span style="color:var(--m3-on-surface-variant); font-weight:400;">(ميلادي)</span></label><input type="date" id="appt-date" class="form-select" required><small id="appt-date-hint" style="font-size:0.68rem; color:var(--m3-on-surface-variant);"></small></div>
@@ -1617,9 +1623,17 @@
           </div>
         </div>
 
-        <div class="card">
-          <div class="card-header"><div class="card-header-title"><h3>مواعيدي</h3></div><button class="btn btn-secondary btn-sm" onclick="loadAppointments()">تحديث</button></div>
-          <div class="card-body p-0"><table class="data-table"><thead><tr><th>المريض</th><th>المنشأة</th><th>النوع</th><th>الحالة</th><th>الموعد</th><th>الإذن</th><th>إجراء</th></tr></thead><tbody id="appointments-tbody"><tr><td colspan="7" class="text-center py-4">جاري التحميل...</td></tr></tbody></table></div>
+        <div class="card" style="border:1px solid var(--m3-outline-variant);">
+          <div class="card-header" style="background:var(--m3-surface-container-high); display:flex; justify-content:space-between; align-items:center;"><div class="card-header-title"><h3>مواعيدي</h3><span id="appointments-count" class="badge badge-info" style="margin-inline-start:8px;">—</span></div><button class="btn btn-secondary btn-sm" onclick="loadAppointments()">تحديث</button></div>
+          <div class="card-body p-0">
+            <div style="padding:10px 14px; background:var(--m3-surface-container-low); border-bottom:1px solid var(--m3-outline-variant); font-size:0.78rem; color:var(--m3-on-surface-variant); display:flex; gap:8px; flex-wrap:wrap;">
+              <span><span class="badge badge-secondary">proposed</span> بانتظار تأكيد المنشأة</span>
+              <span><span class="badge badge-info">booked</span> مؤكد — إذن ممنوح</span>
+              <span><span class="badge badge-warning">arrived</span> وصل</span>
+              <span><span class="badge badge-success">fulfilled</span> مكتمل</span>
+            </div>
+            <table class="data-table"><thead><tr><th>المريض</th><th>المنشأة</th><th>النوع</th><th>الحالة</th><th>الموعد</th><th>الإذن</th><th>إجراء</th></tr></thead><tbody id="appointments-tbody"><tr><td colspan="7" class="text-center py-4">جاري التحميل...</td></tr></tbody></table>
+          </div>
         </div>
       </section>
 
@@ -1965,15 +1979,16 @@
           </div>
 
           <div class="card">
-            <div class="card-header">
-              <div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><h3>مرضى منشأتك المرحّلون (معزولون تنظيمياً)</h3></div>
-              <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-hosp-patients"><svg class="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg><span>تحديث</span></button>
+            <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+              <div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><h3>مرضى منشأتك المرتبطون — واجهة عرض مرضى المنشأة</h3><span class="badge badge-success" id="hosp-patients-count">—</span></div>
+              <div style="display:flex; gap:6px; align-items:center;"><input id="hosp-patients-search" class="form-input" placeholder="ابحث بالاسم/الهوية" style="width:200px; padding:6px 10px; font-size:0.82rem;"><button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-hosp-patients"><svg class="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg><span>تحديث</span></button></div>
             </div>
             <div class="card-body p-0">
               <table class="data-table">
-                <thead><tr><th>الاسم</th><th>الهوية</th><th>الجنس</th><th>تاريخ الربط</th></tr></thead>
-                <tbody id="hosp-patients-tbody"><tr><td colspan="4" class="text-center py-4">جاري التحميل...</td></tr></tbody>
+                <thead><tr><th>الاسم</th><th>الهوية</th><th>الجنس</th><th>تاريخ الربط</th><th>إجراء</th></tr></thead>
+                <tbody id="hosp-patients-tbody"><tr><td colspan="5" class="text-center py-4">جاري التحميل...</td></tr></tbody>
               </table>
+              <div id="hosp-patients-pagination" style="display:flex; justify-content:space-between; align-items:center; padding:10px 14px; font-size:0.78rem; color:var(--m3-on-surface-variant);"></div>
             </div>
           </div>
         </div>
