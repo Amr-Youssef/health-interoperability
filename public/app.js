@@ -1899,7 +1899,10 @@ async function loadAllData() {
 async function loadMonitoringStats() {
   try {
     const startTime = performance.now();
-    const res = await fetch('/api/monitoring/stats?auditLimit=15');
+    // Auditor needs a wider window: pipeline-only rows are filtered client-side
+    // from the same security audit log (the log itself is never modified).
+    const _isAuditorView = appAuth.currentRole === 'MOH_AUDITOR';
+    const res = await fetch('/api/monitoring/stats?auditLimit=' + (_isAuditorView ? 50 : 15));
     const latencyMs = Math.round(performance.now() - startTime);
     const data = await res.json();
 
@@ -2019,7 +2022,28 @@ async function loadMonitoringStats() {
 
     const tbody = document.getElementById('audit-table-body');
     if (tbody && data.recentAudit) {
-      const capped = data.recentAudit.slice(0, 15);
+      // Auditor stream shows pipeline/integration events only (ingestion/adapter/
+      // mapping/terminology/validation/MPI/canonical/FHIR). Patient-search QUERY
+      // rows and other API activity stay in the security audit log untouched.
+      const _pipelineActions = new Set(['INGEST', 'INGESTED', 'TRANSFORM', 'MAPPED', 'VALIDATED', 'PERSISTED', 'REPROCESSED', 'PATIENT_MERGE', 'PATIENT_UNMERGE', 'EXPORTED', 'BULK_EXPORT']);
+      let _stream = data.recentAudit;
+      if (isAuditor) {
+        _stream = data.recentAudit.filter((a) => _pipelineActions.has(String(a.action || '').toUpperCase()));
+        // Pipeline INGEST/TRANSFORM events live in the hash-chained audit blocks —
+        // merge them in so the auditor stream is never empty while DB activity exists.
+        try {
+          const _cr = await fetch('/api/security/audit-chain');
+          if (_cr.ok) {
+            const _chain = await _cr.json();
+            const _blocks = (Array.isArray(_chain) ? _chain : []).filter((b) => _pipelineActions.has(String(b.action || '').toUpperCase())).map((b) => ({
+              action: b.action, entityType: b.entityType, entityId: b.entityId,
+              timestamp: b.timestamp, detail: b.details, actor: b.actor
+            }));
+            _stream = _stream.concat(_blocks).sort((x, y) => new Date(y.timestamp || y.created_at || 0) - new Date(x.timestamp || x.created_at || 0));
+          }
+        } catch {}
+      }
+      const capped = _stream.slice(0, 15);
       tbody.innerHTML = capped.map((a) => {
         const ts = a.timestamp || a.created_at || a.createdAt || a.persisted_at || new Date().toISOString();
         return `
@@ -2031,8 +2055,8 @@ async function loadMonitoringStats() {
           <td style="color:var(--m3-on-surface-variant);">${a.detail || a.details || ''}</td>
         </tr>`;
       }).join('') || '<tr><td colspan="5" class="text-center py-4">لا توجد سجلات تدقيق حتى الآن - البيانات من سلسلة التدقيق الحقيقية</td></tr>';
-      if (data.recentAudit.length > capped.length) {
-        tbody.innerHTML += `<tr><td colspan="5" class="text-center py-2" style="font-size:0.78rem; color:var(--m3-on-surface-variant);">عرض أحدث ${capped.length} فقط — السجل الكامل في تبويب «التدقيق السيبراني»</td></tr>`;
+      if (_stream.length > capped.length) {
+        tbody.innerHTML += `<tr><td colspan="5" class="text-center py-2" style="font-size:0.78rem; color:var(--m3-on-surface-variant);">عرض أحدث ${capped.length} من أحداث التكامل فقط${isAuditor ? '' : ' — السجل الكامل في تبويب «التدقيق السيبراني»'}</td></tr>`;
       }
     }
     if (isAuditor) refreshAuditorConsole(data);
