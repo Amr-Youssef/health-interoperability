@@ -127,6 +127,8 @@ export declare class NormalizationEngine {
      * Any missing link throws UnresolvedReferenceError -> the record is rejected.
      */
     private resolveClinicalSubject;
+    private summarizeTerminology;
+    private finalizeRecordOutcome;
     private persistToCanonical;
     checkPatientEligibility(patientId: string): Promise<CanonicalCoverageEligibility | null>;
     reprocessRecord(rawRecordId: string, customConfig?: any): Promise<any>;

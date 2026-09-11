@@ -26,7 +26,16 @@ export class PrismaRawStore implements RawStore {
       processingStatus: record.processing_status as ProcessingStatus,
       errorMessage: record.error_message || undefined,
       reprocessCount: record.reprocess_count,
-      lastReprocessedAt: record.last_reprocessed_at ? record.last_reprocessed_at.toISOString() : undefined
+      lastReprocessedAt: record.last_reprocessed_at ? record.last_reprocessed_at.toISOString() : undefined,
+      validationScore: record.validation_score ?? undefined,
+      validationDecision: record.validation_decision || undefined,
+      validationIssuesCount: record.validation_issues_count || 0,
+      mappingVersion: record.mapping_version || undefined,
+      mappingConfigId: record.mapping_config_id || undefined,
+      terminologySummary: record.terminology_summary ? JSON.parse(record.terminology_summary) : null,
+      mpiStrategy: record.mpi_strategy || undefined,
+      mpiConfidence: record.mpi_confidence ?? undefined,
+      mpiIdentityId: record.mpi_identity_id || undefined
     };
   }
 
@@ -146,6 +155,21 @@ export class PrismaRawStore implements RawStore {
       where: { id },
       data: { processing_status: status, error_message: errorMessage || null }
     });
+  }
+
+  async recordPipelineTrace(id: string, trace: Partial<Pick<RawRecord, 'validationScore' | 'validationDecision' | 'validationIssuesCount' | 'mappingVersion' | 'mappingConfigId' | 'terminologySummary' | 'mpiStrategy' | 'mpiConfidence' | 'mpiIdentityId'>>): Promise<void> {
+    const data: any = {};
+    if (trace.validationScore !== undefined) data.validation_score = trace.validationScore;
+    if (trace.validationDecision !== undefined) data.validation_decision = trace.validationDecision;
+    if (trace.validationIssuesCount !== undefined) data.validation_issues_count = trace.validationIssuesCount;
+    if (trace.mappingVersion !== undefined) data.mapping_version = trace.mappingVersion;
+    if (trace.mappingConfigId !== undefined) data.mapping_config_id = trace.mappingConfigId;
+    if (trace.terminologySummary !== undefined) data.terminology_summary = trace.terminologySummary ? JSON.stringify(trace.terminologySummary) : null;
+    if (trace.mpiStrategy !== undefined) data.mpi_strategy = trace.mpiStrategy;
+    if (trace.mpiConfidence !== undefined) data.mpi_confidence = trace.mpiConfidence;
+    if (trace.mpiIdentityId !== undefined) data.mpi_identity_id = trace.mpiIdentityId;
+    if (Object.keys(data).length === 0) return;
+    await this.prisma.rawRecord.update({ where: { id }, data });
   }
 
   async markReprocessed(id: string): Promise<void> {

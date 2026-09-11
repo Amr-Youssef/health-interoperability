@@ -14,4 +14,17 @@ export interface RawRecord {
     errorMessage?: string;
     reprocessCount?: number;
     lastReprocessedAt?: string;
+    validationScore?: number;
+    validationDecision?: string;
+    validationIssuesCount?: number;
+    mappingVersion?: string;
+    mappingConfigId?: string;
+    terminologySummary?: {
+        systems: string[];
+        conceptCount: number;
+        mapVersion?: string;
+    } | null;
+    mpiStrategy?: string;
+    mpiConfidence?: number;
+    mpiIdentityId?: string;
 }

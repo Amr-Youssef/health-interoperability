@@ -2018,6 +2018,7 @@ function _auditFmtTime(iso) { try { return new Date(iso).toLocaleString('ar-SA')
 function _auditResultBadge(status) {
   if (['PERSISTED', 'VALIDATED'].includes(status)) return '<span class="badge badge-success">نجاح</span>';
   if (status === 'FAILED') return '<span class="badge badge-error">فشل</span>';
+  if (status === 'QUARANTINED') return '<span class="badge badge-warning">معزول — مراجعة يدوية</span>';
   return '<span class="badge badge-warning">' + _auditEsc(status || '—') + '</span>';
 }
 function _auditStatusBadge(status) {
@@ -2148,7 +2149,7 @@ async function loadAuditorQuarantine() {
   const tbody = document.getElementById('audit-quarantine-body');
   if (!tbody) return;
   try {
-    const r = await fetch('/api/audit/records?result=failed&limit=15&page=1');
+    const r = await fetch('/api/audit/records?result=quarantined&limit=15&page=1');
     const j = await r.json();
     if (!r.ok) throw new Error(j.error || 'فشل التحميل');
     const items = j.items || [];
@@ -2218,10 +2219,18 @@ async function openAuditorTrace(id) {
     const r = await fetch('/api/audit/records/' + encodeURIComponent(id) + '/trace');
     const j = await r.json();
     if (!r.ok) throw new Error(j.error || 'فشل التحميل');
-    const stageBadge = (s) => s.result === 'failed' ? '<span class="badge badge-error">فشل</span>' : (s.result === 'recorded' || s.result === 'passed' || s.result === 'persisted') ? '<span class="badge badge-success">تم</span>' : '<span class="badge badge-info">' + _auditEsc(s.result) + '</span>';
+    const stageBadge = (s) => s.result === 'failed' ? '<span class="badge badge-error">فشل</span>' : s.result === 'quarantined' ? '<span class="badge badge-warning">معزول</span>' : (s.result === 'recorded' || s.result === 'passed' || s.result === 'persisted') ? '<span class="badge badge-success">تم</span>' : '<span class="badge badge-info">' + _auditEsc(s.result) + '</span>';
+    const rec = j.record;
+    const term = rec.terminologySummary;
     body.innerHTML = `
       <div style="margin-bottom:12px; font-size:0.82rem; color:var(--m3-on-surface-variant);">
-        <code>${_auditEsc(j.record.id.substring(0, 8))}</code> • ${_auditEsc(j.record.sourceSystemId)} • ${_auditEsc(j.record.sourceEntityType)} • ${_auditFmtTime(j.record.ingestedAt)}
+        <code>${_auditEsc(rec.id.substring(0, 8))}</code> • ${_auditEsc(rec.sourceSystemId)} • ${_auditEsc(rec.sourceEntityType)} • ${_auditFmtTime(rec.ingestedAt)}
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:8px; margin-bottom:12px; font-size:0.78rem;">
+        <div style="padding:8px; background:var(--m3-surface-container-low); border:1px solid var(--m3-outline-variant);"><div style="color:var(--m3-on-surface-muted);">التحقق</div><div><strong>${_auditEsc(rec.validationDecision || '—')}</strong> • درجة ${rec.validationScore ?? '—'} • ${rec.validationIssuesCount || 0} ملاحظة</div></div>
+        <div style="padding:8px; background:var(--m3-surface-container-low); border:1px solid var(--m3-outline-variant);"><div style="color:var(--m3-on-surface-muted);">الربط</div><div><strong>${_auditEsc(rec.mappingVersion || '—')}</strong>${rec.mappingConfigId ? ' • <code>' + _auditEsc(rec.mappingConfigId) + '</code>' : ''}</div></div>
+        <div style="padding:8px; background:var(--m3-surface-container-low); border:1px solid var(--m3-outline-variant);"><div style="color:var(--m3-on-surface-muted);">المصطلحات</div><div>${term ? `<strong>${term.conceptCount} مفهوم</strong> • ${_auditEsc((term.systems || []).join('، '))}` : 'غير مسجلة لهذا السجل'}</div></div>
+        <div style="padding:8px; background:var(--m3-surface-container-low); border:1px solid var(--m3-outline-variant);"><div style="color:var(--m3-on-surface-muted);">MPI</div><div>${rec.mpiStrategy ? `<strong>${_auditEsc(rec.mpiStrategy)}</strong> • ثقة ${rec.mpiConfidence != null ? Math.round(rec.mpiConfidence * 100) + '%' : '—'}` : 'غير مسجل لهذا السجل'}</div></div>
       </div>
       <div style="display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-bottom:14px;">
         ${j.stages.map((s, i) => `${i > 0 ? '<span style="color:var(--m3-on-surface-muted);">→</span>' : ''}<span style="padding:6px 10px; background:var(--m3-surface-container-low); border:1px solid var(--m3-outline-variant); font-size:0.76rem;"><strong>${_auditEsc(s.stage)}</strong><br>${stageBadge(s)}</span>`).join('')}

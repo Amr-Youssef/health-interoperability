@@ -126,14 +126,17 @@ export class NormalizationEngine {
         await this.rawStore.save(rawRecord);
         const mapped = await this.mappingEngine.mapRecord(rawRecord);
         const validation = await this.qualityEngine.validate(mapped);
-        if (validation.decision !== 'REJECTED') {
+        if (validation.decision === 'MANUAL_REVIEW') {
+            await this.finalizeRecordOutcome(rawRecord, mapped, validation, 'QUARANTINED', validation.issues.map(i => i.message).join('; '));
+        }
+        else if (validation.decision !== 'REJECTED') {
             let persistOutcome = null;
             try {
                 persistOutcome = await this.persistToCanonical(mapped, rawRecord, validation);
-                await this.rawStore.updateStatus(rawRecord.id, 'PERSISTED');
+                await this.finalizeRecordOutcome(rawRecord, mapped, validation, 'PERSISTED');
             }
             catch (err) {
-                await this.rawStore.updateStatus(rawRecord.id, 'FAILED', err.message);
+                await this.finalizeRecordOutcome(rawRecord, mapped, validation, 'FAILED', err.message);
                 return {
                     rawRecordId: rawRecord.id,
                     parsed,
@@ -201,7 +204,7 @@ export class NormalizationEngine {
             await this.auditChain.recordEvent('INGEST', 'HL7_MLLP_FEED', 'HL7v2Message', rawRecord.sourceRecordId, `Normalized HL7 v2 [${parsed.messageType}^${parsed.triggerEvent}] from ${parsed.sendingFacility}`);
         }
         else {
-            await this.rawStore.updateStatus(rawRecord.id, 'FAILED', validation.issues.map(i => i.message).join('; '));
+            await this.finalizeRecordOutcome(rawRecord, mapped, validation, 'FAILED', validation.issues.map(i => i.message).join('; '));
         }
         return {
             rawRecordId: rawRecord.id,
@@ -307,17 +310,20 @@ export class NormalizationEngine {
         await this.rawStore.save(rawRecord);
         const mapped = await this.mappingEngine.mapRecord(rawRecord);
         const validation = await this.qualityEngine.validate(mapped);
-        if (validation.decision !== 'REJECTED') {
+        if (validation.decision === 'MANUAL_REVIEW') {
+            await this.finalizeRecordOutcome(rawRecord, mapped, validation, 'QUARANTINED', validation.issues.map(i => i.message).join('; '));
+        }
+        else if (validation.decision !== 'REJECTED') {
             try {
                 await this.persistToCanonical(mapped, rawRecord, validation);
-                await this.rawStore.updateStatus(rawRecord.id, 'PERSISTED');
+                await this.finalizeRecordOutcome(rawRecord, mapped, validation, 'PERSISTED');
                 await this.auditChain.recordEvent('TRANSFORM', 'NORMALIZATION_PIPELINE', mapped.targetCanonicalEntity, rawRecord.id, `Normalized dynamic payload with score ${validation.score}/100`);
             }
             catch (err) {
                 // Referential integrity gate: unable to link to a real patient/encounter
                 // is treated as a hard rejection, never a silent first-patient fallback.
                 console.warn(`[ingestDynamicPayload] ${err.message}`);
-                await this.rawStore.updateStatus(rawRecord.id, 'FAILED', err.message);
+                await this.finalizeRecordOutcome(rawRecord, mapped, validation, 'FAILED', err.message);
                 return {
                     rawRecordId: rawRecord.id,
                     mapped,
@@ -333,7 +339,7 @@ export class NormalizationEngine {
             }
         }
         else {
-            await this.rawStore.updateStatus(rawRecord.id, 'FAILED', validation.issues.map(i => i.message).join('; '));
+            await this.finalizeRecordOutcome(rawRecord, mapped, validation, 'FAILED', validation.issues.map(i => i.message).join('; '));
         }
         return {
             rawRecordId: rawRecord.id,
@@ -561,8 +567,13 @@ export class NormalizationEngine {
                 // Stage 4: Data Quality & Validation Gate
                 const validation = await this.qualityEngine.validate(mapped);
                 if (validation.decision === 'REJECTED') {
-                    await this.rawStore.updateStatus(raw.id, 'FAILED', validation.issues.map(i => i.message).join('; '));
+                    await this.finalizeRecordOutcome(raw, mapped, validation, 'FAILED', validation.issues.map(i => i.message).join('; '));
                     rejectedCount++;
+                    continue;
+                }
+                if (validation.decision === 'MANUAL_REVIEW') {
+                    await this.finalizeRecordOutcome(raw, mapped, validation, 'QUARANTINED', validation.issues.map(i => i.message).join('; '));
+                    processedCount++;
                     continue;
                 }
                 if (validation.decision === 'ACCEPTED_WITH_WARNINGS') {
@@ -573,7 +584,7 @@ export class NormalizationEngine {
                 }
                 // Stage 5: Canonical Transformation & Persistence
                 await this.persistToCanonical(mapped, raw, validation);
-                await this.rawStore.updateStatus(raw.id, 'PERSISTED');
+                await this.finalizeRecordOutcome(raw, mapped, validation, 'PERSISTED');
                 processedCount++;
             }
             catch (err) {
@@ -668,6 +679,56 @@ export class NormalizationEngine {
         }
         return { patientId };
     }
+    summarizeTerminology(mapped) {
+        const systems = new Set();
+        let conceptCount = 0;
+        const visit = (node) => {
+            if (!node || typeof node !== 'object')
+                return;
+            if (Array.isArray(node)) {
+                node.forEach(visit);
+                return;
+            }
+            const codeKeys = ['snomedCode', 'icd10amCode', 'loincCode', 'sbsCode', 'sfdaCode', 'atcCode', 'rxnormCode', 'cvxCode'];
+            if (Object.keys(node).some(k => codeKeys.includes(k))) {
+                conceptCount++;
+                if (node.snomedCode)
+                    systems.add('SNOMED CT');
+                if (node.icd10amCode)
+                    systems.add('ICD-10-AM');
+                if (node.loincCode)
+                    systems.add('LOINC');
+                if (node.sbsCode)
+                    systems.add('SBS');
+                if (node.sfdaCode)
+                    systems.add('SFDA');
+                if (node.atcCode)
+                    systems.add('ATC');
+                if (node.rxnormCode)
+                    systems.add('RxNorm');
+                if (node.cvxCode)
+                    systems.add('CVX');
+            }
+            for (const v of Object.values(node))
+                visit(v);
+        };
+        visit(mapped?.data);
+        return { systems: [...systems], conceptCount, mapVersion: mapped?.terminologyMapVersion || '1.0.0' };
+    }
+    async finalizeRecordOutcome(raw, mapped, validation, outcome, errorMessage) {
+        try {
+            await this.rawStore.recordPipelineTrace(raw.id, {
+                mappingVersion: mapped?.mappingVersion,
+                mappingConfigId: mapped?.mappingConfigId,
+                terminologySummary: this.summarizeTerminology(mapped),
+                validationScore: validation?.score,
+                validationDecision: validation?.decision,
+                validationIssuesCount: validation?.issues?.length || 0
+            });
+        }
+        catch { }
+        await this.rawStore.updateStatus(raw.id, outcome, errorMessage);
+    }
     async persistToCanonical(mapped, raw, validation) {
         const timestamp = new Date().toISOString();
         const data = mapped.data;
@@ -700,6 +761,14 @@ export class NormalizationEngine {
                 phone: data.phone
             });
             const internalPatientId = identity.internalPatientId;
+            try {
+                await this.rawStore.recordPipelineTrace(raw.id, {
+                    mpiStrategy: identity.matchStrategy,
+                    mpiConfidence: identity.confidence,
+                    mpiIdentityId: internalPatientId
+                });
+            }
+            catch { }
             if (data.mrn) {
                 this.mrnToInternalPatientId.set(`${raw.sourceSystemId}:${data.mrn}`, internalPatientId);
             }
@@ -1155,14 +1224,17 @@ export class NormalizationEngine {
         await this.rawStore.markReprocessed(rawRecordId);
         const mapped = await this.mappingEngine.mapRecord(raw);
         const validation = await this.qualityEngine.validate(mapped);
-        if (validation.decision !== 'REJECTED') {
+        if (validation.decision === 'MANUAL_REVIEW') {
+            await this.finalizeRecordOutcome(raw, mapped, validation, 'QUARANTINED', validation.issues.map(i => i.message).join('; '));
+        }
+        else if (validation.decision !== 'REJECTED') {
             try {
                 await this.persistToCanonical(mapped, raw, validation);
-                await this.rawStore.updateStatus(rawRecordId, 'PERSISTED');
+                await this.finalizeRecordOutcome(raw, mapped, validation, 'PERSISTED');
             }
             catch (err) {
                 console.warn(`[reprocessRecord] ${err.message}`);
-                await this.rawStore.updateStatus(rawRecordId, 'FAILED', err.message);
+                await this.finalizeRecordOutcome(raw, mapped, validation, 'FAILED', err.message);
                 return {
                     rawRecordId,
                     mapped,

@@ -31,6 +31,15 @@ export class SqliteRawStore {
         errorMessage TEXT,
         reprocessCount INTEGER DEFAULT 0,
         lastReprocessedAt TEXT,
+        validationScore INTEGER,
+        validationDecision TEXT,
+        validationIssuesCount INTEGER DEFAULT 0,
+        mappingVersion TEXT,
+        mappingConfigId TEXT,
+        terminologySummary TEXT,
+        mpiStrategy TEXT,
+        mpiConfidence REAL,
+        mpiIdentityId TEXT,
         UNIQUE(sourceSystemId, sourceEntityType, sourceRecordId)
       );
     `);
@@ -50,7 +59,16 @@ export class SqliteRawStore {
             processingStatus: row.processingStatus,
             errorMessage: row.errorMessage || undefined,
             reprocessCount: row.reprocessCount || 0,
-            lastReprocessedAt: row.lastReprocessedAt || undefined
+            lastReprocessedAt: row.lastReprocessedAt || undefined,
+            validationScore: row.validationScore ?? undefined,
+            validationDecision: row.validationDecision || undefined,
+            validationIssuesCount: row.validationIssuesCount || 0,
+            mappingVersion: row.mappingVersion || undefined,
+            mappingConfigId: row.mappingConfigId || undefined,
+            terminologySummary: row.terminologySummary ? JSON.parse(row.terminologySummary) : null,
+            mpiStrategy: row.mpiStrategy || undefined,
+            mpiConfidence: row.mpiConfidence ?? undefined,
+            mpiIdentityId: row.mpiIdentityId || undefined
         };
     }
     async save(record) {
@@ -116,6 +134,50 @@ export class SqliteRawStore {
       WHERE id = ?
     `);
         stmt.run(status, errorMessage || null, id);
+    }
+    async recordPipelineTrace(id, trace) {
+        const sets = [];
+        const vals = [];
+        if (trace.validationScore !== undefined) {
+            sets.push('validationScore = ?');
+            vals.push(trace.validationScore);
+        }
+        if (trace.validationDecision !== undefined) {
+            sets.push('validationDecision = ?');
+            vals.push(trace.validationDecision);
+        }
+        if (trace.validationIssuesCount !== undefined) {
+            sets.push('validationIssuesCount = ?');
+            vals.push(trace.validationIssuesCount);
+        }
+        if (trace.mappingVersion !== undefined) {
+            sets.push('mappingVersion = ?');
+            vals.push(trace.mappingVersion);
+        }
+        if (trace.mappingConfigId !== undefined) {
+            sets.push('mappingConfigId = ?');
+            vals.push(trace.mappingConfigId);
+        }
+        if (trace.terminologySummary !== undefined) {
+            sets.push('terminologySummary = ?');
+            vals.push(trace.terminologySummary ? JSON.stringify(trace.terminologySummary) : null);
+        }
+        if (trace.mpiStrategy !== undefined) {
+            sets.push('mpiStrategy = ?');
+            vals.push(trace.mpiStrategy);
+        }
+        if (trace.mpiConfidence !== undefined) {
+            sets.push('mpiConfidence = ?');
+            vals.push(trace.mpiConfidence);
+        }
+        if (trace.mpiIdentityId !== undefined) {
+            sets.push('mpiIdentityId = ?');
+            vals.push(trace.mpiIdentityId);
+        }
+        if (sets.length === 0)
+            return;
+        vals.push(id);
+        this.db.prepare(`UPDATE raw_records SET ${sets.join(', ')} WHERE id = ?`).run(...vals);
     }
     async markReprocessed(id) {
         const stmt = this.db.prepare(`

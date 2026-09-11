@@ -10,7 +10,7 @@ export type EncounterClass = 'inpatient' | 'outpatient' | 'emergency' | 'virtual
 export type ConditionCategory = 'encounter-diagnosis' | 'problem-list-item';
 export type ConditionRank = 'primary' | 'secondary';
 export type ObservationCategory = 'laboratory' | 'vital-signs' | 'exam';
-export type ProcessingStatus = 'PENDING' | 'RAW_INGESTED' | 'MAPPED' | 'VALIDATED' | 'PERSISTED' | 'FAILED' | 'REPROCESSED';
+export type ProcessingStatus = 'PENDING' | 'RAW_INGESTED' | 'MAPPED' | 'VALIDATED' | 'PERSISTED' | 'FAILED' | 'QUARANTINED' | 'REPROCESSED';
 export type ValidationDecision = 'ACCEPTED' | 'ACCEPTED_WITH_WARNINGS' | 'REJECTED' | 'MANUAL_REVIEW';
 export interface ValidationIssue {
     field: string;

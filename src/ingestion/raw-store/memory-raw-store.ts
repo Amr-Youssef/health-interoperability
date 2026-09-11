@@ -99,6 +99,15 @@ export class InMemoryRawStore implements RawStore {
     }
   }
 
+  async recordPipelineTrace(id: string, trace: Partial<Pick<RawRecord, 'validationScore' | 'validationDecision' | 'validationIssuesCount' | 'mappingVersion' | 'mappingConfigId' | 'terminologySummary' | 'mpiStrategy' | 'mpiConfidence' | 'mpiIdentityId'>>): Promise<void> {
+    const record = this.records.get(id);
+    if (record) {
+      Object.assign(record, trace);
+      this.records.set(id, record);
+      this.saveToDisk();
+    }
+  }
+
   async markReprocessed(id: string): Promise<void> {
     const record = this.records.get(id);
     if (record) {

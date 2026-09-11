@@ -659,6 +659,17 @@ model RawRecord {
   reprocess_count   Int      @default(0)
   last_reprocessed_at DateTime?
 
+  // Per-record pipeline trace (auditability: real stage outcomes, no inference)
+  validation_score     Int?
+  validation_decision  String?
+  validation_issues_count Int @default(0)
+  mapping_version      String?
+  mapping_config_id    String?
+  terminology_summary  String?
+  mpi_strategy         String?
+  mpi_confidence       Float?
+  mpi_identity_id      String?
+
   @@unique([source_system_id, source_entity_type, source_record_id])
   @@index([ingested_at])
   @@index([source_system_id])

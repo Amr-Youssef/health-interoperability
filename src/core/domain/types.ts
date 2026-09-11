@@ -19,13 +19,14 @@ export type ConditionRank = 'primary' | 'secondary';
 
 export type ObservationCategory = 'laboratory' | 'vital-signs' | 'exam';
 
-export type ProcessingStatus = 
-  | 'PENDING' 
-  | 'RAW_INGESTED' 
-  | 'MAPPED' 
-  | 'VALIDATED' 
-  | 'PERSISTED' 
-  | 'FAILED' 
+export type ProcessingStatus =
+  | 'PENDING'
+  | 'RAW_INGESTED'
+  | 'MAPPED'
+  | 'VALIDATED'
+  | 'PERSISTED'
+  | 'FAILED'
+  | 'QUARANTINED'
   | 'REPROCESSED';
 
 export type ValidationDecision = 

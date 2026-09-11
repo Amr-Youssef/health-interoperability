@@ -93,6 +93,14 @@ export class InMemoryRawStore {
             this.saveToDisk();
         }
     }
+    async recordPipelineTrace(id, trace) {
+        const record = this.records.get(id);
+        if (record) {
+            Object.assign(record, trace);
+            this.records.set(id, record);
+            this.saveToDisk();
+        }
+    }
     async markReprocessed(id) {
         const record = this.records.get(id);
         if (record) {

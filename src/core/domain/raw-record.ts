@@ -15,4 +15,14 @@ export interface RawRecord {
   errorMessage?: string;
   reprocessCount?: number;
   lastReprocessedAt?: string;
+  // Per-record pipeline trace (persisted stage outcomes)
+  validationScore?: number;
+  validationDecision?: string;
+  validationIssuesCount?: number;
+  mappingVersion?: string;
+  mappingConfigId?: string;
+  terminologySummary?: { systems: string[]; conceptCount: number; mapVersion?: string } | null;
+  mpiStrategy?: string;
+  mpiConfidence?: number;
+  mpiIdentityId?: string;
 }

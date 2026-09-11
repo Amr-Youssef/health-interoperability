@@ -5,6 +5,7 @@ import { prisma } from '../../lib/prisma.js';
 
 const SUCCESS_STATUSES = ['PERSISTED', 'VALIDATED'];
 const FAILED_STATUSES = ['FAILED'];
+const QUARANTINE_STATUSES = ['QUARANTINED'];
 
 function toPublicRecord(r: any) {
   return {
@@ -19,7 +20,16 @@ function toPublicRecord(r: any) {
     processingStatus: r.processing_status,
     errorMessage: r.error_message || null,
     reprocessCount: r.reprocess_count || 0,
-    lastReprocessedAt: r.last_reprocessed_at ? r.last_reprocessed_at.toISOString() : null
+    lastReprocessedAt: r.last_reprocessed_at ? r.last_reprocessed_at.toISOString() : null,
+    validationScore: r.validation_score ?? null,
+    validationDecision: r.validation_decision || null,
+    validationIssuesCount: r.validation_issues_count || 0,
+    mappingVersion: r.mapping_version || null,
+    mappingConfigId: r.mapping_config_id || null,
+    terminologySummary: r.terminology_summary ? JSON.parse(r.terminology_summary) : null,
+    mpiStrategy: r.mpi_strategy || null,
+    mpiConfidence: r.mpi_confidence ?? null,
+    mpiIdentityId: r.mpi_identity_id || null
   };
 }
 
@@ -48,34 +58,40 @@ function connectorStatus(args: { total: number; failed: number; lastSync: Date |
   return { status: 'Disconnected', errorRate };
 }
 
+async function measureProbeLatency(sysId: string): Promise<number | null> {
+  try {
+    const t0 = performance.now();
+    await prisma.rawRecord.findFirst({ where: { source_system_id: sysId }, orderBy: { ingested_at: 'desc' }, select: { id: true } });
+    return Math.max(1, Math.round(performance.now() - t0));
+  } catch { return null; }
+}
+
 export function createAuditRoutes(engine: any) {
   const router = Router();
   const READ = requirePermission('AUDIT_READ_CENTRAL') as any;
 
-  // National integration overview — counts only, no PHI
+  // National integration overview — counts only, no PHI.
+  // Quarantine = QUARANTINED (manual-review isolation), never conflated with FAILED.
   router.get('/audit/integration-overview', verifyToken as any, READ, async (_req, res) => {
     try {
-      const [total, success, failed] = await Promise.all([
+      const [total, success, failed, quarantined, systems] = await Promise.all([
         prisma.rawRecord.count(),
         prisma.rawRecord.count({ where: { processing_status: { in: SUCCESS_STATUSES } } }),
-        prisma.rawRecord.count({ where: { processing_status: { in: FAILED_STATUSES } } })
+        prisma.rawRecord.count({ where: { processing_status: { in: FAILED_STATUSES } } }),
+        prisma.rawRecord.count({ where: { processing_status: { in: QUARANTINE_STATUSES } } }),
+        prisma.rawRecord.groupBy({ by: ['source_system_id'] })
       ]);
       const lastSuccess = await prisma.rawRecord.findFirst({
         where: { processing_status: { in: SUCCESS_STATUSES } },
         orderBy: { ingested_at: 'desc' },
         select: { ingested_at: true, source_system_id: true }
       });
-      let avgLatency: number | null = null;
-      try {
-        const latencies: number[] = [];
-        for (const adapter of engine?.adapters?.values?.() || []) {
-          try {
-            const h = await adapter.healthCheck();
-            if (typeof h?.latencyMs === 'number') latencies.push(h.latencyMs);
-          } catch {}
-        }
-        if (latencies.length) avgLatency = Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length);
-      } catch {}
+      const latencies: number[] = [];
+      for (const s of systems as any[]) {
+        const ms = await measureProbeLatency((s as any).source_system_id);
+        if (ms != null) latencies.push(ms);
+      }
+      const avgLatency = latencies.length ? Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length) : null;
       const failureRate = total > 0 ? failed / total : 0;
       res.setHeader('Cache-Control', 'private, max-age=10, stale-while-revalidate=30');
       res.json({
@@ -83,7 +99,7 @@ export function createAuditRoutes(engine: any) {
         succeeded: success,
         failed,
         failureRate,
-        quarantine: failed,
+        quarantine: quarantined,
         avgLatencyMs: avgLatency,
         lastSuccessAt: lastSuccess?.ingested_at ? lastSuccess.ingested_at.toISOString() : null,
         lastSuccessSystem: lastSuccess?.source_system_id || null
@@ -91,7 +107,7 @@ export function createAuditRoutes(engine: any) {
     } catch (e: any) { res.status(500).json({ error: e.message }); }
   });
 
-  // Per-connector audit view — derived from stored records only
+  // Per-connector audit view — derived from stored records only; latency is measured per system
   router.get('/audit/connectors', verifyToken as any, READ, async (_req, res) => {
     try {
       const systems = await prisma.rawRecord.groupBy({ by: ['source_system_id'] });
@@ -107,13 +123,16 @@ export function createAuditRoutes(engine: any) {
       const connectors = [];
       for (const s of systems) {
         const sysId: string = (s as any).source_system_id;
+        const t0 = performance.now();
         const rows = (byStatus as any[]).filter(r => r.source_system_id === sysId);
         const total = rows.reduce((a, r) => a + (r._count?.processing_status || 0), 0);
         const failed = rows.filter(r => FAILED_STATUSES.includes(r.processing_status)).reduce((a, r) => a + (r._count?.processing_status || 0), 0);
+        const quarantined = rows.filter(r => QUARANTINE_STATUSES.includes(r.processing_status)).reduce((a, r) => a + (r._count?.processing_status || 0), 0);
         const todayRow: any = (todayCounts as any[]).find(r => r.source_system_id === sysId);
         const latest: any = await prisma.rawRecord.findFirst({ where: { source_system_id: sysId }, orderBy: { ingested_at: 'desc' } });
         const latestSuccess: any = await prisma.rawRecord.findFirst({ where: { source_system_id: sysId, processing_status: { in: SUCCESS_STATUSES } }, orderBy: { ingested_at: 'desc' }, select: { ingested_at: true, id: true } });
         const latestFailed: any = await prisma.rawRecord.findFirst({ where: { source_system_id: sysId, processing_status: { in: FAILED_STATUSES } }, orderBy: { ingested_at: 'desc' }, select: { ingested_at: true, error_message: true } });
+        const latencyMs = Math.max(1, Math.round(performance.now() - t0));
         const lastSync = latest?.ingested_at || null;
         const orgMatch = orgById.get(sysId);
         const disabled = !!orgMatch && (orgMatch as any).status !== 'ACTIVE';
@@ -133,7 +152,9 @@ export function createAuditRoutes(engine: any) {
           totalCount: total,
           errorCount: failed,
           errorRate,
-          latencyMs: null,
+          quarantinedCount: quarantined,
+          latencyMs,
+          latencyMeasured: true,
           channel: inferChannel({ payload_format: latest?.payload_format, source_system_id: sysId, adapter_version: latest?.adapter_version }),
           adapterVersion: latest?.adapter_version || null,
           mappingVersion: (await prisma.provenanceRecord.findFirst({ where: { source_system_id: sysId }, orderBy: { persisted_at: 'desc' }, select: { mapping_version: true } }).catch(() => null))?.mapping_version || null
@@ -145,7 +166,7 @@ export function createAuditRoutes(engine: any) {
     } catch (e: any) { res.status(500).json({ error: e.message }); }
   });
 
-  // Paginated raw records — metadata only, no payload
+  // Paginated raw records — metadata + stored trace columns, no payload
   router.get('/audit/records', verifyToken as any, READ, async (req, res) => {
     try {
       const page = Math.max(parseInt(String(req.query.page || '1'), 10) || 1, 1);
@@ -157,6 +178,7 @@ export function createAuditRoutes(engine: any) {
       if (req.query.messageType) where.source_entity_type = { equals: String(req.query.messageType), mode: 'insensitive' };
       if (req.query.result === 'success') where.processing_status = { in: SUCCESS_STATUSES };
       if (req.query.result === 'failed') where.processing_status = { in: FAILED_STATUSES };
+      if (req.query.result === 'quarantined') where.processing_status = { in: QUARANTINE_STATUSES };
       if (req.query.from || req.query.to) {
         where.ingested_at = {};
         if (req.query.from) where.ingested_at.gte = new Date(String(req.query.from));
@@ -168,7 +190,7 @@ export function createAuditRoutes(engine: any) {
           where,
           orderBy: { ingested_at: 'desc' },
           skip, take: limit,
-          select: { id: true, source_system_id: true, source_entity_type: true, source_record_id: true, payload_format: true, adapter_version: true, ingested_at: true, batch_id: true, processing_status: true, error_message: true, reprocess_count: true, last_reprocessed_at: true }
+          select: { id: true, source_system_id: true, source_entity_type: true, source_record_id: true, payload_format: true, adapter_version: true, ingested_at: true, batch_id: true, processing_status: true, error_message: true, reprocess_count: true, last_reprocessed_at: true, validation_score: true, validation_decision: true, validation_issues_count: true, mapping_version: true, mapping_config_id: true, terminology_summary: true, mpi_strategy: true, mpi_confidence: true, mpi_identity_id: true }
         })
       ]);
       res.setHeader('Cache-Control', 'private, max-age=10, stale-while-revalidate=30');
@@ -176,7 +198,7 @@ export function createAuditRoutes(engine: any) {
     } catch (e: any) { res.status(500).json({ error: e.message }); }
   });
 
-  // Single-record pipeline trace — real stored stages only
+  // Single-record pipeline trace — stored stage outcomes only, honest gaps labeled
   router.get('/audit/records/:id/trace', verifyToken as any, READ, async (req, res) => {
     try {
       const raw: any = await prisma.rawRecord.findUnique({ where: { id: String(req.params.id) } });
@@ -193,7 +215,16 @@ export function createAuditRoutes(engine: any) {
         checksum: raw.checksum,
         processingStatus: raw.processing_status,
         errorMessage: raw.error_message || null,
-        reprocessCount: raw.reprocess_count || 0
+        reprocessCount: raw.reprocess_count || 0,
+        validationScore: raw.validation_score ?? null,
+        validationDecision: raw.validation_decision || null,
+        validationIssuesCount: raw.validation_issues_count || 0,
+        mappingVersion: raw.mapping_version || null,
+        mappingConfigId: raw.mapping_config_id || null,
+        terminologySummary: raw.terminology_summary ? JSON.parse(raw.terminology_summary) : null,
+        mpiStrategy: raw.mpi_strategy || null,
+        mpiConfidence: raw.mpi_confidence ?? null,
+        mpiIdentityId: raw.mpi_identity_id || null
       };
       const provenance = await prisma.provenanceRecord.findMany({
         where: { source_system_id: raw.source_system_id, source_record_id: raw.source_record_id },
@@ -207,14 +238,15 @@ export function createAuditRoutes(engine: any) {
         select: { id: true, entity_type: true, entity_id: true, action: true, actor_id: true, details: true, created_at: true }
       });
       const persisted = provenance.length > 0;
+      const term = record.terminologySummary as any;
       const stages = [
         { stage: 'Source', result: record.sourceSystemId ? 'recorded' : 'unknown', detail: record.sourceSystemId },
         { stage: 'Raw Event', result: 'recorded', detail: `${record.sourceEntityType} • ${record.batchId}` },
         { stage: 'Adapter', result: record.adapterVersion ? 'recorded' : 'unknown', detail: record.adapterVersion || 'غير مسجل' },
-        { stage: 'Mapping', result: provenance[0] ? 'recorded' : 'unknown', detail: provenance[0]?.mapping_version || 'لا يوجد Provenance مطابق' },
-        { stage: 'Terminology', result: 'unknown', detail: 'نتائج المصطلحات غير مخزنة لكل سجل في قاعدة البيانات' },
-        { stage: 'Validation', result: FAILED_STATUSES.includes(record.processingStatus) ? 'failed' : SUCCESS_STATUSES.includes(record.processingStatus) ? 'passed' : 'pending', detail: record.errorMessage || record.processingStatus },
-        { stage: 'MPI', result: persisted ? 'recorded' : 'unknown', detail: persisted ? `${provenance.length} هدف محفوظ` : 'لا يوجد Provenance مطابق' },
+        { stage: 'Mapping', result: record.mappingVersion ? 'recorded' : 'unknown', detail: record.mappingVersion ? `${record.mappingVersion}${record.mappingConfigId ? ' • ' + record.mappingConfigId : ''}` : 'لا يوجد إصدار ربط مسجل لهذا السجل' },
+        { stage: 'Terminology', result: term ? 'recorded' : 'unknown', detail: term ? `${term.conceptCount} مفهوم • ${(term.systems || []).join('، ')} • خريطة ${term.mapVersion || '—'}` : 'لا توجد نتيجة مصطلحات مسجلة لهذا السجل' },
+        { stage: 'Validation', result: FAILED_STATUSES.includes(record.processingStatus) ? 'failed' : record.processingStatus === 'QUARANTINED' ? 'quarantined' : record.validationDecision ? (record.validationDecision === 'REJECTED' ? 'failed' : 'passed') : (SUCCESS_STATUSES.includes(record.processingStatus) ? 'passed' : 'pending'), detail: record.validationDecision ? `${record.validationDecision} • درجة ${record.validationScore ?? '—'} • ${record.validationIssuesCount} ملاحظة` : (record.errorMessage || record.processingStatus) },
+        { stage: 'MPI', result: record.mpiStrategy ? 'recorded' : 'unknown', detail: record.mpiStrategy ? `${record.mpiStrategy} • ثقة ${record.mpiConfidence != null ? Math.round(record.mpiConfidence * 100) + '%' : '—'}${record.mpiIdentityId ? ' • ' + record.mpiIdentityId : ''}` : 'لا يوجد قرار MPI مسجل لهذا السجل' },
         { stage: 'Canonical', result: persisted ? 'persisted' : 'unknown', detail: provenance[0] ? `${provenance[0].target_entity_type}:${provenance[0].target_entity_id}` : 'غير مؤكد' },
         { stage: 'FHIR', result: 'on-demand', detail: 'يُولد عند الطلب عبر FHIR R4 ولا يُخزن' }
       ];
@@ -252,7 +284,16 @@ export function createAuditRoutes(engine: any) {
           checksumSha256: raw.checksum,
           processingStatus: raw.processing_status,
           errorMessage: raw.error_message || null,
-          reprocessCount: raw.reprocess_count || 0
+          reprocessCount: raw.reprocess_count || 0,
+          validationScore: raw.validation_score ?? null,
+          validationDecision: raw.validation_decision || null,
+          validationIssuesCount: raw.validation_issues_count || 0,
+          mappingVersion: raw.mapping_version || null,
+          mappingConfigId: raw.mapping_config_id || null,
+          terminologySummary: raw.terminology_summary ? JSON.parse(raw.terminology_summary) : null,
+          mpiStrategy: raw.mpi_strategy || null,
+          mpiConfidence: raw.mpi_confidence ?? null,
+          mpiIdentityId: raw.mpi_identity_id || null
         },
         provenance,
         auditLogs
