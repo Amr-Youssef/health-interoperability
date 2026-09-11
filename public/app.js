@@ -560,7 +560,7 @@ function updateGlobalPatientBar() {
     if (bar) bar.style.display = 'none';
     return;
   }
-  const auditorTabs = ['longitudinal'];
+  const auditorTabs = ['monitoring','longitudinal'];
   if (appAuth.currentRole === 'MOH_AUDITOR' && !auditorTabs.includes(currentTab)) {
     if (bar) bar.style.display = 'none';
     return;
@@ -1869,7 +1869,7 @@ async function loadAllData() {
 async function loadMonitoringStats() {
   try {
     const startTime = performance.now();
-    const res = await fetch('/api/monitoring/stats');
+    const res = await fetch('/api/monitoring/stats?auditLimit=15');
     const latencyMs = Math.round(performance.now() - startTime);
     const data = await res.json();
 
@@ -1897,15 +1897,50 @@ async function loadMonitoringStats() {
     if (medEl) medEl.textContent = data.overview?.canonicalMedicationsCount || '0';
     if (immEl) immEl.textContent = data.overview?.canonicalImmunizationsCount || '0';
 
+    const isAuditor = appAuth.currentRole === 'MOH_AUDITOR';
+    const auditorBanner = document.getElementById('auditor-readonly-banner');
+    if (auditorBanner) auditorBanner.style.display = isAuditor ? 'block' : 'none';
+    const integrityRow = document.getElementById('auditor-integrity-row');
+    if (integrityRow) {
+      integrityRow.style.display = isAuditor ? 'flex' : 'none';
+      if (isAuditor) {
+        const stEl = document.getElementById('auditor-integrity-status');
+        if (stEl) stEl.textContent = 'جاري التحقق...';
+        fetch('/api/security/audit-chain/verify').then(r=>r.json()).then(v=>{
+          const el = document.getElementById('auditor-integrity-status');
+          if (!el) return;
+          if (v.isValid) { el.textContent = `سليمة — ${v.totalBlocks||0} كتلة`; el.style.color = 'var(--m3-primary)'; }
+          else { el.textContent = `انكسار عند كتلة #${v.brokenAtIndex}`; el.style.color = 'var(--m3-error)'; }
+        }).catch(()=>{ const el = document.getElementById('auditor-integrity-status'); if (el) el.textContent = 'تعذر التحقق'; });
+        const expBtn = document.getElementById('btn-auditor-export-audit');
+        if (expBtn && !expBtn.dataset.bound) {
+          expBtn.dataset.bound = '1';
+          expBtn.addEventListener('click', async ()=>{
+            try {
+              const r = await fetch('/api/security/audit-chain?limit=200');
+              const logs = await r.json();
+              const rows = (Array.isArray(logs)?logs:[]).map(l=>[l.index??'', l.timestamp||l.created_at||'', l.action||'', l.entityType||'', l.entityId||'', l.actor||''].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(','));
+              const csv = 'index,timestamp,action,entityType,entityId,actor\n' + rows.join('\n');
+              const blob = new Blob([csv], {type:'text/csv'});
+              const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download='audit-evidence.csv'; a.click(); URL.revokeObjectURL(url);
+            } catch(e){ showToast('خطأ', e.message, 'error'); }
+          });
+        }
+      }
+    }
+
     // Populate Dynamic Hospital Sources Grid
     const sourcesGrid = document.getElementById('sources-monitoring-grid');
     if (sourcesGrid) {
       if (!data.sources || data.sources.length === 0) {
+        const emptyHint = isAuditor
+          ? 'لا توجد موصلات مربوطة حالياً. كمُدقق، يمكنك مراجعة سجل التدقيق أدناه وسلامة السلسلة أعلاه.'
+          : 'النظام يعمل كمنصة نظيفة في انتظار استقبال التغذية الحية. يمكنك تسجيل منشأة جديدة من تبويب «إضافة منشأة صحية ديناميكية» أو رفع ملفات سريرية عبر Dropzone أو إرسال رسائل HL7 v2.';
         sourcesGrid.innerHTML = `
           <div class="card" style="grid-column: 1 / -1; text-align: center; padding: 2.5rem; color: var(--m3-on-surface-variant); background: var(--m3-surface-container);">
             <div style="font-size: 2rem; margin-bottom: 0.5rem;">📡</div>
             <h4 style="margin-bottom: 0.5rem; color: var(--m3-on-surface);">لا توجد موصلات أو مستشفيات مربوطة حالياً</h4>
-            <p style="font-size: 0.85rem; max-width: 500px; margin: 0 auto;">النظام يعمل كمنصة نظيفة في انتظار استقبال التغذية الحية. يمكنك تسجيل منشأة جديدة من تبويب «إضافة منشأة صحية ديناميكية» أو رفع ملفات سريرية عبر Dropzone أو إرسال رسائل HL7 v2.</p>
+            <p style="font-size: 0.85rem; max-width: 500px; margin: 0 auto;">${emptyHint}</p>
           </div>
         `;
       } else {
@@ -1924,7 +1959,7 @@ async function loadMonitoringStats() {
           const sourceType = dynDef ? `${dynDef.facilityType}` : (s.adapterType || s.type || 'HL7/FHIR Adapter');
 
           return `
-            <div class="source-card">
+            <div class="source-card" data-sysid="${sysId}">
               <div class="source-header">
                 <div class="source-title-wrap">
                   <span class="source-tag ${tagClass}">${sysId}</span>
@@ -1950,9 +1985,12 @@ async function loadMonitoringStats() {
       }
     }
 
+    if (isAuditor) refreshAuditorConsole(data);
+
     const tbody = document.getElementById('audit-table-body');
     if (tbody && data.recentAudit) {
-      tbody.innerHTML = data.recentAudit.map((a) => {
+      const capped = data.recentAudit.slice(0, 15);
+      tbody.innerHTML = capped.map((a) => {
         const ts = a.timestamp || a.created_at || a.createdAt || a.persisted_at || new Date().toISOString();
         return `
         <tr>
@@ -1963,10 +2001,274 @@ async function loadMonitoringStats() {
           <td style="color:var(--m3-on-surface-variant);">${a.detail || a.details || ''}</td>
         </tr>`;
       }).join('') || '<tr><td colspan="5" class="text-center py-4">لا توجد سجلات تدقيق حتى الآن - البيانات من سلسلة التدقيق الحقيقية</td></tr>';
+      if (data.recentAudit.length > capped.length) {
+        tbody.innerHTML += `<tr><td colspan="5" class="text-center py-2" style="font-size:0.78rem; color:var(--m3-on-surface-variant);">عرض أحدث ${capped.length} فقط — السجل الكامل في تبويب «التدقيق السيبراني»</td></tr>`;
+      }
     }
+    if (isAuditor) refreshAuditorConsole(data);
   } catch (err) {
     console.error('Failed to load monitoring stats', err);
   }
+}
+
+// 1b. AUDITOR CONSOLE (Read-Only National Integration Audit — MOH_AUDITOR only)
+const _auditConsole = { page: 1, limit: 15, filters: { hospital: '', status: '', messageType: '', result: '', from: '', to: '' }, connectors: [], lastTraceId: null };
+function _auditEsc(s) { return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+function _auditFmtTime(iso) { try { return new Date(iso).toLocaleString('ar-SA'); } catch { return iso || '--'; } }
+function _auditResultBadge(status) {
+  if (['PERSISTED', 'VALIDATED'].includes(status)) return '<span class="badge badge-success">نجاح</span>';
+  if (status === 'FAILED') return '<span class="badge badge-error">فشل</span>';
+  return '<span class="badge badge-warning">' + _auditEsc(status || '—') + '</span>';
+}
+function _auditStatusBadge(status) {
+  const map = { Connected: 'badge-success', Degraded: 'badge-warning', Disconnected: 'badge-error', Disabled: 'badge-secondary' };
+  return `<span class="badge ${map[status] || 'badge-info'}">${_auditEsc(status || '—')}</span>`;
+}
+async function refreshAuditorConsole() {
+  if (appAuth.currentRole !== 'MOH_AUDITOR') return;
+  ['auditor-overview-section', 'auditor-records-section', 'auditor-quarantine-section'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'block';
+  });
+  try {
+    const [ovRes, connRes] = await Promise.all([
+      fetch('/api/audit/integration-overview'),
+      fetch('/api/audit/connectors')
+    ]);
+    if (ovRes.ok) {
+      const ov = await ovRes.json();
+      const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+      set('audit-ov-received', ov.received ?? '--');
+      set('audit-ov-success', ov.succeeded ?? '--');
+      set('audit-ov-failed', ov.failed ?? '--');
+      set('audit-ov-rate', ov.failureRate != null ? (ov.failureRate * 100).toFixed(1) + '%' : '--');
+      set('audit-ov-quarantine', ov.quarantine ?? '--');
+      set('audit-ov-latency', ov.avgLatencyMs != null ? ov.avgLatencyMs + 'ms' : '—');
+      set('audit-ov-last', ov.lastSuccessAt ? _auditFmtTime(ov.lastSuccessAt) + (ov.lastSuccessSystem ? ' • ' + ov.lastSuccessSystem : '') : 'لا يوجد');
+    }
+    if (connRes.ok) {
+      const cj = await connRes.json();
+      _auditConsole.connectors = cj.items || [];
+      const sel = document.getElementById('audit-f-hospital');
+      if (sel && !sel.dataset.bound) {
+        sel.dataset.bound = '1';
+        document.getElementById('btn-audit-apply')?.addEventListener('click', () => {
+          _auditConsole.filters.hospital = sel.value;
+          _auditConsole.filters.status = document.getElementById('audit-f-status')?.value || '';
+          _auditConsole.filters.messageType = document.getElementById('audit-f-type')?.value.trim() || '';
+          _auditConsole.filters.result = document.getElementById('audit-f-result')?.value || '';
+          _auditConsole.filters.from = document.getElementById('audit-f-from')?.value || '';
+          _auditConsole.filters.to = document.getElementById('audit-f-to')?.value || '';
+          _auditConsole.page = 1;
+          loadAuditorRecords();
+        });
+        document.getElementById('btn-audit-reset')?.addEventListener('click', () => {
+          sel.value = ''; document.getElementById('audit-f-status').value = '';
+          document.getElementById('audit-f-type').value = ''; document.getElementById('audit-f-result').value = '';
+          document.getElementById('audit-f-from').value = ''; document.getElementById('audit-f-to').value = '';
+          _auditConsole.filters = { hospital: '', status: '', messageType: '', result: '', from: '', to: '' };
+          _auditConsole.page = 1;
+          loadAuditorRecords();
+        });
+        document.getElementById('btn-audit-export')?.addEventListener('click', exportAuditorRecordsCSV);
+      }
+      if (sel && sel.options.length <= 1) {
+        sel.innerHTML = '<option value="">الكل</option>' + _auditConsole.connectors.map(c => `<option value="${_auditEsc(c.systemId)}">${_auditEsc(c.name || c.systemId)}</option>`).join('');
+        if (_auditConsole.filters.hospital) sel.value = _auditConsole.filters.hospital;
+      }
+      document.querySelectorAll('#sources-monitoring-grid .source-card[data-sysid]').forEach(card => {
+        if (card.dataset.auditBound) return;
+        card.dataset.auditBound = '1';
+        card.style.cursor = 'pointer';
+        card.title = 'اضغط لعرض تفاصيل التكامل (قراءة فقط)';
+        card.addEventListener('click', () => openConnectorDetail(card.dataset.sysid));
+      });
+    }
+    await Promise.all([loadAuditorRecords(), loadAuditorQuarantine()]);
+  } catch (e) { console.error('Auditor console failed', e); }
+}
+async function loadAuditorRecords() {
+  const tbody = document.getElementById('audit-records-body');
+  const pag = document.getElementById('audit-records-pagination');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="10" class="text-center py-4">جاري التحميل...</td></tr>';
+  try {
+    const f = _auditConsole.filters;
+    const qs = new URLSearchParams({ page: String(_auditConsole.page), limit: String(_auditConsole.limit) });
+    if (f.hospital) qs.set('hospital', f.hospital);
+    if (f.status) qs.set('status', f.status);
+    if (f.messageType) qs.set('messageType', f.messageType);
+    if (f.result) qs.set('result', f.result);
+    if (f.from) qs.set('from', f.from);
+    if (f.to) qs.set('to', f.to);
+    const r = await fetch('/api/audit/records?' + qs.toString());
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || 'فشل التحميل');
+    const items = j.items || [];
+    tbody.innerHTML = items.map(rec => `
+      <tr data-rec="${_auditEsc(rec.id)}">
+        <td><code>${_auditFmtTime(rec.ingestedAt)}</code></td>
+        <td><strong>${_auditEsc(rec.sourceSystemId)}</strong></td>
+        <td><code>${_auditEsc(rec.id.substring(0, 8))}...</code></td>
+        <td><code>${_auditEsc(rec.sourceRecordId)}</code></td>
+        <td><span class="badge badge-info">${_auditEsc(rec.processingStatus)}</span></td>
+        <td><code>${_auditEsc(rec.adapterVersion || '—')}</code></td>
+        <td style="color:var(--m3-on-surface-muted);">—</td>
+        <td>${_auditResultBadge(rec.processingStatus)}</td>
+        <td style="color:var(--m3-error); font-size:0.78rem;">${_auditEsc((rec.errorMessage || '').substring(0, 80))}</td>
+        <td style="white-space:nowrap;">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="toggleAuditorRow('${_auditEsc(rec.id)}')">تفاصيل</button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="openAuditorTrace('${_auditEsc(rec.id)}')">المسار</button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="exportAuditorEvidence('${_auditEsc(rec.id)}')">دليل</button>
+        </td>
+      </tr>
+      <tr id="audit-row-${_auditEsc(rec.id)}" style="display:none;"><td colspan="10" style="background:var(--m3-surface-container-low); font-size:0.8rem;">
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:8px; padding:8px 4px;">
+          <div><strong>Message ID:</strong> <code>${_auditEsc(rec.id)}</code></div>
+          <div><strong>Source Record:</strong> <code>${_auditEsc(rec.sourceRecordId)}</code></div>
+          <div><strong>النوع:</strong> ${_auditEsc(rec.sourceEntityType)}</div>
+          <div><strong>الصيغة:</strong> ${_auditEsc(rec.payloadFormat || '—')}</div>
+          <div><strong>Batch:</strong> <code>${_auditEsc(rec.batchId || '—')}</code></div>
+          <div><strong>إعادة المعالجة:</strong> ${rec.reprocessCount || 0}</div>
+        </div>
+        ${rec.errorMessage ? `<div style="margin-top:6px; color:var(--m3-error);"><strong>سبب الفشل الكامل:</strong> ${_auditEsc(rec.errorMessage)}</div>` : ''}
+      </td></tr>`).join('') || '<tr><td colspan="10" class="text-center py-4">لا توجد سجلات مطابقة للفلاتر</td></tr>';
+    if (pag) {
+      const totalPages = j.totalPages || 1;
+      pag.innerHTML = `<span>صفحة ${_auditConsole.page} من ${totalPages} — ${j.total || 0} سجل</span><span><button type="button" class="btn btn-secondary btn-sm" ${_auditConsole.page <= 1 ? 'disabled' : ''} onclick="auditRecordsPage(-1)">السابق</button> <button type="button" class="btn btn-secondary btn-sm" ${_auditConsole.page >= totalPages ? 'disabled' : ''} onclick="auditRecordsPage(1)">التالي</button></span>`;
+    }
+  } catch (e) { tbody.innerHTML = `<tr><td colspan="10" class="text-center py-4" style="color:var(--m3-error);">${_auditEsc(e.message)}</td></tr>`; }
+}
+function auditRecordsPage(d) { _auditConsole.page = Math.max(1, _auditConsole.page + d); loadAuditorRecords(); }
+function toggleAuditorRow(id) {
+  const row = document.getElementById('audit-row-' + CSS.escape(id));
+  if (row) row.style.display = row.style.display === 'none' ? '' : 'none';
+}
+async function loadAuditorQuarantine() {
+  const tbody = document.getElementById('audit-quarantine-body');
+  if (!tbody) return;
+  try {
+    const r = await fetch('/api/audit/records?result=failed&limit=15&page=1');
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || 'فشل التحميل');
+    const items = j.items || [];
+    tbody.innerHTML = items.map(rec => `
+      <tr>
+        <td><code>${_auditFmtTime(rec.ingestedAt)}</code></td>
+        <td><strong>${_auditEsc(rec.sourceSystemId)}</strong></td>
+        <td><code>${_auditEsc(rec.id.substring(0, 8))}...</code></td>
+        <td><span class="badge badge-info">${_auditEsc(rec.processingStatus)}</span></td>
+        <td style="color:var(--m3-error); font-size:0.8rem;">${_auditEsc((rec.errorMessage || 'بدون سبب مسجل').substring(0, 120))}</td>
+        <td style="white-space:nowrap;">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="openAuditorTrace('${_auditEsc(rec.id)}')">المسار</button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="exportAuditorEvidence('${_auditEsc(rec.id)}')">دليل</button>
+        </td>
+      </tr>`).join('') || '<tr><td colspan="6" class="text-center py-4">لا توجد سجلات معزولة — جميع السجلات ناجحة أو قيد المعالجة</td></tr>';
+  } catch (e) { tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4" style="color:var(--m3-error);">${_auditEsc(e.message)}</td></tr>`; }
+}
+async function openConnectorDetail(sysId) {
+  const modal = document.getElementById('auditor-connector-modal');
+  const body = document.getElementById('auditor-connector-body');
+  const title = document.getElementById('auditor-connector-title');
+  if (!modal || !body) return;
+  const c = (_auditConsole.connectors || []).find(x => x.systemId === sysId);
+  if (!c) return;
+  if (title) title.textContent = 'تكامل: ' + (c.name || sysId);
+  body.innerHTML = '<p class="text-center py-4">جاري التحميل...</p>';
+  modal.style.display = 'flex';
+  try {
+    const [errRes, okRes] = await Promise.all([
+      fetch(`/api/audit/records?hospital=${encodeURIComponent(sysId)}&result=failed&limit=5&page=1`),
+      fetch(`/api/audit/records?hospital=${encodeURIComponent(sysId)}&limit=5&page=1`)
+    ]);
+    const errJ = errRes.ok ? await errRes.json() : { items: [] };
+    const okJ = okRes.ok ? await okRes.json() : { items: [] };
+    body.innerHTML = `
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px; margin-bottom:14px;">
+        <div><div style="font-size:0.72rem; color:var(--m3-on-surface-muted);">الحالة</div><div>${_auditStatusBadge(c.status)}</div></div>
+        <div><div style="font-size:0.72rem; color:var(--m3-on-surface-muted);">القناة</div><div><strong>${_auditEsc(c.channel || '—')}</strong></div></div>
+        <div><div style="font-size:0.72rem; color:var(--m3-on-surface-muted);">الإجمالي</div><div><strong>${c.totalCount ?? '--'}</strong></div></div>
+        <div><div style="font-size:0.72rem; color:var(--m3-on-surface-muted);">رسائل اليوم</div><div><strong>${c.todayCount ?? '--'}</strong></div></div>
+        <div><div style="font-size:0.72rem; color:var(--m3-on-surface-muted);">الأخطاء</div><div><strong>${c.errorCount ?? '--'}</strong></div></div>
+        <div><div style="font-size:0.72rem; color:var(--m3-on-surface-muted);">Error Rate</div><div><strong>${c.errorRate != null ? (c.errorRate * 100).toFixed(1) + '%' : '--'}</strong></div></div>
+        <div><div style="font-size:0.72rem; color:var(--m3-on-surface-muted);">Latency</div><div><strong>${c.latencyMs != null ? c.latencyMs + 'ms' : '—'}</strong></div></div>
+        <div><div style="font-size:0.72rem; color:var(--m3-on-surface-muted);">Adapter</div><div><code>${_auditEsc(c.adapterVersion || '—')}</code></div></div>
+        <div><div style="font-size:0.72rem; color:var(--m3-on-surface-muted);">Mapping</div><div><code>${_auditEsc(c.mappingVersion || '—')}</code></div></div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px; margin-bottom:14px; font-size:0.8rem;">
+        <div><strong>آخر مزامنة:</strong> ${_auditEsc(c.lastSyncAt ? _auditFmtTime(c.lastSyncAt) : '—')}</div>
+        <div><strong>آخر رسالة ناجحة:</strong> ${_auditEsc(c.lastSuccessAt ? _auditFmtTime(c.lastSuccessAt) : '—')}</div>
+      </div>
+      <h4 style="font-size:0.88rem; margin-bottom:6px;">آخر الرسائل الفاشلة</h4>
+      ${((errJ.items || []).map(e => `<div style="padding:6px 8px; border:1px solid var(--m3-outline-variant); margin-bottom:4px; font-size:0.78rem;"><code>${_auditEsc(e.id.substring(0,8))}</code> • ${_auditFmtTime(e.ingestedAt)} • <span style="color:var(--m3-error);">${_auditEsc((e.errorMessage || '').substring(0, 100))}</span></div>`).join('') || '<p style="font-size:0.8rem; color:var(--m3-on-surface-muted);">لا أخطاء حديثة</p>')}
+      <h4 style="font-size:0.88rem; margin:10px 0 6px;">آخر عمليات المعالجة</h4>
+      ${((okJ.items || []).map(e => `<div style="padding:6px 8px; border:1px solid var(--m3-outline-variant); margin-bottom:4px; font-size:0.78rem;"><code>${_auditEsc(e.id.substring(0,8))}</code> • ${_auditEsc(e.sourceEntityType)} • ${_auditResultBadge(e.processingStatus)} • ${_auditFmtTime(e.ingestedAt)}</div>`).join('') || '<p style="font-size:0.8rem; color:var(--m3-on-surface-muted);">لا عمليات حديثة</p>')}
+      <p style="font-size:0.75rem; color:var(--m3-on-surface-muted); margin-top:10px;">جودة البيانات ونتائج Mapping/MPI التفصيلية: تُعرض لكل رسالة عبر «المسار». لا يملك المدقق أي تعديل على الإعدادات.</p>`;
+  } catch (e) { body.innerHTML = `<p style="color:var(--m3-error);">${_auditEsc(e.message)}</p>`; }
+  document.getElementById('btn-auditor-connector-close').onclick = () => { modal.style.display = 'none'; };
+}
+async function openAuditorTrace(id) {
+  const modal = document.getElementById('auditor-trace-modal');
+  const body = document.getElementById('auditor-trace-body');
+  if (!modal || !body) return;
+  _auditConsole.lastTraceId = id;
+  body.innerHTML = '<p class="text-center py-4">جاري تحميل المسار...</p>';
+  modal.style.display = 'flex';
+  try {
+    const r = await fetch('/api/audit/records/' + encodeURIComponent(id) + '/trace');
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || 'فشل التحميل');
+    const stageBadge = (s) => s.result === 'failed' ? '<span class="badge badge-error">فشل</span>' : (s.result === 'recorded' || s.result === 'passed' || s.result === 'persisted') ? '<span class="badge badge-success">تم</span>' : '<span class="badge badge-info">' + _auditEsc(s.result) + '</span>';
+    body.innerHTML = `
+      <div style="margin-bottom:12px; font-size:0.82rem; color:var(--m3-on-surface-variant);">
+        <code>${_auditEsc(j.record.id.substring(0, 8))}</code> • ${_auditEsc(j.record.sourceSystemId)} • ${_auditEsc(j.record.sourceEntityType)} • ${_auditFmtTime(j.record.ingestedAt)}
+      </div>
+      <div style="display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-bottom:14px;">
+        ${j.stages.map((s, i) => `${i > 0 ? '<span style="color:var(--m3-on-surface-muted);">→</span>' : ''}<span style="padding:6px 10px; background:var(--m3-surface-container-low); border:1px solid var(--m3-outline-variant); font-size:0.76rem;"><strong>${_auditEsc(s.stage)}</strong><br>${stageBadge(s)}</span>`).join('')}
+      </div>
+      <table class="data-table"><thead><tr><th>المرحلة</th><th>النتيجة</th><th>التفاصيل</th></tr></thead><tbody>
+        ${j.stages.map(s => `<tr><td><strong>${_auditEsc(s.stage)}</strong></td><td>${stageBadge(s)}</td><td style="font-size:0.78rem;">${_auditEsc(s.detail || '—')}</td></tr>`).join('')}
+      </tbody></table>
+      <h4 style="font-size:0.88rem; margin:12px 0 6px;">Provenance (${(j.provenance || []).length})</h4>
+      ${((j.provenance || []).map(p => `<div style="padding:6px 8px; border:1px solid var(--m3-outline-variant); margin-bottom:4px; font-size:0.78rem;">${_auditEsc(p.target_entity_type)}:<code>${_auditEsc(String(p.target_entity_id).substring(0, 12))}</code> • Mapping <code>${_auditEsc(p.mapping_version || '—')}</code> • Adapter <code>${_auditEsc(p.adapter_version || '—')}</code></div>`).join('') || '<p style="font-size:0.8rem; color:var(--m3-on-surface-muted);">لا يوجد Provenance — لم يصل السجل للتخزين الكنسي</p>')}
+      <h4 style="font-size:0.88rem; margin:12px 0 6px;">سجلات التدقيق المرتبطة (${(j.auditLogs || []).length})</h4>
+      ${((j.auditLogs || []).map(a => `<div style="padding:6px 8px; border:1px solid var(--m3-outline-variant); margin-bottom:4px; font-size:0.78rem;"><code>${_auditFmtTime(a.created_at)}</code> • ${_auditEsc(a.action)} • ${_auditEsc(a.entity_type || '')} • ${_auditEsc(a.details || '')}</div>`).join('') || '<p style="font-size:0.8rem; color:var(--m3-on-surface-muted);">لا سجلات مرتبطة</p>')}`;
+  } catch (e) { body.innerHTML = `<p style="color:var(--m3-error);">${_auditEsc(e.message)}</p>`; }
+  document.getElementById('btn-auditor-trace-close').onclick = () => { modal.style.display = 'none'; };
+  document.getElementById('btn-auditor-evidence').onclick = () => { if (_auditConsole.lastTraceId) exportAuditorEvidence(_auditConsole.lastTraceId); };
+}
+async function exportAuditorEvidence(id) {
+  try {
+    const r = await fetch('/api/audit/evidence/' + encodeURIComponent(id));
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || 'فشل التصدير');
+    const blob = new Blob([JSON.stringify(j, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob); const a = document.createElement('a');
+    a.href = url; a.download = 'audit-evidence-' + id.substring(0, 8) + '.json'; a.click();
+    URL.revokeObjectURL(url);
+    showToast('تم التصدير', 'نُزّل دليل التدقيق بصيغة JSON', 'success');
+  } catch (e) { showToast('خطأ', e.message, 'error'); }
+}
+async function exportAuditorRecordsCSV() {
+  try {
+    const f = _auditConsole.filters;
+    const qs = new URLSearchParams({ page: '1', limit: '50' });
+    if (f.hospital) qs.set('hospital', f.hospital);
+    if (f.status) qs.set('status', f.status);
+    if (f.messageType) qs.set('messageType', f.messageType);
+    if (f.result) qs.set('result', f.result);
+    if (f.from) qs.set('from', f.from);
+    if (f.to) qs.set('to', f.to);
+    const r = await fetch('/api/audit/records?' + qs.toString());
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || 'فشل التصدير');
+    const rows = (j.items || []).map(rec => [rec.id, rec.sourceSystemId, rec.sourceEntityType, rec.sourceRecordId, rec.processingStatus, rec.ingestedAt, (rec.errorMessage || '').replace(/\n/g, ' ')].map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','));
+    const csv = 'id,sourceSystem,entityType,sourceRecordId,status,ingestedAt,errorMessage\n' + rows.join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob); const a = document.createElement('a');
+    a.href = url; a.download = 'audit-records.csv'; a.click();
+    URL.revokeObjectURL(url);
+  } catch (e) { showToast('خطأ', e.message, 'error'); }
 }
 
 // 2. DYNAMIC ONBOARDING TAB

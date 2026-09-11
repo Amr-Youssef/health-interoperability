@@ -226,6 +226,15 @@ export class PrismaCanonicalStore {
     async countPatients() {
         return this.prisma.patient.count();
     }
+    async countEncounters() { return this.prisma.encounter.count(); }
+    async countConditions() { return this.prisma.condition.count(); }
+    async countObservations() { return this.prisma.observation.count(); }
+    async countCoverages() { return this.prisma.coverage.count(); }
+    async countClaims() { return this.prisma.claim.count(); }
+    async countMedicationRequests() { return this.prisma.medicationRequest.count(); }
+    async countImmunizations() { return this.prisma.immunization.count(); }
+    async countAllergies() { return this.prisma.allergyIntolerance.count(); }
+    async countDiagnosticReports() { return this.prisma.diagnosticReport.count(); }
     // ENCOUNTER
     mapEncounterToCanonical(e) {
         return {

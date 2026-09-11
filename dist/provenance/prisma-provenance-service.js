@@ -97,6 +97,7 @@ export class PrismaProvenanceService {
             }
         });
     }
+    async countProvenance() { return this.prisma.provenanceRecord.count(); }
     async getAuditLog(limit = 50) {
         const logs = await this.prisma.auditLog.findMany({
             orderBy: { created_at: 'desc' },

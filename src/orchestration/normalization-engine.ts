@@ -1331,20 +1331,44 @@ export class NormalizationEngine {
     };
   }
 
-  async getIntegrationMonitoringStats(): Promise<any> {
+  async getIntegrationMonitoringStats(auditLimit: number = 15): Promise<any> {
+    const limit = Math.min(Math.max(Math.floor(auditLimit) || 15, 5), 50);
     const rawStats = await this.rawStore.getStats();
-    const patients = await this.canonicalStore.getAllPatients();
-    const encounters = await this.canonicalStore.getAllEncounters();
-    const conditions = await this.canonicalStore.getAllConditions();
-    const observations = await this.canonicalStore.getAllObservations();
-    const coverages = await this.canonicalStore.getAllCoverages();
-    const claims = await this.canonicalStore.getAllClaims();
-    const medications = await this.canonicalStore.getAllMedicationRequests();
-    const immunizations = await this.canonicalStore.getAllImmunizations();
-    const allergies = await this.canonicalStore.getAllAllergies();
-    const diagnosticReports = await this.canonicalStore.getAllDiagnosticReports();
-    const provenanceList = await this.provenanceService.getAllProvenance();
-    const recentAudit = await this.provenanceService.getAuditLog(15);
+    const cs: any = this.canonicalStore as any;
+    const ps: any = this.provenanceService as any;
+    const countOf = async (countFn: string, allFn: string): Promise<number> => {
+      try {
+        if (typeof cs[countFn] === 'function') return await cs[countFn]();
+      } catch {}
+      const list = await (this.canonicalStore as any)[allFn]();
+      return Array.isArray(list) ? list.length : 0;
+    };
+    const [
+      patientsCount,
+      encountersCount,
+      conditionsCount,
+      observationsCount,
+      coveragesCount,
+      claimsCount,
+      medicationsCount,
+      immunizationsCount,
+      allergiesCount,
+      diagnosticReportsCount,
+      provenanceCount
+    ] = await Promise.all([
+      countOf('countPatients', 'getAllPatients'),
+      countOf('countEncounters', 'getAllEncounters'),
+      countOf('countConditions', 'getAllConditions'),
+      countOf('countObservations', 'getAllObservations'),
+      countOf('countCoverages', 'getAllCoverages'),
+      countOf('countClaims', 'getAllClaims'),
+      countOf('countMedicationRequests', 'getAllMedicationRequests'),
+      countOf('countImmunizations', 'getAllImmunizations'),
+      countOf('countAllergies', 'getAllAllergies'),
+      countOf('countDiagnosticReports', 'getAllDiagnosticReports'),
+      (async () => { try { if (typeof ps.countProvenance === 'function') return await ps.countProvenance(); } catch {} const l = await this.provenanceService.getAllProvenance(); return Array.isArray(l) ? l.length : 0; })()
+    ]);
+    const recentAudit = await this.provenanceService.getAuditLog(limit);
     const dynamicHospitals = (await this.dynamicRegistry.getAllHospitals()).filter(h => !/(demo|test|mock|fake|sample|example)/i.test(`${h.hospitalId} ${h.hospitalName} ${h.hospitalNameAr}`));
 
     const adapterStatuses = [];
@@ -1359,17 +1383,17 @@ export class NormalizationEngine {
     return {
       overview: {
         rawRecordsCount: rawStats.totalRecords,
-        canonicalPatientsCount: patients.length,
-        canonicalEncountersCount: encounters.length,
-        canonicalConditionsCount: conditions.length,
-        canonicalObservationsCount: observations.length,
-        canonicalCoveragesCount: coverages.length,
-        canonicalClaimsCount: claims.length,
-        canonicalMedicationsCount: medications.length,
-        canonicalImmunizationsCount: immunizations.length,
-        canonicalAllergiesCount: allergies.length,
-        canonicalDiagnosticReportsCount: diagnosticReports.length,
-        provenanceRecordsCount: provenanceList.length,
+        canonicalPatientsCount: patientsCount,
+        canonicalEncountersCount: encountersCount,
+        canonicalConditionsCount: conditionsCount,
+        canonicalObservationsCount: observationsCount,
+        canonicalCoveragesCount: coveragesCount,
+        canonicalClaimsCount: claimsCount,
+        canonicalMedicationsCount: medicationsCount,
+        canonicalImmunizationsCount: immunizationsCount,
+        canonicalAllergiesCount: allergiesCount,
+        canonicalDiagnosticReportsCount: diagnosticReportsCount,
+        provenanceRecordsCount: provenanceCount,
         dynamicHospitalsCount: dynamicHospitals.length
       },
       sources: adapterStatuses,

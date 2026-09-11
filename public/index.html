@@ -629,6 +629,12 @@
 
       <!-- TAB 1: INTEGRATION MONITORING -->
       <section class="tab-pane active" id="pane-monitoring">
+        <div id="auditor-readonly-banner" style="display:none; margin-bottom:14px; padding:10px 14px; background:var(--m3-surface-container); border:1px solid var(--m3-outline-variant); font-size:0.82rem; color:var(--m3-on-surface-variant);">وضع تدقيق — قراءة فقط. هذه اللوحة تعرض مؤشرات وطنية إجمالية وسجل تدقيق، بدون أي إجراء تشغيلي وبدون عرض بيانات تعريفية للمرضى.</div>
+        <div id="auditor-integrity-row" style="display:none; margin-bottom:14px; padding:10px 14px; background:var(--m3-surface-container-low); border:1px solid var(--m3-outline-variant); font-size:0.82rem; align-items:center; gap:8px;">
+          <span>سلامة سلسلة التدقيق (NCA):</span>
+          <strong id="auditor-integrity-status">جاري التحقق...</strong>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-auditor-export-audit">تصدير سجل التدقيق (CSV)</button>
+        </div>
         <!-- Metric Cards -->
         <div class="metrics-grid">
           <div class="metric-card">
@@ -747,6 +753,123 @@
 
         <div class="sources-grid" id="sources-monitoring-grid">
           <!-- Populated dynamically via loadMonitoringStats() -->
+        </div>
+
+        <!-- Auditor: national integration overview (read-only) -->
+        <div id="auditor-overview-section" style="display:none;">
+          <div class="section-title mt-6">
+            <div class="section-title-wrap">
+              <h3>نظرة رقابية وطنية (قراءة فقط)</h3>
+            </div>
+            <span class="badge badge-info">Read-Only Audit Console</span>
+          </div>
+          <div class="metrics-grid" id="auditor-overview-grid">
+            <div class="metric-card"><div class="metric-info"><span class="metric-label">السجلات المستقبلة</span><h3 class="metric-value" id="audit-ov-received">--</h3></div></div>
+            <div class="metric-card"><div class="metric-info"><span class="metric-label">السجلات الناجحة</span><h3 class="metric-value" id="audit-ov-success">--</h3></div></div>
+            <div class="metric-card"><div class="metric-info"><span class="metric-label">السجلات الفاشلة</span><h3 class="metric-value" id="audit-ov-failed">--</h3></div></div>
+            <div class="metric-card"><div class="metric-info"><span class="metric-label">معدل الفشل</span><h3 class="metric-value" id="audit-ov-rate">--</h3></div></div>
+            <div class="metric-card"><div class="metric-info"><span class="metric-label">المعزولة (Quarantine)</span><h3 class="metric-value" id="audit-ov-quarantine">--</h3></div></div>
+            <div class="metric-card"><div class="metric-info"><span class="metric-label">متوسط زمن الاستجابة</span><h3 class="metric-value" id="audit-ov-latency">--</h3></div></div>
+            <div class="metric-card"><div class="metric-info"><span class="metric-label">آخر استيعاب ناجح</span><h3 class="metric-value" id="audit-ov-last" style="font-size:0.95rem;">--</h3></div></div>
+          </div>
+        </div>
+
+        <!-- Auditor: message stream with filters -->
+        <div id="auditor-records-section" style="display:none;">
+          <div class="section-title mt-6">
+            <div class="section-title-wrap">
+              <h3>سجل الرسائل (Message Stream — قراءة فقط)</h3>
+            </div>
+          </div>
+          <div class="card table-card" style="margin-bottom:12px;">
+            <div style="display:flex; gap:8px; flex-wrap:wrap; padding:12px 14px; align-items:flex-end;">
+              <div><label style="font-size:0.72rem; display:block; margin-bottom:4px;">المستشفى</label><select id="audit-f-hospital" class="form-select" style="min-width:160px;"><option value="">الكل</option></select></div>
+              <div><label style="font-size:0.72rem; display:block; margin-bottom:4px;">الحالة</label><select id="audit-f-status" class="form-select"><option value="">الكل</option><option value="PERSISTED">PERSISTED</option><option value="VALIDATED">VALIDATED</option><option value="MAPPED">MAPPED</option><option value="PENDING">PENDING</option><option value="FAILED">FAILED</option><option value="REPROCESSED">REPROCESSED</option></select></div>
+              <div><label style="font-size:0.72rem; display:block; margin-bottom:4px;">نوع الرسالة</label><input id="audit-f-type" class="form-input" placeholder="مثال: Patient" style="min-width:130px;"></div>
+              <div><label style="font-size:0.72rem; display:block; margin-bottom:4px;">النتيجة</label><select id="audit-f-result" class="form-select"><option value="">الكل</option><option value="success">نجاح</option><option value="failed">فشل</option></select></div>
+              <div><label style="font-size:0.72rem; display:block; margin-bottom:4px;">من تاريخ</label><input id="audit-f-from" type="date" class="form-input"></div>
+              <div><label style="font-size:0.72rem; display:block; margin-bottom:4px;">إلى تاريخ</label><input id="audit-f-to" type="date" class="form-input"></div>
+              <div style="display:flex; gap:8px;">
+                <button type="button" class="btn btn-primary btn-sm" id="btn-audit-apply">تطبيق</button>
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-audit-reset">مسح</button>
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-audit-export">تصدير CSV</button>
+              </div>
+            </div>
+          </div>
+          <div class="card table-card">
+            <table class="data-table" id="audit-records-table">
+              <thead>
+                <tr>
+                  <th>الوقت</th>
+                  <th>المصدر</th>
+                  <th>Message ID</th>
+                  <th>Source Record</th>
+                  <th>المرحلة</th>
+                  <th>Mapping</th>
+                  <th>الجودة</th>
+                  <th>النتيجة</th>
+                  <th>سبب الفشل</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="audit-records-body">
+                <tr><td colspan="10" class="text-center py-4">—</td></tr>
+              </tbody>
+            </table>
+            <div id="audit-records-pagination" style="display:flex; justify-content:space-between; align-items:center; padding:10px 14px; font-size:0.78rem; color:var(--m3-on-surface-variant);"></div>
+          </div>
+        </div>
+
+        <!-- Auditor: quarantine -->
+        <div id="auditor-quarantine-section" style="display:none;">
+          <div class="section-title mt-6">
+            <div class="section-title-wrap">
+              <h3>السجلات الفاشلة / المعزولة (Quarantine — قراءة فقط)</h3>
+            </div>
+            <span class="badge badge-error">بدون إعادة معالجة</span>
+          </div>
+          <div class="card table-card">
+            <table class="data-table" id="audit-quarantine-table">
+              <thead>
+                <tr>
+                  <th>وقت الفشل</th>
+                  <th>المصدر</th>
+                  <th>Message ID</th>
+                  <th>المرحلة</th>
+                  <th>سبب الفشل</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="audit-quarantine-body">
+                <tr><td colspan="6" class="text-center py-4">—</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Auditor: connector detail modal -->
+        <div id="auditor-connector-modal" style="display:none; position:fixed; inset:0; z-index:1000; align-items:center; justify-content:center; background:rgba(0,0,0,0.45);">
+          <div style="background:var(--m3-surface-container); border:1px solid var(--m3-outline-variant); border-radius:var(--radius-sharp); max-width:640px; width:92%; max-height:86vh; overflow:auto; padding:18px 20px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+              <h3 id="auditor-connector-title" style="font-size:1.05rem;">تفاصيل التكامل</h3>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-auditor-connector-close">إغلاق</button>
+            </div>
+            <div id="auditor-connector-body" style="font-size:0.85rem;"></div>
+          </div>
+        </div>
+
+        <!-- Auditor: pipeline trace modal -->
+        <div id="auditor-trace-modal" style="display:none; position:fixed; inset:0; z-index:1000; align-items:center; justify-content:center; background:rgba(0,0,0,0.45);">
+          <div style="background:var(--m3-surface-container); border:1px solid var(--m3-outline-variant); border-radius:var(--radius-sharp); max-width:680px; width:94%; max-height:88vh; overflow:auto; padding:18px 20px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+              <h3 style="font-size:1.05rem;">مسار السجل (Pipeline Trace — قراءة فقط)</h3>
+              <div style="display:flex; gap:8px;">
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-auditor-evidence">تصدير كدليل تدقيق (JSON)</button>
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-auditor-trace-close">إغلاق</button>
+              </div>
+            </div>
+            <div id="auditor-trace-body" style="font-size:0.85rem;"></div>
+          </div>
         </div>
 
         <!-- Recent Activity & Audit Log -->

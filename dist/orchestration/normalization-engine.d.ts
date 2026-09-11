@@ -130,5 +130,5 @@ export declare class NormalizationEngine {
     private persistToCanonical;
     checkPatientEligibility(patientId: string): Promise<CanonicalCoverageEligibility | null>;
     reprocessRecord(rawRecordId: string, customConfig?: any): Promise<any>;
-    getIntegrationMonitoringStats(): Promise<any>;
+    getIntegrationMonitoringStats(auditLimit?: number): Promise<any>;
 }

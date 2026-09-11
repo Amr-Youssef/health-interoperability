@@ -241,6 +241,16 @@ export class PrismaCanonicalStore implements ICanonicalStore {
     return this.prisma.patient.count();
   }
 
+  async countEncounters(): Promise<number> { return this.prisma.encounter.count(); }
+  async countConditions(): Promise<number> { return this.prisma.condition.count(); }
+  async countObservations(): Promise<number> { return this.prisma.observation.count(); }
+  async countCoverages(): Promise<number> { return this.prisma.coverage.count(); }
+  async countClaims(): Promise<number> { return this.prisma.claim.count(); }
+  async countMedicationRequests(): Promise<number> { return this.prisma.medicationRequest.count(); }
+  async countImmunizations(): Promise<number> { return this.prisma.immunization.count(); }
+  async countAllergies(): Promise<number> { return this.prisma.allergyIntolerance.count(); }
+  async countDiagnosticReports(): Promise<number> { return this.prisma.diagnosticReport.count(); }
+
   // ENCOUNTER
   private mapEncounterToCanonical(e: any): CanonicalEncounter {
     return {

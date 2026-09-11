@@ -593,10 +593,14 @@ model AuditLog {
   old_values       String?      // JSON string
   new_values       String?      // JSON string
   ip_address       String?
-  
+
   details          String?
-  
+
   created_at       DateTime     @default(now())
+
+  @@index([entity_id])
+  @@index([created_at])
+  @@index([action])
 }
 
 // 4.16b AuditChain Blocks — separated from AuditLog to prevent pollution (P8)
@@ -654,8 +658,12 @@ model RawRecord {
   
   reprocess_count   Int      @default(0)
   last_reprocessed_at DateTime?
-  
+
   @@unique([source_system_id, source_entity_type, source_record_id])
+  @@index([ingested_at])
+  @@index([source_system_id])
+  @@index([processing_status])
+  @@index([source_entity_type])
 }
 
 // -------------------------------------------------------------------
@@ -1077,14 +1085,17 @@ model ProvenanceRecord {
   id                   String   @id
   target_entity_type   String
   target_entity_id     String
-  
+
   source_system_id     String
   source_record_id     String
-  
+
   mapping_version      String
   adapter_version      String
-  
+
   persisted_at         DateTime @default(now())
+
+  @@index([source_system_id, source_record_id])
+  @@index([persisted_at])
 }
 
 // -------------------------------------------------------------------

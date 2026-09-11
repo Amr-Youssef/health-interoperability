@@ -35,6 +35,15 @@ export declare class PrismaCanonicalStore implements ICanonicalStore {
         nextCursor?: string | null;
     }>;
     countPatients(): Promise<number>;
+    countEncounters(): Promise<number>;
+    countConditions(): Promise<number>;
+    countObservations(): Promise<number>;
+    countCoverages(): Promise<number>;
+    countClaims(): Promise<number>;
+    countMedicationRequests(): Promise<number>;
+    countImmunizations(): Promise<number>;
+    countAllergies(): Promise<number>;
+    countDiagnosticReports(): Promise<number>;
     private mapEncounterToCanonical;
     saveEncounter(enc: CanonicalEncounter): Promise<string>;
     getEncounter(internalId: string): Promise<CanonicalEncounter | null>;

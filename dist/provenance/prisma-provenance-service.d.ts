@@ -7,5 +7,6 @@ export declare class PrismaProvenanceService {
     getProvenanceByEntityId(entityId: string): Promise<ProvenanceRecord | null>;
     getAllProvenance(): Promise<ProvenanceRecord[]>;
     recordAudit(entry: AuditEntry): Promise<void>;
+    countProvenance(): Promise<number>;
     getAuditLog(limit?: number): Promise<AuditEntry[]>;
 }

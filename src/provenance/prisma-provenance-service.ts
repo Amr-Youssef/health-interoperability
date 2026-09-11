@@ -106,6 +106,8 @@ export class PrismaProvenanceService {
     });
   }
 
+  async countProvenance(): Promise<number> { return this.prisma.provenanceRecord.count(); }
+
   async getAuditLog(limit: number = 50): Promise<AuditEntry[]> {
     const logs = await this.prisma.auditLog.findMany({
       orderBy: { created_at: 'desc' },

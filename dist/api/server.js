@@ -38,6 +38,7 @@ import { createClinicalRoutes } from '../modules/clinical/clinical.routes.js';
 import { createAdminRoutes } from '../modules/admin/admin.routes.js';
 import { createSmartRoutes } from '../modules/smart/smart.routes.js';
 import { createClinicalWriteRoutes } from '../modules/clinical-write/clinical-write.routes.js';
+import { createAuditRoutes } from '../modules/audit/audit.routes.js';
 import crypto from 'crypto';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -216,6 +217,7 @@ export function createPlatformApp() {
     app.use('/api', createClinicalRoutes(canonicalStore));
     app.use('/api/clinical', createClinicalWriteRoutes(canonicalStore));
     app.use('/api', createAdminRoutes(canonicalStore, rawStore, mpi, engine));
+    app.use('/api', createAuditRoutes(engine));
     app.use('/', createSmartRoutes(engine));
     // ==========================================
     // 2. PLATFORM & NORMALIZATION API ENDPOINTS
