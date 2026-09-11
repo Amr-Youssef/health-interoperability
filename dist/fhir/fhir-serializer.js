@@ -690,6 +690,24 @@ export class FhirR4Serializer {
                 });
             }
         }
+        const sr = record.selfReported;
+        if (sr) {
+            const pushUnconfirmed = (items, toFhir) => {
+                for (const it of items || []) {
+                    try {
+                        const r = toFhir(it);
+                        r.verificationStatus = r.verificationStatus || { coding: [{ system: 'http://terminology.hl7.org/CodeSystem/condition-ver-status', code: 'unconfirmed' }], text: 'UNVERIFIED - patient self-reported' };
+                        r.meta = Object.assign({}, r.meta, { tag: [{ system: 'urn:sa:source', code: 'PATIENT', display: 'Self-reported - UNVERIFIED, for review only' }] });
+                        entries.push({ fullUrl: 'urn:uuid:' + (it.id || it.internalId || Math.random().toString(36).slice(2)), resource: r });
+                    }
+                    catch { /* skip bad item */ }
+                }
+            };
+            pushUnconfirmed(sr.medications, (m) => ({ resourceType: 'MedicationStatement', id: m.id, status: 'recorded', medicationCodeableConcept: { text: m.medication_name || m.medicationName }, dosage: [{ text: [m.dose, m.frequency].filter(Boolean).join(' ') }], dateAsserted: m.recorded_at || m.recordedAt }));
+            pushUnconfirmed(sr.conditions, (c) => ({ resourceType: 'Condition', id: c.id, clinicalStatus: { coding: [{ code: 'active' }] }, code: { text: c.condition_name || c.conditionName } }));
+            pushUnconfirmed(sr.allergies, (a) => ({ resourceType: 'AllergyIntolerance', id: a.id, clinicalStatus: { coding: [{ code: 'active' }] }, code: { text: a.allergen_name || a.allergenName } }));
+            pushUnconfirmed(sr.vitals, (v) => ({ resourceType: 'Observation', id: v.id, status: 'preliminary', code: { text: v.observation_type || v.observationType }, valueQuantity: v.value_quantity != null ? { value: Number(v.value_quantity) } : undefined }));
+        }
         return {
             resourceType: 'Bundle',
             type: 'searchset',

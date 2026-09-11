@@ -494,6 +494,7 @@ export class PatientReportedHealthService {
     // === PRIVATE MAPPING METHODS ===
     mapProfileToData(profile) {
         return {
+            id: profile.id,
             patientId: profile.patient_id,
             preferredFirstName: profile.preferred_first_name,
             preferredLastName: profile.preferred_last_name,
@@ -513,6 +514,7 @@ export class PatientReportedHealthService {
     }
     mapAllergyToData(allergy) {
         return {
+            id: allergy.id,
             patientId: allergy.patient_id,
             allergenName: allergy.allergen_name,
             allergenCode: allergy.allergen_code,
@@ -530,6 +532,7 @@ export class PatientReportedHealthService {
     }
     mapMedicationToData(medication) {
         return {
+            id: medication.id,
             patientId: medication.patient_id,
             medicationName: medication.medication_name,
             medicationCode: medication.medication_code,
@@ -551,6 +554,7 @@ export class PatientReportedHealthService {
     }
     mapConditionToData(condition) {
         return {
+            id: condition.id,
             patientId: condition.patient_id,
             conditionName: condition.condition_name,
             conditionCode: condition.condition_code,
@@ -567,6 +571,7 @@ export class PatientReportedHealthService {
     }
     mapProcedureToData(procedure) {
         return {
+            id: procedure.id,
             patientId: procedure.patient_id,
             procedureName: procedure.procedure_name,
             procedureCode: procedure.procedure_code,
@@ -582,6 +587,7 @@ export class PatientReportedHealthService {
     }
     mapFamilyMemberToData(member) {
         return {
+            id: member.id,
             patientId: member.patient_id,
             relativeName: member.relative_name,
             relationship: member.relationship,
@@ -598,6 +604,7 @@ export class PatientReportedHealthService {
     }
     mapSocialHistoryToData(socialHistory) {
         return {
+            id: socialHistory.id,
             patientId: socialHistory.patient_id,
             smokingStatus: socialHistory.smoking_status,
             smokingFrequency: socialHistory.smoking_frequency,
@@ -616,6 +623,7 @@ export class PatientReportedHealthService {
     }
     mapVitalObservationToData(vital) {
         return {
+            id: vital.id,
             patientId: vital.patient_id,
             observationType: vital.observation_type,
             observationCode: vital.observation_code,
@@ -639,6 +647,7 @@ export class PatientReportedHealthService {
     }
     mapDocumentToData(document) {
         return {
+            id: document.id,
             patientId: document.patient_id,
             filename: document.filename,
             fileMimetype: document.file_mimetype,

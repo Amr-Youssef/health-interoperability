@@ -1096,7 +1096,29 @@ export class PrismaCanonicalStore {
             this.getAllergiesByPatient(patientId),
             this.getDiagnosticReportsByPatient(patientId)
         ]);
-        return { patient, encounters, conditions, observations, coverages, claims, medicationRequests, immunizations, allergies, diagnosticReports };
+        let selfReported = { source: 'PATIENT', verificationNote: 'بيانات مبلغ عنها ذاتيا - غير مؤكدة سريريا (UNVERIFIED). لا تعد جزءا من السجل السريري المعتمد.', allergies: [], medications: [], conditions: [], procedures: [], familyHistory: [], socialHistory: null, vitals: [], documents: [], profile: null };
+        try {
+            const prow = await this.prisma.patient.findFirst({ where: { internal_id: patient.internalId } }).catch(() => null)
+                || await this.prisma.patient.findFirst({ where: { internal_id: patientId } }).catch(() => null);
+            const pid = prow?.id || null;
+            if (pid) {
+                const p = this.prisma;
+                const [sAll, sMed, sCond, sProc, sFam, sSoc, sVit, sDoc, sProf] = await Promise.all([
+                    p.patientReportedAllergy?.findMany({ where: { patient_id: pid }, orderBy: { recorded_at: 'desc' }, take: 50 }).catch(() => []),
+                    p.patientReportedMedication?.findMany({ where: { patient_id: pid }, orderBy: { recorded_at: 'desc' }, take: 50 }).catch(() => []),
+                    p.patientReportedCondition?.findMany({ where: { patient_id: pid }, orderBy: { recorded_at: 'desc' }, take: 50 }).catch(() => []),
+                    p.patientReportedProcedure?.findMany({ where: { patient_id: pid }, orderBy: { recorded_at: 'desc' }, take: 50 }).catch(() => []),
+                    p.familyMember?.findMany({ where: { patient_id: pid }, orderBy: { recorded_at: 'desc' }, take: 50 }).catch(() => []),
+                    p.patientReportedSocialHistory?.findUnique({ where: { patient_id: pid } }).catch(() => null),
+                    p.patientReportedVitalObservation?.findMany({ where: { patient_id: pid }, orderBy: { recorded_at: 'desc' }, take: 50 }).catch(() => []),
+                    p.patientUploadedDocument?.findMany({ where: { patient_id: pid }, orderBy: { upload_timestamp: 'desc' }, take: 50 }).catch(() => []),
+                    p.patientProfile?.findUnique({ where: { patient_id: pid } }).catch(() => null),
+                ]);
+                selfReported = { source: 'PATIENT', verificationNote: 'UNVERIFIED - للاطلاع فقط. يتطلب تحققا عبر /api/moh/verification-queue', profile: sProf, allergies: sAll || [], medications: sMed || [], conditions: sCond || [], procedures: sProc || [], familyHistory: sFam || [], socialHistory: sSoc, vitals: sVit || [], documents: sDoc || [] };
+            }
+        }
+        catch { /* keep empty selfReported - never break canonical */ }
+        return { patient, encounters, conditions, observations, coverages, claims, medicationRequests, immunizations, allergies, diagnosticReports, selfReported };
     }
     // ORGANIZATIONS & PRACTITIONERS (Stubs for full API interface support, usually seeded/externally managed)
     async saveOrganization(org) {

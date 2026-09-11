@@ -1,4 +1,5 @@
 export interface PatientProfileData {
+    id?: string;
     patientId: string;
     preferredFirstName?: string;
     preferredLastName?: string;
@@ -16,6 +17,7 @@ export interface PatientProfileData {
     notes?: string;
 }
 export interface PatientReportedAllergyData {
+    id?: string;
     patientId: string;
     allergenName: string;
     allergenCode?: string;
@@ -31,6 +33,7 @@ export interface PatientReportedAllergyData {
     recordedAt: string;
 }
 export interface PatientReportedMedicationData {
+    id?: string;
     patientId: string;
     medicationName: string;
     medicationCode?: string;
@@ -50,6 +53,7 @@ export interface PatientReportedMedicationData {
     recordedAt: string;
 }
 export interface PatientReportedConditionData {
+    id?: string;
     patientId: string;
     conditionName: string;
     conditionCode?: string;
@@ -64,6 +68,7 @@ export interface PatientReportedConditionData {
     recordedAt: string;
 }
 export interface PatientReportedProcedureData {
+    id?: string;
     patientId: string;
     procedureName: string;
     procedureCode?: string;
@@ -77,6 +82,7 @@ export interface PatientReportedProcedureData {
     recordedAt: string;
 }
 export interface FamilyMemberData {
+    id?: string;
     patientId: string;
     relativeName?: string;
     relationship: 'MOTHER' | 'FATHER' | 'SIBLING' | 'CHILD' | 'GRANDPARENT' | 'AUNT' | 'UNCLE' | 'COUSIN';
@@ -91,6 +97,7 @@ export interface FamilyMemberData {
     recordedAt: string;
 }
 export interface PatientReportedSocialHistoryData {
+    id?: string;
     patientId: string;
     smokingStatus?: 'NEVER' | 'FORMER' | 'CURRENT';
     smokingFrequency?: 'DAILY' | 'WEEKLY' | 'OCCASIONAL';
@@ -107,6 +114,7 @@ export interface PatientReportedSocialHistoryData {
     recordedAt: string;
 }
 export interface PatientReportedVitalObservationData {
+    id?: string;
     patientId: string;
     observationType: 'BLOOD_PRESSURE' | 'HEART_RATE' | 'TEMPERATURE' | 'WEIGHT' | 'HEIGHT' | 'SPO2' | 'BLOOD_GLUCOSE';
     observationCode?: string;
@@ -128,6 +136,7 @@ export interface PatientReportedVitalObservationData {
     verificationStatus: 'UNVERIFIED' | 'VERIFIED' | 'REFUTED';
 }
 export interface PatientUploadedDocumentData {
+    id?: string;
     patientId: string;
     filename: string;
     fileMimetype: string;

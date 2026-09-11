@@ -413,7 +413,7 @@ const appAuth = {
       if (patCard) patCard.style.display = 'block';
 
     } else if (this.currentRole === 'PATIENT') {
-      ['profile', 'longitudinal', 'medications', 'appointments'].forEach(id => {
+      ['profile', 'longitudinal', 'medications', 'appointments', 'patient-insurance', 'patient-access'].forEach(id => {
         const t = document.getElementById(`tab-btn-${id}`);
         if(t) t.style.display = 'flex';
       });
@@ -3455,6 +3455,27 @@ async function showHospGlobalDetail(patientId) {
             </div>
           </div>
 
+          <!-- 6b. Self-Reported (PATIENT UNVERIFIED - read-only, separate from clinical truth) -->
+          <div class="card mb-4" style="border:2px solid var(--m3-warning); background:var(--m3-surface-container-low);">
+            <div class="card-header" style="background:var(--m3-warning-container);">
+              <div class="card-header-title"><h3>بيانات مبلغ عنها ذاتيا من المريض — غير مؤكدة (للاطلاع فقط)</h3></div>
+              <span class="badge badge-warning">UNVERIFIED • source: PATIENT • ${srCount} عنصر</span>
+            </div>
+            <div class="card-body">
+              <p style="font-size:0.78rem; color:var(--m3-on-surface-variant);">لا تدخل في العدادات السريرية ولا تغذي CDS ولا تصدر FHIR confirmed إلا بعد VERIFIED عبر verification-queue. محفوظة مع Provenance و Audit.</p>
+              ${!sr || srCount === 0 ? '<p class="text-center py-4" style="color:var(--m3-on-surface-muted);">لا توجد بيانات ذاتية مبلغ عنها لهذا المريض</p>' : `
+              ${srMeds.length ? `<h4 style="margin:10px 0 6px;">أدوية مبلغ عنها (${srMeds.length})</h4><table class="data-table"><tbody>${srMeds.map(m=>`<tr><td><strong>${srName(m)}</strong><br><small>${m.dose||''} ${m.frequency||''}</small></td><td><span class="badge badge-warning">PATIENT</span></td><td>${srVerifyBtns('medication', m.id)}</td></tr>`).join('')}</tbody></table>` : ''}
+              ${srConds.length ? `<h4 style="margin:10px 0 6px;">حالات مبلغ عنها (${srConds.length})</h4><table class="data-table"><tbody>${srConds.map(c=>`<tr><td><strong>${srName(c)}</strong></td><td><span class="badge badge-warning">PATIENT</span></td><td>${srVerifyBtns('condition', c.id)}</td></tr>`).join('')}</tbody></table>` : ''}
+              ${srAll.length ? `<h4 style="margin:10px 0 6px;">حساسيات مبلغ عنها (${srAll.length})</h4><table class="data-table"><tbody>${srAll.map(a=>`<tr><td><strong>${srName(a)}</strong></td><td><span class="badge badge-warning">PATIENT</span></td><td>${srVerifyBtns('allergy', a.id)}</td></tr>`).join('')}</tbody></table>` : ''}
+              ${srProc.length ? `<h4 style="margin:10px 0 6px;">عمليات مبلغ عنها (${srProc.length})</h4><table class="data-table"><tbody>${srProc.map(x=>`<tr><td><strong>${srName(x)}</strong></td><td><span class="badge badge-warning">PATIENT</span></td><td>${srVerifyBtns('procedure', x.id)}</td></tr>`).join('')}</tbody></table>` : ''}
+              ${srVit.length ? `<h4 style="margin:10px 0 6px;">قياسات ذاتية (${srVit.length})</h4><table class="data-table"><tbody>${srVit.map(v=>`<tr><td><strong>${v.observation_type||v.observationType}</strong> ${(v.value_quantity ?? v.valueQuantity ?? '') + ' ' + (v.value_unit||v.valueUnit||'')}</td><td><span class="badge badge-warning">PATIENT</span></td><td>${srVerifyBtns('vital', v.id)}</td></tr>`).join('')}</tbody></table>` : ''}
+              ${srFam.length ? `<h4 style="margin:10px 0 6px;">تاريخ عائلي (${srFam.length})</h4><table class="data-table"><tbody>${srFam.map(f=>`<tr><td><strong>${f.condition_name||f.conditionName||''}</strong> (${f.relationship||''})</td><td><span class="badge badge-warning">PATIENT</span></td></tr>`).join('')}</tbody></table>` : ''}
+              ${srSoc && !srSoc.message ? `<h4 style="margin:10px 0 6px;">تاريخ اجتماعي</h4><p style="font-size:0.82rem;">تدخين: ${srSoc.smoking_status||srSoc.smokingStatus||'—'} • نشاط: ${srSoc.physical_activity||srSoc.physicalActivity||'—'} • مهنة: ${srSoc.occupation||'—'}</p>` : ''}
+              ${srDoc.length ? `<h4 style="margin:10px 0 6px;">مستندات (${srDoc.length})</h4><table class="data-table"><tbody>${srDoc.map(d=>`<tr><td><strong>${d.filename||''}</strong> (${d.document_category||d.documentCategory||''})</td><td><span class="badge badge-warning">PATIENT</span></td></tr>`).join('')}</tbody></table>` : ''}
+              `}
+            </div>
+          </div>
+
           <!-- 7. Coverages & Claims (NPHIES) -->
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;" class="mb-4">
             <div class="card" style="border:1px solid var(--m3-outline-variant);">
@@ -3534,6 +3555,19 @@ function renderLongitudinalContent(data, patientId) {
     const immunizations = data.immunizations || [];
     const allergies = data.allergies || [];
     const diagnosticReports = data.diagnosticReports || [];
+    const sr = data.selfReported || null;
+    const srMeds = sr?.medications || [];
+    const srConds = sr?.conditions || [];
+    const srAll = sr?.allergies || [];
+    const srProc = sr?.procedures || [];
+    const srFam = sr?.familyHistory || [];
+    const srVit = sr?.vitals || sr?.vitalObservations || [];
+    const srDoc = sr?.documents || [];
+    const srSoc = sr?.socialHistory || null;
+    const srCount = srMeds.length + srConds.length + srAll.length + srProc.length + srFam.length + srVit.length + srDoc.length;
+    const canVerify = window.appAuth && (appAuth.currentRole === 'MOH_ADMIN' || appAuth.currentRole === 'SYS_ADMIN');
+    const srName = (o) => o.medication_name || o.medicationName || o.condition_name || o.conditionName || o.allergen_name || o.allergenName || o.procedure_name || o.procedureName || o.filename || o.observation_type || o.observationType || 'عنصر';
+    const srVerifyBtns = (type, id) => canVerify ? `<span style="white-space:nowrap;"><button class="btn btn-primary btn-sm" onclick="verifyItem('${type}','${id}','VERIFIED')">تحقق</button> <button class="btn btn-secondary btn-sm" onclick="verifyItem('${type}','${id}','REFUTED')">رفض</button></span>` : `<span class="badge badge-warning" style="font-size:0.62rem;">بانتظار التحقق</span>`;
 
     const nidObj = p.identifiers?.find(i => i.type === 'NID' || i.type === 'IQAMA') || p.identifiers?.[0];
     const nid = nidObj?.value || p.internalId || '—';

@@ -542,7 +542,8 @@ export class CanonicalStore {
             medicationRequests,
             immunizations,
             allergies,
-            diagnosticReports
+            diagnosticReports,
+            selfReported: { source: 'PATIENT', verificationNote: 'UNVERIFIED - in-memory store has no self-reported persistence', allergies: [], medications: [], conditions: [], procedures: [], familyHistory: [], socialHistory: null, vitals: [], documents: [], profile: null }
         };
     }
     // Organizations & Practitioners

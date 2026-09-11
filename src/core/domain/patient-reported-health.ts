@@ -2,6 +2,7 @@ import { ProvenanceInfo } from './types.js';
 
 // === PATIENT PROFILE ===
 export interface PatientProfileData {
+  id?: string;
   patientId: string;
   preferredFirstName?: string;
   preferredLastName?: string;
@@ -21,6 +22,7 @@ export interface PatientProfileData {
 
 // === PATIENT-REPORTED ALLERGY ===
 export interface PatientReportedAllergyData {
+  id?: string;
   patientId: string;
   allergenName: string; // Original patient-entered text
   allergenCode?: string; // Resolved terminology code
@@ -38,6 +40,7 @@ export interface PatientReportedAllergyData {
 
 // === PATIENT-REPORTED MEDICATION ===
 export interface PatientReportedMedicationData {
+  id?: string;
   patientId: string;
   medicationName: string; // Original patient-entered text
   medicationCode?: string;
@@ -59,6 +62,7 @@ export interface PatientReportedMedicationData {
 
 // === PATIENT-REPORTED CONDITION ===
 export interface PatientReportedConditionData {
+  id?: string;
   patientId: string;
   conditionName: string; // Original patient-entered text
   conditionCode?: string;
@@ -75,6 +79,7 @@ export interface PatientReportedConditionData {
 
 // === PATIENT-REPORTED PROCEDURE ===
 export interface PatientReportedProcedureData {
+  id?: string;
   patientId: string;
   procedureName: string; // Original patient-entered text
   procedureCode?: string;
@@ -90,6 +95,7 @@ export interface PatientReportedProcedureData {
 
 // === FAMILY MEMBER ===
 export interface FamilyMemberData {
+  id?: string;
   patientId: string;
   relativeName?: string;
   relationship: 'MOTHER' | 'FATHER' | 'SIBLING' | 'CHILD' | 'GRANDPARENT' | 'AUNT' | 'UNCLE' | 'COUSIN';
@@ -106,6 +112,7 @@ export interface FamilyMemberData {
 
 // === PATIENT-REPORTED SOCIAL HISTORY ===
 export interface PatientReportedSocialHistoryData {
+  id?: string;
   patientId: string;
   smokingStatus?: 'NEVER' | 'FORMER' | 'CURRENT';
   smokingFrequency?: 'DAILY' | 'WEEKLY' | 'OCCASIONAL';
@@ -124,6 +131,7 @@ export interface PatientReportedSocialHistoryData {
 
 // === PATIENT-REPORTED VITAL OBSERVATION ===
 export interface PatientReportedVitalObservationData {
+  id?: string;
   patientId: string;
   observationType: 'BLOOD_PRESSURE' | 'HEART_RATE' | 'TEMPERATURE' | 'WEIGHT' | 'HEIGHT' | 'SPO2' | 'BLOOD_GLUCOSE';
   observationCode?: string;
@@ -147,6 +155,7 @@ export interface PatientReportedVitalObservationData {
 
 // === PATIENT UPLOADED DOCUMENT ===
 export interface PatientUploadedDocumentData {
+  id?: string;
   patientId: string;
   filename: string;
   fileMimetype: string;
