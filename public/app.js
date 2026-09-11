@@ -327,6 +327,8 @@ const appAuth = {
     this.user = null;
     cachedPatients = [];
     currentPatientId = '';
+    window._auditPatientContext = null;
+    window._auditPatientId = null;
     localStorage.removeItem('shiep_role');
     localStorage.removeItem('shiep_token');
     localStorage.removeItem('shiep_user');
@@ -560,9 +562,14 @@ function updateGlobalPatientBar() {
     if (bar) bar.style.display = 'none';
     return;
   }
-  const auditorTabs = ['monitoring','longitudinal'];
-  if (appAuth.currentRole === 'MOH_AUDITOR' && !auditorTabs.includes(currentTab)) {
+  // MOH_AUDITOR is a National Read-Only Audit Console — never a patient-browsing interface.
+  // The active-patient bar (and any global patient selector) stays hidden on every audit tab.
+  if (appAuth.currentRole === 'MOH_AUDITOR') {
     if (bar) bar.style.display = 'none';
+    const _combo = document.getElementById('global-patient-combobox');
+    const _sel = document.getElementById('global-patient-selector');
+    if (_combo) _combo.style.display = 'none';
+    if (_sel) _sel.style.display = 'none';
     return;
   }
   if (bar) bar.style.display = 'flex';
@@ -631,7 +638,7 @@ function updateGlobalPatientBar() {
 }
 
 async function switchActivePatient(patientId) {
-  if (!patientId || appAuth.currentRole === 'PATIENT') return;
+  if (!patientId || appAuth.currentRole === 'PATIENT' || appAuth.currentRole === 'MOH_AUDITOR') return;
   currentPatientId = patientId;
   updateGlobalPatientBar();
   if (currentTab === 'longitudinal') loadLongitudinalRecord(patientId);
@@ -639,6 +646,8 @@ async function switchActivePatient(patientId) {
 }
 
 async function fetchAndCachePatients() {
+  // MOH_AUDITOR never bulk-loads the platform patient list — audit context only.
+  if (appAuth.currentRole === 'MOH_AUDITOR') { cachedPatients = []; currentPatientId = ''; return; }
   try {
     if (appAuth.currentRole === 'PATIENT') {
       const res = await fetch('/api/patients');
@@ -1712,6 +1721,14 @@ function handleTabSwitch(tab) {
   if (typeof applyLongitudinalPermissions !== 'function') window.applyLongitudinalPermissions = function(){};
   if (tab === 'longitudinal') {
     loadPatientsDropdown();
+    if (appAuth.currentRole === 'MOH_AUDITOR') {
+      // Audit context only: open the traced record, never a browser.
+      if (window._auditPatientId) loadLongitudinalRecord(window._auditPatientId);
+      const cwCard0 = document.getElementById('clinical-write-card');
+      if (cwCard0) cwCard0.style.display = 'none';
+      updateGlobalPatientBar();
+      return;
+    }
     applyLongitudinalPermissions();
     const cwCard=document.getElementById('clinical-write-card');
     if(cwCard) cwCard.style.display = (appAuth.currentRole==='CLINICIAN' || appAuth.currentRole==='HOSPITAL_ADMIN') ? 'block' : 'none';
@@ -1851,6 +1868,14 @@ function initMonitoringPolling(){
 async function loadAllData() {
   initMonitoringPolling();
   await loadMonitoringStats();
+  // MOH_AUDITOR dashboard carries no patient state: skip every patient-list load.
+  if (appAuth.currentRole === 'MOH_AUDITOR') {
+    cachedPatients = [];
+    currentPatientId = '';
+    window._auditPatientContext = null;
+    window._auditPatientId = null;
+    return;
+  }
   await fetchAndCachePatients();
   await loadPatientsDropdown();
   await loadOnboardedHospitals();
@@ -2239,12 +2264,24 @@ async function openAuditorTrace(id) {
         ${j.stages.map(s => `<tr><td><strong>${_auditEsc(s.stage)}</strong></td><td>${stageBadge(s)}</td><td style="font-size:0.78rem;">${_auditEsc(s.detail || '—')}</td></tr>`).join('')}
       </tbody></table>
       <h4 style="font-size:0.88rem; margin:12px 0 6px;">Provenance (${(j.provenance || []).length})</h4>
-      ${((j.provenance || []).map(p => `<div style="padding:6px 8px; border:1px solid var(--m3-outline-variant); margin-bottom:4px; font-size:0.78rem;">${_auditEsc(p.target_entity_type)}:<code>${_auditEsc(String(p.target_entity_id).substring(0, 12))}</code> • Mapping <code>${_auditEsc(p.mapping_version || '—')}</code> • Adapter <code>${_auditEsc(p.adapter_version || '—')}</code></div>`).join('') || '<p style="font-size:0.8rem; color:var(--m3-on-surface-muted);">لا يوجد Provenance — لم يصل السجل للتخزين الكنسي</p>')}
+      ${((j.provenance || []).map(p => `<div style="padding:6px 8px; border:1px solid var(--m3-outline-variant); margin-bottom:4px; font-size:0.78rem; display:flex; justify-content:space-between; align-items:center; gap:8px;"><span>${_auditEsc(p.target_entity_type)}:<code>${_auditEsc(String(p.target_entity_id).substring(0, 12))}</code> • Mapping <code>${_auditEsc(p.mapping_version || '—')}</code> • Adapter <code>${_auditEsc(p.adapter_version || '—')}</code></span>${p.target_entity_type === 'CanonicalPatient' ? `<button type="button" class="btn btn-secondary btn-sm" onclick="openAuditPatientContext('${_auditEsc(p.target_entity_id)}')">فتح في سياق تدقيقي</button>` : ''}</div>`).join('') || '<p style="font-size:0.8rem; color:var(--m3-on-surface-muted);">لا يوجد Provenance — لم يصل السجل للتخزين الكنسي</p>')}
       <h4 style="font-size:0.88rem; margin:12px 0 6px;">سجلات التدقيق المرتبطة (${(j.auditLogs || []).length})</h4>
       ${((j.auditLogs || []).map(a => `<div style="padding:6px 8px; border:1px solid var(--m3-outline-variant); margin-bottom:4px; font-size:0.78rem;"><code>${_auditFmtTime(a.created_at)}</code> • ${_auditEsc(a.action)} • ${_auditEsc(a.entity_type || '')} • ${_auditEsc(a.details || '')}</div>`).join('') || '<p style="font-size:0.8rem; color:var(--m3-on-surface-muted);">لا سجلات مرتبطة</p>')}`;
   } catch (e) { body.innerHTML = `<p style="color:var(--m3-error);">${_auditEsc(e.message)}</p>`; }
   document.getElementById('btn-auditor-trace-close').onclick = () => { modal.style.display = 'none'; };
   document.getElementById('btn-auditor-evidence').onclick = () => { if (_auditConsole.lastTraceId) exportAuditorEvidence(_auditConsole.lastTraceId); };
+}
+function openAuditPatientContext(patientId) {
+  // The ONLY path for MOH_AUDITOR to open a patient record: from an explicit audit trace.
+  if (appAuth.currentRole !== 'MOH_AUDITOR') return;
+  window._auditPatientContext = true;
+  window._auditPatientId = patientId;
+  currentPatientId = patientId;
+  const modal = document.getElementById('auditor-trace-modal');
+  if (modal) modal.style.display = 'none';
+  const btn = document.getElementById('tab-btn-longitudinal');
+  if (btn) btn.click();
+  else loadLongitudinalRecord(patientId);
 }
 async function exportAuditorEvidence(id) {
   try {
@@ -2765,7 +2802,7 @@ function saveRecentLongitudinal(id) {
 function renderRecentChips() {
   const c = document.getElementById('longitudinal-recent-chips');
   if (!c) return;
-  if (appAuth.currentRole === 'PATIENT' || recentLongitudinalIds.length === 0) { c.innerHTML = ''; return; }
+  if (appAuth.currentRole === 'PATIENT' || appAuth.currentRole === 'MOH_AUDITOR' || recentLongitudinalIds.length === 0) { c.innerHTML = ''; return; }
   c.innerHTML = '<span style="font-size:0.75rem; color:var(--m3-on-surface-muted);">آخر من عرضتهم:</span>' + recentLongitudinalIds.map(id => {
     const p = cachedPatients.find(x => x.id === id);
     const label = p ? (p.nameAr || p.name) : id.substring(0,8);
@@ -2775,6 +2812,20 @@ function renderRecentChips() {
 
 async function loadPatientsDropdown() {
   const searchCard = document.getElementById('longitudinal-search-card');
+  if (appAuth.currentRole === 'MOH_AUDITOR') {
+    // No platform patient browser for the auditor. Access opens only from an audit trace.
+    if (searchCard) searchCard.style.display = 'none';
+    const resultsEl = document.getElementById('longitudinal-results');
+    if (resultsEl) resultsEl.innerHTML = '';
+    const pagEl = document.getElementById('longitudinal-pagination');
+    if (pagEl) pagEl.innerHTML = '';
+    const badgeEl = document.getElementById('longitudinal-total-badge');
+    if (badgeEl) badgeEl.textContent = 'سياق تدقيقي فقط';
+    const lc = document.getElementById('longitudinal-content');
+    if (lc && !window._auditPatientId) lc.innerHTML = `<div class="card" style="padding:28px; text-align:center; color:var(--m3-on-surface-variant);"><p style="font-size:0.95rem; font-weight:700; color:var(--m3-on-surface);">الوصول لسجل مريض من سياق تدقيقي فقط</p><p style="font-size:0.84rem; margin-top:6px;">افتح سجلاً من Monitoring ← سجل الرسائل ← المسار ← «فتح السجل في سياق تدقيقي».</p></div>`;
+    renderRecentChips();
+    return;
+  }
   if (appAuth.currentRole === 'PATIENT') {
     if (searchCard) searchCard.style.display = 'none';
     if (cachedPatients.length === 0) await fetchAndCachePatients();
@@ -2818,6 +2869,7 @@ function initLongitudinalSearch() {
 }
 
 async function performLongitudinalSearch() {
+  if (appAuth.currentRole === 'MOH_AUDITOR') return;
   const resultsEl = document.getElementById('longitudinal-results');
   const pagEl = document.getElementById('longitudinal-pagination');
   const badgeEl = document.getElementById('longitudinal-total-badge');
@@ -2877,8 +2929,10 @@ function changeLongitudinalPage(delta) {
   performLongitudinalSearch();
 }
 async function selectLongitudinalPatient(patientId) {
+  // MOH_AUDITOR may open a record only from an explicit audit context (trace → related record).
+  if (appAuth.currentRole === 'MOH_AUDITOR' && window._auditPatientId !== patientId) return;
   currentPatientId = patientId;
-  saveRecentLongitudinal(patientId);
+  if (appAuth.currentRole !== 'MOH_AUDITOR') saveRecentLongitudinal(patientId);
   updateGlobalPatientBar();
   const cwPatient=document.getElementById('clinical-write-patient');
   if(cwPatient) cwPatient.value = patientId;
@@ -3836,6 +3890,8 @@ async function showHospGlobalDetail(patientId) {
 async function loadLongitudinalRecord(patientId) {
   const container = document.getElementById('longitudinal-content');
   if (!container) return;
+  // MOH_AUDITOR opens records only from an explicit audit trace context.
+  if (appAuth.currentRole === 'MOH_AUDITOR' && window._auditPatientId !== patientId) return;
   if (longitudinalCache.has(patientId)) {
     renderLongitudinalContent(longitudinalCache.get(patientId), patientId);
     fetch(`/api/patients/${patientId}/longitudinal`).then(r=>r.json()).then(d=>{ if(d.patient){ longitudinalCache.set(patientId, d); renderLongitudinalContent(d, patientId); }}).catch(()=>{});
