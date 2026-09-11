@@ -804,6 +804,8 @@ function initThemeSwitcher() {
 let globalPatientSearchState = { q: '', page: 1, limit: 12, total: 0, totalPages: 1, items: [] };
 let globalPatientDebounce = null;
 function initGlobalPatientSelector() {
+  // MOH_AUDITOR has no global patient selector: no binding, no prefetch, no cache.
+  if (appAuth.currentRole === 'MOH_AUDITOR') return;
   const input = document.getElementById('global-patient-search');
   const dropdown = document.getElementById('global-patient-dropdown');
   const clearBtn = document.getElementById('global-patient-clear');
@@ -849,6 +851,7 @@ function initGlobalPatientSelector() {
     }
   });
   async function fetchGlobalPatients(q, page) {
+    if (appAuth.currentRole === 'MOH_AUDITOR') return;
     try {
       const params = new URLSearchParams({ q, page: String(page), limit: String(globalPatientSearchState.limit), sort: 'recent' });
       const res = await fetch('/api/patients/search?' + params.toString());
@@ -1872,6 +1875,8 @@ async function loadAllData() {
   if (appAuth.currentRole === 'MOH_AUDITOR') {
     cachedPatients = [];
     currentPatientId = '';
+    longitudinalCache.clear();
+    globalPatientSearchState = { q: '', page: 1, limit: 12, total: 0, totalPages: 1, items: [] };
     window._auditPatientContext = null;
     window._auditPatientId = null;
     return;
