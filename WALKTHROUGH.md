@@ -22,8 +22,12 @@
 6. [المرحلة الخامسة: الأمن السيبراني وسلسلة التدقيق وتصدير البيانات الضخمة (Phase 5: NCA Audit Chain & FHIR Bulk Export)](#6-المرحلة-الخامسة-الأمن-السيبراني-وسلسلة-التدقيق-وتصدير-البيانات-الضخمة)
 7. [المرحلة السادسة: النشر المؤسسي واختبارات الأداء العالي (Phase 6: Production Containerization & Benchmarks)](#7-المرحلة-السادسة-النشر-المؤسسي-واختبارات-الأداء-العالي)
 8. [المرحلة السابعة: التوسعات الوطنية الكبرى وبوابة SMART (Phase 7: HL7v2 & SMART on FHIR)](#8-المرحلة-السابعة-التوسعات-الوطنية-الكبرى-وبوابة-smart)
-9. [مصفوفة التحقق والاختبارات الآلية (Verification & Automated Test Suite)](#9-مصفوفة-التحقق-والاختبارات-الآلية)
-10. [دليل النوافذ البرمجية وواجهة المستخدم (Endpoints & Dashboard Guide)](#10-دليل-النوافذ-البرمجية-وواجهة-المستخدم)
+9. [المرحلة الثامنة: التشديد الأمني والحوكمة (Phase 8: RBAC & Governance)](#9-المرحلة-الثامنة-التشديد-الأمني-والحوكمة)
+10. [المرحلة التاسعة: المواعيد الرباعية ودورة التصحيحات (Phase 9: Appointments & Corrections)](#10-المرحلة-التاسعة-المواعيد-الرباعية-ودورة-التصحيحات)
+11. [المرحلة العاشرة: البيانات المُبلغة ذاتياً (Phase 10: Patient-Reported Health)](#11-المرحلة-العاشرة-البيانات-المبلغة-ذاتيا)
+12. [المرحلة الحادية عشرة: التقسيم الوحداتي والنشر السحابي (Phase 11: Modularization & Cloud)](#12-المرحلة-الحادية-عشرة-التقسيم-الوحداتي-والنشر-السحابي)
+13. [مصفوفة التحقق والاختبارات الآلية (Verification & Automated Test Suite)](#13-مصفوفة-التحقق-والاختبارات-الآلية)
+14. [دليل النوافذ البرمجية وواجهة المستخدم (Endpoints & Dashboard Guide)](#14-دليل-النوافذ-البرمجية-وواجهة-المستخدم)
 
 ---
 
@@ -240,9 +244,66 @@ graph TD
 
 ---
 
-## 9. مصفوفة التحقق والاختبارات الآلية
+## 9. المرحلة الثامنة: التشديد الأمني والحوكمة
 
-تم اختبار كافة مكونات المنصة عبر إطار العمل **Vitest**، ونجحت جميع الاختبارات بنسبة **100%**:
+### المنجزات الرئيسية:
+1. **هجرة `20260903000000_rbac_hardening`**: ‏6 أدوار‏ (`SYS_ADMIN, MOH_ADMIN, MOH_AUDITOR, HOSPITAL_ADMIN, CLINICIAN, PATIENT`) × ~33 صلاحية (`ORG_MANAGE, AUDIT, ANALYTICS, PATIENT_*, CLINICAL_*, CLAIM, IMPORT, CONSENT, BREAK_GLASS, EXPORT, FHIR_*`) — جداول `Role/RolePermission/UserPermission`.
+2. **خدمة التفويض** `src/security/authorization.service.ts` + حراس `verifyToken/requirePermission` على مسارات FHIR والسريرية وبيانات المرضى.
+3. **حوكمة الوزارة** `src/api/routes/moh-routes.ts` (‏20 endpoint‏): اعتماد/رفض/تعليق المستشفيات، إدارة المستخدمين، مراجعة تغييرات المنظمات، طابور التحقق، تصحيح الهويات، سجل التدقيق، مرشحو تكرار MPI.
+4. **مساحة المستشفى** `src/api/routes/hospital-routes.ts` (‏18 endpoint‏): الملف، الإحصاءات، المرضى المحليون والشاملون، السجل الطولي، الاستيرادات، إدارة المستخدمين.
+5. **حزمة الأمان الأساسية** `tests/unit/baseline-security.test.ts` (‏10 فحوص‏: CORS وrate-limit وJWT وHelmet).
+
+---
+
+## 10. المرحلة التاسعة: المواعيد الرباعية ودورة التصحيحات
+
+### المنجزات الرئيسية:
+1. **هجرة `20260904000000_appointment_consent_quad`**: موديل `Appointment` (‏4 أنواع:‏ ROUTINE/EMERGENCY/REFERRAL/CHRONIC) ↔ `Consent` بعلاقة 1-1 + كشف التضارب وسعة الشرائح.
+2. **API المواعيد** `src/api/routes/appointments-routes.ts` (‏5‏): `POST /` + `GET /my` + `GET /organization` + `PATCH /:id/status` + `GET /:id`.
+3. **هجرة `20260904000001_correction_status`**: حقل `correction_status` على كل الموديلات السريرية الكنسية.
+4. **API التصحيحات** `src/api/routes/corrections-routes.ts` (‏3‏): `POST /:type/:id/request` + `POST /:type/:id/approve` + `GET /pending`.
+5. **خط الأساس للموافقة**: `OPT_IN_FULL → EXPLICIT_PER_ENCOUNTER` + بروتوكول break-glass (`src/modules/security/`).
+
+---
+
+## 11. المرحلة العاشرة: البيانات المُبلغة ذاتياً
+
+### المنجزات الرئيسية:
+1. **هجرة `20260830180112_add_patient_reported_health_data`**: ‏9 جداول‏ (Profile/Allergy/Medication/Condition/Procedure/FamilyMember/SocialHistory/VitalObservation/UploadedDocument).
+2. **الخدمة والنطاق**: `src/core/patient-reported-health-service.ts` (‏60+ دالة‏) + `src/core/domain/patient-reported-health.ts` (‏14 نوعاً‏) — تفويض على مستوى الخدمة + سلسلة تدقيق تلقائية + لا تلفيق بيانات.
+3. **REST API** `src/api/routes/patient-reported-health-routes.ts` (~‏31 endpoint‏ تحت `/api/patients/me/*`) + الملف المركب `GET /me/health-profile`.
+4. **تسلسل FHIR R4** `src/fhir/patient-reported-health-fhir-serializer.ts` (‏6 مسلسلات‏).
+5. **التحقق** `src/demo/verify-patient-health.ts` (‏15/15‏) + حزم Vitest + الواجهة `public/js/patient-self-reported.js`.
+6. **التوثيق**: `PATIENT_HEALTH_IMPLEMENTATION_REPORT.md` + `PATIENT_HEALTH_SUMMARY.md` + `QUICK_START.md` + `PROJECT_STATUS.md`.
+
+---
+
+## 12. المرحلة الحادية عشرة: التقسيم الوحداتي والنشر السحابي
+
+### المنجزات الرئيسية (حتى 2026-09-13):
+1. **التقسيم إلى `src/modules/` (‏16 وحدة‏)**: fhir (‏13 مساراً‏ مستخرجاً) + smart + platform + nphies + cds + analytics (صحة سكانية + ترصد وقاء: reportable/bundle/dispatch) + security (موافقة + break-glass + سلسلة تدقيق) + data (raw-store/reprocess + mpi/merge/unmerge + terminology + mappings + provenance) + patients (بحث/سرد/طولي) + hospital (توافق) + public (منظمات/أطباء) + hl7 + clinical (قراءة) + clinical-write (‏7 كتابات‏: encounter/condition/observation/diagnostic-report/allergy/immunization/medication) + admin (reset-data) + audit (‏5‏: integration-overview/connectors/records/records/:id/trace/evidence/:id).
+2. **جدول `AuditBlock`** لسلسلة التجزئة المشفرة (منفصل عن `AuditLog`) + تنظيف أحداث السلسلة (`CHAIN_ACTIONS`) + `clearAll` المحدد.
+3. **خطة توحيد هوية المريض** `docs/migration/patient-identity-unification.md` — عمود `patient_id_uuid` حي على الموديلات السريرية (الترحيل الكامل `internal_id=NID→UUID` يتطلب نافذة صيانة).
+4. **النشر اللاخادمي**: `api/index.ts` (‏5 أسطر‏) + `vercel.json` + اتصال Postgres سحابي مضمون (commits سبتمبر 2026) + مهلة إقلاع Vercel ‏2500ms‏.
+5. **تجميد التصميم** `DESIGN_SYSTEM.md` (v0.2.4) + خريطة المنصة `docs/SYSTEM_MAP.md` (جديدة).
+6. **سجل إعادة الهيكلة** `docs/REFACTOR_PROGRESS.md` (المراحل P0-P9) + `docs/BEST_PRACTICES_APPLIED.md`.
+
+---
+
+## 13. مصفوفة التحقق والاختبارات الآلية
+
+الحزمة الحالية: **6 ملفات Vitest / ~32 اختباراً** (كانت 12 في ملف واحد عند كتابة المصفوفة الأصلية — حُدّثت 2026-09-13):
+
+```
+tests/unit/normalization-pipeline.test.ts  # خط الأنابيب المعماري (12 سيناريو أصلياً + فحوص idempotency)
+tests/unit/baseline-security.test.ts       # 10 فحوص أمنية
+tests/unit/hl7-mllp-server.test.ts         # خادم MLLP
+tests/unit/real-raw-store.test.ts          # مخزن الخام الحقيقي
+tests/patient-reported-health.test.ts
+tests/patient-reported-health-integration.test.ts
+```
+
+المصفوفة الأصلية (محفوظة للمرجع — من بيئة الاختبار الأولى):
 
 ```
  RUN  v3.2.7 C:/Users/PCD/Desktop/مؤسسة عمرو/مشاريع/الربط البيني الصحي
@@ -268,9 +329,11 @@ graph TD
 
 ---
 
-## 10. دليل النوافذ البرمجية وواجهة المستخدم
+## 14. دليل النوافذ البرمجية وواجهة المستخدم
 
-### 🌐 واجهات REST & FHIR R4.0.1 المتاحة:
+> حُدّث 2026-09-13: الجدول الأصلي أدناه يغطي نواة FHIR/المنصة. الجدول الكامل (~155 مساراً: حوكمة MOH والمستشفيات، مواعيد، تصحيحات، بيانات مُبلغة، وقاء، كتابة سريرية، تدقيق) في [`docs/SYSTEM_MAP.md`](./docs/SYSTEM_MAP.md).
+
+### 🌐 واجهات REST & FHIR R4.0.1 المتاحة (النواة):
 
 | النافذة البرمجية (Endpoint) | البروتوكول | الوظيفة |
 | :--- | :---: | :--- |

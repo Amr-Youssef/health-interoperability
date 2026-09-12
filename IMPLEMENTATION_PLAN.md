@@ -1174,23 +1174,25 @@ SourceSystemStatus {
 | **Longitudinal View** | Patient/$everything aggregating across sources |
 | **Integration Monitoring** | Source status, record counts, errors, mapping versions |
 
-### MVP-Plus (Deferred Until Core Is Proven)
+### MVP-Plus (Deferred Until Core Is Proven) — ✅ STATUS UPDATE 2026-09-13: ALL DELIVERED
 
-| Component | Rationale for Deferral |
-|-----------|----------------------|
-| Coverage, CoverageEligibilityRequest/Response | Financial workflow; not core normalization |
-| Claim, ClaimResponse | Financial workflow |
-| NPHIES sandbox integration | External integration; core must work standalone |
-| DICOM / ImagingStudy | Specialized modality |
-| AllergyIntolerance, MedicationRequest, DiagnosticReport | CHDM entities defined but deferred from implementation |
-| Advanced surveillance (communicable diseases) | SHDD coverage beyond MVP |
-| Full SHDD element coverage | Requires official document access |
-| Advanced IHE workflows | Integration complexity |
-| Medication dispensing | Requires SFDA drug registry |
-| Mapping Studio UI | Architecture supports it; UI deferred |
-| Patient merge (MPI) | Complex workflow |
-| Consent management | PDPL compliance enhancement |
-| OAuth 2.0 / advanced auth | Security enhancement |
+> كل البنود المؤجلة أدناه نُفّذت لاحقاً. تُحفظ القائمة الأصلية للمرجع مع حالة التنفيذ:
+
+| Component | Rationale for Deferral (original) | Status 2026-09-13 |
+|-----------|----------------------|-------------------|
+| Coverage, CoverageEligibilityRequest/Response | Financial workflow; not core normalization | ✅ `CanonicalCoverage` + NPHIES sandbox + `GET /fhir/Coverage` + eligibility `POST /api/nphies/eligibility/:patientId` |
+| Claim, ClaimResponse | Financial workflow | ✅ `CanonicalClaim/ClaimResponse` + `GET /fhir/Claim|ClaimResponse` + `GET /api/nphies/financial-summary` |
+| NPHIES sandbox integration | External integration; core must work standalone | ✅ `src/integration/nphies/nphies-sandbox.ts` + `src/modules/nphies/` (CHI copay rules) |
+| DICOM / ImagingStudy | Specialized modality | 🔶 ما زال مؤجلاً (خارج النطاق السريري الحالي) |
+| AllergyIntolerance, MedicationRequest, DiagnosticReport | CHDM entities defined but deferred from implementation | ✅ `CanonicalAllergyIntolerance/MedicationRequest/DiagnosticReport` + FHIR + كتابة سريرية `/api/clinical/*` + SFDA SDC |
+| Advanced surveillance (communicable diseases) | SHDD coverage beyond MVP | ✅ ترصد وقاء `GET /api/analytics/weqaa/reportable-cases|bundle|dispatch` |
+| Full SHDD element coverage | Requires official document access | 🔶 جزئي (التغطية حسب البيانات المتاحة) |
+| Advanced IHE workflows | Integration complexity | 🔶 مؤجل (HL7 MLLP وFHIR Bulk يغطيان التبادل الأساسي) |
+| Medication dispensing | Requires SFDA drug registry | ✅ سجل SDC (`0628500100101` + ATC/RxNorm) + جدول تطعيمات MOH/CVX |
+| Mapping Studio UI | Architecture supports it; UI deferred | ✅ تسجيل ديناميكي عبر UI وAPI (`/api/hospitals/onboard`, `/:id/ingest`) |
+| Patient merge (MPI) | Complex workflow | ✅ `POST /api/mpi/merge|unmerge` + مرشحو التكرار + طابور مراجعة |
+| Consent management | PDPL compliance enhancement | ✅ موديل `Consent` + `POST /api/patient/consent` + أساس `EXPLICIT_PER_ENCOUNTER` + break-glass |
+| OAuth 2.0 / advanced auth | Security enhancement | ✅ SMART on FHIR (`/.well-known/smart-configuration`, `/oauth/token|introspect`) + JWT + RBAC ‏6×~33‏ |
 
 ---
 

@@ -1,68 +1,71 @@
-# Patient Self-Reported Health Module - Quick Start Guide
+# دليل التشغيل السريع الكامل — المنصة الوطنية للربط الصحي (v0.2.4)
 
-## ✅ What's Been Built
+> حُدّث بتاريخ 2026-09-13 ليعكس الواقع الحالي: PostgreSQL + ‏44 موديلاً‏ + 5 هجرات + ~155 endpoint + ‏6 أدوار‏. النسخة السابقة كانت تقتصر على وحدة المريض وتحمل مساراً خاطئاً (`/Users/amryoussef/...`) — أُصلح هنا.
 
-A **complete backend system** for patient-reported health data with full database integration, REST API, FHIR serialization, and comprehensive verification tests.
+## 1. المتطلبات
 
-### Backend Implementation Status: **100% COMPLETE**
+- Node.js v20+ — PostgreSQL (محلي عبر Docker أو سحابي)
+- ملف `.env` يحوي على الأقل:
+```env
+DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/saudi_health_db?schema=public"
+JWT_SECRET="long-random-secret-64-chars-min"
+ALLOWED_ORIGIN="http://localhost:3000"
+PORT="3000"
+MLLP_PORT="2575"
+```
 
-- ✅ **9 Database Tables** - PatientProfile, Allergies, Medications, Conditions, Procedures, Family History, Social History, Vitals, Documents
-- ✅ **35 REST API Endpoints** - Full CRUD operations for all health data types
-- ✅ **60+ Service Methods** - Business logic with authorization enforcement and audit integration
-- ✅ **6 FHIR Serializers** - Convert patient data to FHIR R4 format
-- ✅ **15 Integration Tests** - All passing with real PostgreSQL persistence verification
-- ✅ **Authorization Enforcement** - Patients can only access their own records
-- ✅ **Audit Trail** - All operations logged to cryptographic audit chain
-- ✅ **Zero Data Fabrication** - Only persists explicitly provided data
+## 2. الإقلاع (5 دقائق)
 
----
-
-## Quick Start
-
-### 1. Build the Project
 ```bash
-cd /Users/amryoussef/health-interoperability
-npm run build
+npm install                  # postinstall يولّد Prisma Client
+npx prisma migrate deploy    # تطبيق الهجرات الخمس
+npx prisma db seed           # أدوار + منظمات + مستخدمون تجريبيون
+npm run dev                  # REST :3000 + MLLP :2575
 ```
 
-### 2. Run Verification Tests
+- اللوحة: http://localhost:3000 (غير المسجَّل يُوجَّه إلى `/auth/login.html`)
+- فحص الصحة: `GET /fhir/metadata`
+- Docker بديل: `docker-compose up -d --build`
+- نشر Vercel: كل الحركة تُوجه إلى `api/index.ts` (انظر `vercel.json` + `vercel.env`)
+
+## 3. الدخول والصلاحيات
+
 ```bash
-node dist/demo/verify-patient-health.js
+# تسجيل الدخول (يُعيد JWT + يُثبّت cookie)
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"identifier":"admin","password":"YOUR_PASSWORD"}'
+
+# بياناتي
+curl http://localhost:3000/api/auth/me -H "Authorization: Bearer <JWT>"
 ```
 
-Expected output:
-```
-✓ Created test patient
-✓ Created allergy - Source: PATIENT, Status: UNVERIFIED
-✓ PostgreSQL persistence verified
-✓ Created medication
-✓ Created condition
-✓ Created procedure
-✓ Created family member
-✓ Created social history
-✓ Created vital
-✓ Created document
-✓ Retrieved composite health profile
-✓ Audit trail generated
-✓ Authorization check passed
+الأدوار الستة: `SYS_ADMIN, MOH_ADMIN, MOH_AUDITOR, HOSPITAL_ADMIN, CLINICIAN, PATIENT` (~33 صلاحية: `ORG_MANAGE, AUDIT, ANALYTICS, PATIENT_*, CLINICAL_*, CLAIM, IMPORT, CONSENT, BREAK_GLASS, EXPORT, FHIR_*`). البذر في `prisma/seed.ts`.
 
-========================================
-✓ All verification tests PASSED
-========================================
+## 4. أهم النوافذ (نبذة)
+
+```
+GET  /fhir/metadata                        # قدرات خادم FHIR
+GET  /fhir/Patient/:id/$everything          # الملف الصحي الموحد
+POST /api/pipeline/run                     # تشغيل خط التطبيع
+POST /api/hospitals/onboard                # تسجيل منشأة ديناميكياً
+POST /api/hospitals/:id/ingest             # ضخ حمولة لمنشأة
+POST /api/hl7v2/ingest                     # استيعاب HL7 v2.5 (+MLLP على 2575)
+POST /api/cds/evaluate-draft-prescription  # فحص وصفة تجريبية
+GET  /api/analytics/population-health      # مؤشرات سكانية
+GET  /api/analytics/weqaa/reportable-cases # ترصد وقاء
+POST /api/security/break-glass             # وصول طارئ
+GET  /api/security/audit-chain/verify      # تحقق سلسلة التدقيق (NCA)
+GET  /.well-known/smart-configuration      # اكتشاف SMART on FHIR
 ```
 
-### 3. Start the Server
-```bash
-npm start
-```
+الجدول الكامل: [`docs/SYSTEM_MAP.md`](./docs/SYSTEM_MAP.md).
 
-The API will be available at `http://localhost:3000/api/patients`
+## 5. وحدة البيانات المُبلغة ذاتياً (Patient-Reported)
 
----
+الخلفية مكتملة 100% (9 جداول + ~31 endpoint تحت `/api/patients/me/*` + تسلسل FHIR R4 + تحقق `src/demo/verify-patient-health.ts`). الواجهة موجودة (`public/js/patient-self-reported.js`).
 
-## API Examples
-
-### Create Allergy
+### إنشاء حساسية
 ```bash
 curl -X POST http://localhost:3000/api/patients/me/allergies \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
@@ -76,13 +79,13 @@ curl -X POST http://localhost:3000/api/patients/me/allergies \
   }'
 ```
 
-### Get All Allergies
+### عرض الحساسية
 ```bash
 curl -X GET http://localhost:3000/api/patients/me/allergies \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
-### Update Medication
+### تحديث دواء
 ```bash
 curl -X PATCH http://localhost:3000/api/patients/me/medications/MEDICATION_ID \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
@@ -94,99 +97,57 @@ curl -X PATCH http://localhost:3000/api/patients/me/medications/MEDICATION_ID \
   }'
 ```
 
-### Get Composite Health Profile
+### الملف الصحي المركب
 ```bash
 curl -X GET http://localhost:3000/api/patients/me/health-profile \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
-### Delete Allergy
+### حذف حساسية
 ```bash
 curl -X DELETE http://localhost:3000/api/patients/me/allergies/ALLERGY_ID \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
----
+## 6. كل نقاط الوحدة
 
-## All Endpoints
-
-### Patient Profile
 ```
 GET    /api/patients/me/profile
 PATCH  /api/patients/me/profile
-```
-
-### Allergies
-```
 GET    /api/patients/me/allergies
 POST   /api/patients/me/allergies
 PATCH  /api/patients/me/allergies/:allergyId
 DELETE /api/patients/me/allergies/:allergyId
-```
-
-### Medications
-```
 GET    /api/patients/me/medications
 POST   /api/patients/me/medications
 PATCH  /api/patients/me/medications/:medicationId
 DELETE /api/patients/me/medications/:medicationId
-```
-
-### Conditions
-```
 GET    /api/patients/me/conditions
 POST   /api/patients/me/conditions
 PATCH  /api/patients/me/conditions/:conditionId
 DELETE /api/patients/me/conditions/:conditionId
-```
-
-### Procedures
-```
 GET    /api/patients/me/procedures
 POST   /api/patients/me/procedures
 PATCH  /api/patients/me/procedures/:procedureId
 DELETE /api/patients/me/procedures/:procedureId
-```
-
-### Family History
-```
 GET    /api/patients/me/family-history
 POST   /api/patients/me/family-history
 PATCH  /api/patients/me/family-history/:familyId
 DELETE /api/patients/me/family-history/:familyId
-```
-
-### Social History
-```
 GET    /api/patients/me/social-history
 POST   /api/patients/me/social-history
-```
-
-### Vital Observations
-```
 GET    /api/patients/me/vitals?type=BLOOD_PRESSURE
 POST   /api/patients/me/vitals
 DELETE /api/patients/me/vitals/:vitalId
-```
-
-### Documents
-```
 GET    /api/patients/me/documents?category=LAB_REPORT
 POST   /api/patients/me/documents
 DELETE /api/patients/me/documents/:documentId
-```
-
-### Composite View
-```
 GET    /api/patients/me/health-profile
 ```
 
----
+## 7. المبادئ المطبقة في الوحدة
 
-## Key Features
-
-### 1. Source Tracking
-Every record includes:
+- كل سجل يحمل:
 ```json
 {
   "source": "PATIENT",
@@ -194,56 +155,15 @@ Every record includes:
   "recordedAt": "2026-08-30T21:00:00Z"
 }
 ```
+- بيانات المريض لا تصبح حقيقة سريرية تلقائياً — التحقق يتم عبر طابور `moh/verification-queue`.
+- المرضى لا يصلون إلا لسجلاتهم (403 عند التجاوز) — الفحص في طبقة الخدمة `src/core/patient-reported-health-service.ts`.
+- كل عملية تُسجل في سلسلة التدقيق المشفرة — لا تلفيق بيانات (الحقول الاختيارية تبقى `null`).
+- تسلسل FHIR R4 عبر `src/fhir/patient-reported-health-fhir-serializer.ts` (‏6 مسلسلات‏).
 
-Patient-entered data is clearly marked and not automatically verified.
-
-### 2. Authorization Enforcement
-- Patients can only access their own records
-- All update/delete operations verify patient ownership
-- Cross-patient access attempts are rejected with 403 error
-
-### 3. Audit Trail
-Every operation is logged:
-- Actor: Patient ID
-- Action: INGEST (create), TRANSFORM (update), DELETE
-- Entity: Data type and ID
-- Timestamp: When change occurred
-
-Query audit logs:
-```sql
-SELECT * FROM "AuditLog" 
-WHERE entity_type LIKE 'PatientReported%' 
-ORDER BY created_at DESC
-LIMIT 10;
-```
-
-### 4. No Data Fabrication
-Optional fields remain `null` - nothing is invented:
-- No default medication names
-- No assumed diagnoses
-- No generated vital readings
-- Patient must explicitly provide all data
-
-### 5. FHIR R4 Compatibility
-All data can be serialized to FHIR R4 format for healthcare interoperability:
-
-```typescript
-import { PatientReportedHealthFhirSerializer } from './src/fhir/patient-reported-health-fhir-serializer';
-
-const serializer = new PatientReportedHealthFhirSerializer();
-const allergyFhir = serializer.serializePatientReportedAllergy(allergyData);
-// Result: FHIR AllergyIntolerance resource
-```
-
----
-
-## Database Schema
-
-All data persisted in PostgreSQL with proper relationships:
+## 8. المخطط والملفات
 
 ```
 Patient (1) ──┬─→ (1) PatientProfile
-              │
               ├─→ (Many) PatientReportedAllergy
               ├─→ (Many) PatientReportedMedication
               ├─→ (Many) PatientReportedCondition
@@ -254,162 +174,35 @@ Patient (1) ──┬─→ (1) PatientProfile
               └─→ (Many) PatientUploadedDocument
 ```
 
-View schema:
+| الملف | الدور |
+|------|-------|
+| `src/core/domain/patient-reported-health.ts` | واجهات TypeScript (‏14 نوعاً‏) |
+| `src/core/patient-reported-health-service.ts` | منطق الأعمال (60+ دالة) |
+| `src/api/routes/patient-reported-health-routes.ts` | REST API (~31 endpoint) |
+| `src/fhir/patient-reported-health-fhir-serializer.ts` | تسلسل FHIR (6 دوال) |
+| `src/demo/verify-patient-health.ts` | تحقق تكاملي (15 فحصاً) |
+| `prisma/migrations/20260830180112_add_patient_reported_health_data/` | الهجرة |
+
+## 9. الاختبار
+
 ```bash
-npx prisma studio
+npm test                                   # كامل Vitest (6 ملفات، ~32 اختباراً)
+npm run build && node dist/demo/verify-patient-health.js   # تحقق الوحدة (15 فحصاً)
 ```
 
----
+تغطية الوحدة: إنشاء مريض، حساسية (مصدر/حالة)، ثبات PostgreSQL، تفويض، تدقيق، أدوية، حالات، إجراءات، عائلة، اجتماعي، حيويات، وثائق، ملف مركب، ثبات بعد إعادة التشغيل، تسلسل FHIR.
 
-## Implementation Files
+## 10. استكشاف الأخطاء
 
-| File | Purpose |
-|------|---------|
-| `src/core/domain/patient-reported-health.ts` | TypeScript interfaces (14 types) |
-| `src/core/patient-reported-health-service.ts` | Business logic (60+ methods) |
-| `src/api/routes/patient-reported-health-routes.ts` | REST API (35 endpoints) |
-| `src/fhir/patient-reported-health-fhir-serializer.ts` | FHIR serialization (6 methods) |
-| `src/demo/verify-patient-health.ts` | Integration tests (15 tests) |
-| `prisma/schema.prisma` | Database schema |
-| `prisma/migrations/20260830180112_add_patient_reported_health_data/` | Database migration |
+1. **فشل الاختبارات المتصلة بالسحابة** (`too many connections`): أعد المحاولة لاحقاً أو استخدم `docker-compose.yml` محلياً.
+2. **الخادم لا يقلع**: تأكد أن المنفذ 3000 حر، و`DATABASE_URL` صحيح (`npx prisma db push` للفحص)، و`JWT_SECRET` مضبوط.
+3. **401/403**: تحقق من صلاحية JWT، وأن الدور مناسب (`Bearer <token>`)، وأن `ALLOWED_ORIGIN` يطابق الواجهة.
+4. **المسار القديم** `/Users/amryoussef/health-interoperability` لم يعد مستخدماً — اعمل من جذر المستودع الحالي.
 
----
+## 11. الخطوة التالية
 
-## Testing
-
-### Run All Verification Tests
-```bash
-npm run build && node dist/demo/verify-patient-health.js
-```
-
-### Test Coverage
-- ✅ Patient creation
-- ✅ Allergy management with source/status tracking
-- ✅ PostgreSQL persistence
-- ✅ Authorization enforcement
-- ✅ Audit trail generation
-- ✅ Medication management
-- ✅ Condition tracking
-- ✅ Procedure history
-- ✅ Family history
-- ✅ Social history
-- ✅ Vital observations
-- ✅ Document management
-- ✅ Composite profile retrieval
-- ✅ Data persistence across restarts
-- ✅ FHIR serialization
+الواجهة الأساسية للوحدة موجودة (`patient-self-reported.js`) — التوسع المقترح: لوحة مريض مرئية (حساسية/أدوية/حيويات برسوم)، رفع وثائق، وتصدير حزم FHIR.
 
 ---
 
-## Documentation
-
-- **Full Implementation Report:** [PATIENT_HEALTH_IMPLEMENTATION_REPORT.md](./PATIENT_HEALTH_IMPLEMENTATION_REPORT.md)
-- **Implementation Summary:** [PATIENT_HEALTH_SUMMARY.md](./PATIENT_HEALTH_SUMMARY.md)
-- **Architecture Overview:** See PATIENT_HEALTH_IMPLEMENTATION_REPORT.md → Architecture Overview section
-
----
-
-## Key Decisions
-
-### ✅ Extended Existing Patient Model
-Rather than creating a parallel architecture, we extended the existing `Patient` model with new relationships. This keeps the data model unified and simplifies queries.
-
-### ✅ Separate Source/Verification Fields
-Each record has:
-- `source: 'PATIENT'` - immutable indicator of data origin
-- `verificationStatus: enum` - mutable flag indicating clinical validation
-
-This design prevents patient data from automatically becoming clinical truth.
-
-### ✅ Service Layer Pattern
-All business logic encapsulated in `PatientReportedHealthService`:
-- Single source of truth for operations
-- Consistent authorization enforcement
-- Centralized audit integration
-- No data fabrication anywhere
-
-### ✅ Authorization at Service Layer
-Patient ownership checks happen in the service, not the API routes:
-- Protects against authorization bypass
-- Consistent enforcement across all operations
-- Clear separation of concerns
-
-### ✅ Automatic Audit Trail
-All service methods automatically call `auditChain.recordEvent()`:
-- No audit logging code in routes
-- All operations recorded regardless of endpoint
-- Cryptographic chain prevents tampering
-
----
-
-## Performance Metrics
-
-- **Database Queries:** All patient_id indexed for <1ms lookups
-- **Composite Profile:** Fetches all 8 data types in parallel via Promise.all
-- **Authorization:** O(1) patient ID comparison
-- **Pagination:** Ready for large datasets (current implementation returns arrays)
-
----
-
-## Security Features
-
-✅ JWT authentication on all endpoints  
-✅ Patient role enforcement  
-✅ Ownership verification on mutations  
-✅ Cryptographic audit trail  
-✅ Source tracking for compliance  
-✅ No sensitive data in error messages  
-✅ Proper HTTP status codes (401, 403, 400, 500)  
-
----
-
-## What's Next (Phase 2)
-
-Frontend UI components for:
-- Patient health profile dashboard
-- Allergy management interface
-- Medication tracking
-- Vital measurements visualization
-- Document upload area
-- Social/lifestyle history form
-- Family history editor
-
----
-
-## Support & Troubleshooting
-
-### Tests Fail
-1. Ensure PostgreSQL is running
-2. Check `.env` file has correct DATABASE_URL
-3. Run: `npx prisma migrate reset`
-4. Rebuild: `npm run build`
-
-### Server Won't Start
-1. Check port 3000 is not in use: `lsof -i :3000`
-2. Check database connection: `npx prisma db push`
-3. Check JWT_SECRET is set in `.env`
-
-### API Returns 401/403
-1. Verify JWT token is valid
-2. Check token includes PATIENT role
-3. Verify Authorization header format: `Bearer <token>`
-
----
-
-## Questions?
-
-Refer to comprehensive implementation report:
-```bash
-cat PATIENT_HEALTH_IMPLEMENTATION_REPORT.md
-```
-
----
-
-**Module Status:** ✅ PRODUCTION READY  
-**Backend Completeness:** 100%  
-**Test Pass Rate:** 15/15 (100%)  
-**Database Status:** ✅ MIGRATED  
-**API Status:** ✅ 35 ENDPOINTS  
-**FHIR Compliance:** ✅ R4 CONFORMANT  
-
-**Ready for:** Deployment, Frontend Development, Integration Testing
+**الحالة:** ✅ جاهز للنشر — **التحقق:** 15/15 للوحدة — **الامتثال:** FHIR R4 — **التحديث:** 2026-09-13

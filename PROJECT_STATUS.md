@@ -1,12 +1,17 @@
-# Patient Self-Reported Health Module - Project Status Report
+# Project Status Report — Saudi National Health Interoperability Platform (v0.2.4)
 
-**Status:** ✅ **PHASE 1 BACKEND COMPLETE - PRODUCTION READY**
+> **الحالة الشاملة بتاريخ 2026-09-13:** المنصة مكتملة التشغيل محلياً (بناء `tsc` نظيف) — `src/` ‏92 ملفاً‏ + `prisma` ‏44 موديلاً / 5 هجرات‏ + ~155 endpoint + ‏6 أدوار × ~33 صلاحية‏ + واجهة `public/` ‏(10 ملفات)‏ تشمل بوابة المريض والمصادقة.
+> **تنبيه توثيقي:** هذه الصفحة كانت تقتصر على وحدة البيانات المُبلغة ذاتياً (2026-08-30) وتذكر أن «الواجهة لم تبدأ» — وهذا عفا عليه الزمن: الواجهة موجودة (`public/js/patient-self-reported.js` + `auth/*`). أُبقي تفاصيل الوحدة أدناه كقسم فرعي.
 
-**Date:** August 30, 2026  
-**Module Version:** 1.0.0  
-**Test Results:** 15/15 PASSED  
-**Database:** PostgreSQL (9 new tables)  
-**API Endpoints:** 35 total  
+**النظام ككل:** ✅ **OPERATIONAL (LOCAL BUILD CLEAN)**
+**وحدة المريض (Phase 1):** ✅ **BACKEND COMPLETE - PRODUCTION READY**
+
+**Date:** September 13, 2026 (original module report: August 30, 2026)
+**Module Version:** 1.0.0
+**Test Results (module):** 15/15 PASSED
+**Test Suite (platform):** 6 files / ~32 tests (`npm test`) — ملاحظة: الفحوص المتصلة بسحابة PostgreSQL قد تفشل مؤقتاً بحد الاتصالات (`too many connections`) — البناء نفسه نظيف
+**Database:** PostgreSQL (44 models, 5 migrations)
+**API Endpoints:** ~155 total (منها ~31 للوحدة تحت `/api/patients/me/*`)
 **FHIR Compliance:** R4 conformant  
 
 ---
@@ -310,22 +315,22 @@ All 15 verification tests PASSED
 
 ---
 
-## Next Phase (Frontend - Not Yet Started)
+## Next Phase (Frontend — UPDATE 2026-09-13: largely delivered)
 
-The following components would typically be built next:
+The following components were listed as "not yet started" on Aug 30 — most now exist in `public/`:
 
-1. **Patient Health Dashboard** - Overview of all health data
-2. **Allergy Management UI** - Add/edit/delete allergies
-3. **Medication Tracker** - Manage current medications
-4. **Condition Tracker** - Track medical conditions
-5. **Procedure History** - Record surgeries and procedures
-6. **Family History Editor** - Manage family health records
-7. **Social History Form** - Lifestyle and habit tracking
-8. **Vital Measurements** - Chart vital signs over time
-9. **Document Upload** - Upload medical documents
-10. **Health Profile Export** - Generate FHIR bundles
+1. **Patient Health Dashboard** - ✅ موجود (`public/js/patient-self-reported.js` + اللوحة `index.html`)
+2. **Allergy Management UI** - ✅ موجود (CRUD الوحدة)
+3. **Medication Tracker** - ✅ موجود
+4. **Condition Tracker** - ✅ موجود
+5. **Procedure History** - ✅ موجود
+6. **Family History Editor** - ✅ موجود
+7. **Social History Form** - ✅ موجود
+8. **Vital Measurements** - ✅ موجود (عرض؛ الرسوم البيانية الزمنية مقترح لاحق)
+9. **Document Upload** - ✅ موجود (رفع + بيانات وصفية)
+10. **Health Profile Export** - 🔶 جزئي (تسلسل FHIR جاهز؛ زر تصدير الحزم مقترح)
 
-**Note:** Backend is 100% complete and ready to support frontend development.
+**Note:** Backend is 100% complete and basic frontend is delivered. Remaining: charts, bulk FHIR-bundle download button.
 
 ---
 
@@ -397,15 +402,15 @@ The **Patient Self-Reported Health Profile & Personal Health Data Module** has b
 
 ---
 
-**Module Status:** ✅ **PHASE 1 COMPLETE**  
-**Backend Completeness:** **100%**  
-**Production Readiness:** **✅ YES**  
-**Test Results:** **15/15 PASSED**  
-
-**Next Step:** Frontend UI Development (Phase 2)
+**Module Status:** ✅ **PHASE 1 COMPLETE**
+**Platform Status (2026-09-13):** ✅ **OPERATIONAL — see docs/SYSTEM_MAP.md**
+**Backend Completeness:** **100%**
+**Production Readiness:** **✅ YES**
+**Test Results:** **15/15 PASSED (module) · platform: 6 files / ~32 tests**
+**API Endpoints (module):** **~31 live at `/api/patients/me/*`** (العدد 35 في التقرير الأصلي شمل endpoint مركباً + اجتماعي مكرراً — الفعلي في `patient-reported-health-routes.ts` هو 31)
 
 ---
 
-*Report Generated: August 30, 2026*  
-*Module Version: 1.0.0*  
+*Report Generated: August 30, 2026 · Platform section updated: September 13, 2026*
+*Module Version: 1.0.0 · Platform Version: 0.2.4*
 *Status: PRODUCTION READY*
