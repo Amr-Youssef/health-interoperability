@@ -1276,7 +1276,8 @@ body.light-theme .btn-secondary:hover,
 
 .data-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   text-align: right;
   font-size: 0.85rem;
   border: 1px solid var(--m3-outline-variant);
@@ -1311,6 +1312,19 @@ body.light-theme .btn-secondary:hover,
   padding: 2px 6px;
   border-radius: var(--radius-xs);
 }
+/* Sticky headers + pinned first column (RTL: right edge) in every scroller */
+.data-table thead th { position: sticky; top: 0; z-index: 2; }
+.data-table tbody td:first-child { position: sticky; right: 0; z-index: 1; box-shadow: -4px 0 6px -4px rgba(0, 0, 0, 0.35); }
+.data-table thead th:first-child { right: 0; z-index: 3; }
+/* Full-row states (loading/empty) read as quiet captions, not data */
+.data-table td[colspan] { color: var(--m3-on-surface-muted); }
+/* Long hashes wrap instead of forcing width */
+.data-table td code { overflow-wrap: break-word; }
+/* Row highlights were invisible under opaque cells — paint every cell incl. pinned */
+tr[style*="background:var(--m3-primary-container)"] > td { background: var(--m3-primary-container); }
+tr[style*="background:var(--m3-tertiary-container)"] > td { background: var(--m3-tertiary-container); }
+/* Firefox: thin thumbs on table scrollers (WebKit covered globally) */
+.table-card, .table-wrap, .table-responsive, .card-body.p-0 { scrollbar-width: thin; scrollbar-color: var(--m3-surface-container-highest) transparent; }
 
 /* =========================================
    STATUS BADGES & PILLS
@@ -2351,6 +2365,9 @@ body.light-theme .toast,
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
+
+  /* Sticky has no meaning on paper — avoid print artifacts */
+  .data-table thead th, .data-table tbody td:first-child { position: static; box-shadow: none; }
 }
 .text-muted { color: var(--m3-on-surface-muted) !important; }
 .py-4 { padding-top: 12px; padding-bottom: 12px; }
@@ -2590,9 +2607,15 @@ pre, code, .mono-code, .json-display {
   .data-table { min-width: 600px; }
   .data-table th, .data-table td { padding: 9px 10px; font-size: 0.78rem; }
   .btn, .nav-item, .endpoint-btn { min-height: 44px; }
-  .top-header #mobile-menu-btn { width: 44px; height: 44px; }
-  .top-header { gap: 10px; margin-bottom: 14px; padding-bottom: 10px; }
-  .header-title-wrap h1 { font-size: 1.05rem; }
+  .top-header #mobile-menu-btn { width: 44px; height: 44px; flex: 0 0 44px; }
+  .top-header { gap: 10px; margin-bottom: 14px; padding-bottom: 10px; justify-content: flex-start; }
+  .header-title-wrap h1 {
+    font-size: 1.05rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
   #page-subtitle { font-size: 0.75rem; }
   /* Phones: status pills live in the monitoring pane — header keeps title + actions */
   .header-live-stats { display: none; }
@@ -2600,11 +2623,14 @@ pre, code, .mono-code, .json-display {
   #header-session-chip { padding: 4px 8px; gap: 6px; }
   #header-session-chip .header-session-text small,
   #header-session-role { display: none; }
-  /* Coordinated actions: chip row, primary full-width, then icon-only pair */
-  .header-actions { grid-template-columns: 1fr auto auto; align-items: center; }
-  #btn-run-pipeline { order: 1; grid-column: 1 / -1; }
-  #btn-theme-toggle { order: 2; }
-  #btn-refresh { order: 3; }
+  /* Dissolved actions wrapper: everything flows in the header row order,
+     icon pair clusters at the row start — no stray grid gaps */
+  .header-actions { display: contents; }
+  .header-title-container { flex: 1 1 auto; }
+  #header-session-chip { flex: 1 1 100%; }
+  #btn-run-pipeline { order: 1; flex: 1 1 100%; }
+  #btn-theme-toggle { order: 2; flex: 0 0 44px; }
+  #btn-refresh { order: 3; flex: 0 0 44px; }
   .header-actions .btn { min-height: 42px; font-size: 0.78rem; }
   /* Icon-only compact actions: icons are universal, truncated labels are not */
   #btn-theme-toggle, #btn-refresh { width: 44px; min-height: 44px; padding: 0; }
@@ -2653,6 +2679,8 @@ pre, code, .mono-code, .json-display {
   .metric-value { font-size: 1.1rem; }
   .metric-label { font-size: 0.7rem; }
   .header-title-wrap h1 { font-size: 1rem; }
+  /* Smallest phones: title carries the context alone */
+  #page-subtitle { display: none; }
   .card-header h3 { font-size: 0.9rem; }
   .banner-text h4 { font-size: 0.9rem; }
   .banner-text p { font-size: 0.78rem; }

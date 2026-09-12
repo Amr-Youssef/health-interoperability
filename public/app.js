@@ -435,6 +435,11 @@ const appAuth = {
     // Hide group labels left with zero visible items for this role
     this.syncNavGroups();
 
+    // POST /api/pipeline/run requires ORG_MANAGE_ALL/POLICY_MANAGE (SYS_ADMIN/MOH_ADMIN only).
+    // Hide the run button for every other role — otherwise it always 403s and litters the audit log with FORBIDDEN rows.
+    const runBtn = document.getElementById('btn-run-pipeline');
+    if (runBtn) runBtn.style.display = (this.currentRole === 'SYS_ADMIN' || this.currentRole === 'MOH_ADMIN') ? '' : 'none';
+
     // click the default tab
     const dTab = document.getElementById(`tab-btn-${defaultTab}`);
     if(dTab) dTab.click();
@@ -1763,6 +1768,12 @@ function handleTabSwitch(tab) {
         return;
       }
     }
+  }
+  // Run-pipeline belongs to the monitoring console only (and only for roles allowed to execute it).
+  const _runBtn = document.getElementById('btn-run-pipeline');
+  if (_runBtn) {
+    const _canRun = appAuth.currentRole === 'SYS_ADMIN' || appAuth.currentRole === 'MOH_ADMIN';
+    _runBtn.style.display = (_canRun && tab === 'monitoring') ? '' : 'none';
   }
   if (tab === 'monitoring') loadMonitoringStats();
   if (tab === 'onboarding') loadOnboardedHospitals();
