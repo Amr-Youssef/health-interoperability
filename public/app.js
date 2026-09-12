@@ -496,7 +496,7 @@ function updateSessionUI() {
   const headRole = document.getElementById('header-session-role');
   if (headChip) headChip.style.display = 'flex';
   if (headName) headName.textContent = name;
-  if (headSub) headSub.textContent = org ? `${roleAr} • ${org}` : roleAr;
+  if (headSub) headSub.textContent = org || roleAr;
   if (headRole) { headRole.textContent = roleAr; headRole.className = 'badge ' + roleBadgeClass; }
   if (role === 'HOSPITAL_ADMIN' && org) {
     fetch('/api/hospital/me').then(r=>r.json()).then(d=>{
@@ -504,14 +504,14 @@ function updateSessionUI() {
       const region = d.organization?.region || '';
       const type = d.organization?.organizationType || '';
       if (sideOrg) sideOrg.textContent = `${ar}${region ? ' • ' + region : ''}${type ? ' • ' + type : ''}`;
-      if (headSub) headSub.textContent = `${roleAr} • ${ar}`;
+      if (headSub) headSub.textContent = `${ar}`;
     }).catch(()=>{});
   }
   if (role === 'PATIENT' && u.patientProfileId) {
     fetch('/api/patient/me').then(r=>r.json()).then(d=>{
       const nid = d.patient?.nationalId || d.patient?.identifiers?.find(i=>i.type==='NID')?.value || u.username;
       if (sideMeta) sideMeta.textContent = `الهوية: ${nid}`;
-      if (headSub) headSub.textContent = `مريض • ${nid}`;
+      if (headSub) headSub.textContent = `${nid}`;
     }).catch(()=>{});
   }
 }
@@ -1168,68 +1168,80 @@ function initNavigation() {
       sub: 'مراقبة حية لخط أنابيب الاستيعاب والتطبيع للأنظمة الصحية غير المتجانسة'
     },
     onboarding: {
-      title: 'استوديو إضافة وتكامل المستشفيات ديناميكياً (Hospital Onboarding)',
-      sub: 'ربط منشآت صحية ومستشفيات جديدة بالمنصة وتعريف مخططاتها وضخ بياناتها فورياً'
+      title: 'استوديو إضافة وتكامل المستشفيات ديناميكياً',
+      sub: 'تسجيل المنشآت واعتمادها وضخ بياناتها'
     },
     cds: {
-      title: 'محرك دعم القرار السريري والمؤشرات الوطنية (CDS Hooks & Population Health)',
-      sub: 'فحص التفاعلات والسلامة الدوائية المعتمدة على SFDA وبروتوكولات الطوارئ والتحليلات التراكمية'
+      title: 'محرك دعم القرار السريري والمؤشرات الوطنية',
+      sub: 'محاكاة الوصفات ورصد السلامة والوبائيات'
     },
     nphies: {
-      title: 'مركز تأمين ومطالبات نفيس (NPHIES Taameen & Claims)',
-      sub: 'تسوية المطالبات والتحقق الفوري من الأهلية التأمينية وفق معايير مجلس الضمان الصحي (CHI)'
+      title: 'مركز تأمين ومطالبات نفيس',
+      sub: 'الأهلية والتسوية وفق CHI وSBS'
     },
     medications: {
-      title: 'سجل الأدوية والوصفات الطبية والتطعيمات (SFDA Drug Registry & Vaccines)',
-      sub: 'تطبيع الوصفات الطبية بكود الدواء السعودي (SDC) وتتبع جدول تطعيمات وزارة الصحة'
+      title: 'سجل الأدوية والوصفات الطبية والتطعيمات',
+      sub: 'تطبيع SDC/ATC وتتبع التطعيمات'
     },
     mpi: {
-      title: 'سجل المرضى الرئيسي (Master Patient Index - MPI)',
-      sub: 'تسوية الهويات وربط أرقام الملفات (MRN) المتعددة تحت الهوية الوطنية الموحدة'
+      title: 'سجل المرضى الرئيسي (MPI)',
+      sub: 'ربط الملفات المكررة تحت الهوية الموحدة'
     },
     longitudinal: {
-      title: 'الملف الصحي الموحد الشامل (Longitudinal Record)',
+      title: 'الملف الصحي الموحد الشامل',
       sub: 'عرض تتابعي زمني يجمع الزيارات والتشخيصات والتحاليل والأدوية والتطعيمات والمطالبات'
     },
     profile: {
-      title: 'بياناتي الشخصية - إدارة البيانات المصرح بها',
-      sub: 'عرض وتحديث بيانات التواصل، اللغة المفضلة، جهة اتصال الطوارئ والعنوان الوطني — الحقول المحمية للعرض فقط'
+      title: 'بياناتي الشخصية',
+      sub: 'بيانات التواصل والعنوان — والهوية محمية للعرض فقط'
     },
     'hospital-profile': {
-      title: 'بيانات المنشأة الصحية - إدارة البيانات المصرح بها',
-      sub: 'عرض وتحديث بيانات التواصل والمعلومات العامة للمنشأة — النوع والمعرف محميان للعرض فقط'
+      title: 'بيانات المنشأة الصحية',
+      sub: 'بيانات التواصل والمعلومات العامة — والنوع والمعرف محميان'
     },
     'hospital-migration': {
-      title: 'نظام إدارة المستشفى — بوابة الترحيل الوطني',
-      sub: 'واجهة منشأتك الخاصة: رفع الأنظمة القديمة، تطبيعها وربطها بالسجل الوطني مع عزل تنظيمي تام'
+      title: 'نظام إدارة المستشفى',
+      sub: 'ترحيل بيانات منشأتك وربطها وطنياً بعزل تام'
     },
     'hospital-global': {
-      title: 'السجل العام الموحد — نظرة وطنية (منفصل عن سجل منشأتي)',
-      sub: 'استعلام وطني شامل للمرضى الموحدين — قراءة فقط، متكامل مع قاعدة البيانات نفسها لكن معزول عرضاً عن مرضى منشأتك'
+      title: 'السجل العام الموحد',
+      sub: 'استعلام وطني للمرضى الموحدين — قراءة فقط'
     },
     mapping: {
       title: 'استوديو قواعد الربط وتصنيف المصطلحات',
-      sub: 'مصفوفة تحويل الحقول والربط المعياري (SFDA SDC, SNOMED CT, ICD-10-AM, SBS, LOINC)'
+      sub: 'قواعد التحويل والاختبار المباشر'
     },
     provenance: {
-      title: 'سلسلة النسب وتتبع مصدر البيانات (Data Lineage & Provenance)',
-      sub: 'تتبع شامل يربط كل بيان سريري أو مالي بالسجل الخام والمحول وقواعد التحقق'
+      title: 'سلسلة النسب وتتبع مصدر البيانات',
+      sub: 'من السجل الخام إلى القرار السريري'
     },
     fhir: {
       title: 'مستكشف واجهة HL7 FHIR R4.0.1 & NPHIES',
-      sub: 'عرض استجابات واجهة FHIR الموحدة المتوافقة مع متطلبات مجلس الضمان وهيئة الغذاء والدواء'
+      sub: 'استدعاءات REST حية وتحقق من الموارد'
     },
     security: {
-      title: 'الأمن السيبراني وسلسلة التدقيق المشفرة (NCA Cryptographic Audit Chain)',
-      sub: 'سجل كتل تدقيق مشفر غير قابل للتلاعب بروابط تجزئة SHA-256 متسلسلة للامتثال لضوابط الهيئة الوطنية للأمن السيبراني'
+      title: 'الأمن السيبراني وسلسلة التدقيق المشفرة',
+      sub: 'سلامة السلسلة المشفرة SHA-256 (NCA)'
     },
     'admin-governance': {
-      title: 'الحوكمة الوطنية الموحدة – ربط الأدمن بالمريض والمستشفى',
-      sub: 'اعتماد المنشآت، إدارة المستخدمين، والتحقق من البيانات المبلغة ذاتياً – من نفس قاعدة البيانات الموحدة'
+      title: 'الحوكمة الوطنية الموحدة',
+      sub: 'اعتماد المنشآت وإدارة المستخدمين والتحقق'
     },
     bulkexport: {
-      title: 'تصدير البيانات الصحية الضخمة للمستودع الوطني (FHIR Bulk Export & PDPL)',
-      sub: 'تصدير ملايين السجلات بصيغة NDJSON مع محرك إخفاء الهوية للأبحاث والذكاء الاصطناعي الطبي'
+      title: 'تصدير البيانات الصحية الضخمة للمستودع الوطني',
+      sub: 'حزم NDJSON للمستودع الوطني مع إخفاء الهوية'
+    },
+    appointments: {
+      title: 'المواعيد والكشف',
+      sub: 'حجز المواعيد والأذونات المرتبطة ومتابعتها'
+    },
+    'patient-insurance': {
+      title: 'تأميني',
+      sub: 'وثائق ومطالبات نفيس الخاصة بي'
+    },
+    'patient-access': {
+      title: 'سجل وصولي',
+      sub: 'من اطّلع على بياناتي وتصديرها'
     }
   };
 

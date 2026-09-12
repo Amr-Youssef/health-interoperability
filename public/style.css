@@ -421,6 +421,7 @@ body.light-theme .sidebar,
   margin-bottom: 16px;
   white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .pulse-dot {
@@ -2439,6 +2440,15 @@ pre, code, .mono-code, .json-display {
   }
   /* Collapse toggle is desktop-only — meaningless inside the drawer */
   .sidebar-toggle-btn { display: none; }
+  /* Pin logout above the drawer bottom edge: always visible, never lost in the scroll */
+  .logout-btn {
+    position: sticky;
+    bottom: 0;
+    background: var(--sidebar-bg);
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    padding-top: 10px;
+    margin-top: 8px;
+  }
   /* Collapse mode is desktop-only */
   body.sidebar-collapsed .sidebar { width: min(300px, 85vw); padding: 20px 12px; }
   body.sidebar-collapsed .brand-text,
@@ -2462,6 +2472,8 @@ pre, code, .mono-code, .json-display {
   .sources-grid { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
   .active-patient-bar { flex-wrap: wrap; }
   .patient-combobox { width: 100%; max-width: 100%; flex: 1 1 240px; }
+  /* Drawer keeps navigation + version; standards recede on touch layouts */
+  .standards-badges-grid { display: none; }
 }
 
 /* ---------- Tablet portrait (≤768px) ---------- */
@@ -2476,6 +2488,8 @@ pre, code, .mono-code, .json-display {
   /* Menu button stays on the same row as the title (RTL-first) */
   .top-header #mobile-menu-btn { align-self: center; order: 0; }
   .header-title-container { flex: 1 1 calc(100% - 60px); min-width: 0; width: auto; }
+  /* Tablets portrait: status pills live in the monitoring pane */
+  .header-live-stats { display: none; }
   .header-title-wrap h1 { font-size: 1.25rem; line-height: 1.35; overflow-wrap: break-word; }
   .header-title-wrap p { font-size: 0.8rem; }
   .header-live-stats { flex-wrap: wrap; gap: 6px; }
@@ -2538,8 +2552,25 @@ pre, code, .mono-code, .json-display {
   .data-table th, .data-table td { padding: 9px 10px; font-size: 0.78rem; }
   .btn, .nav-item, .endpoint-btn { min-height: 44px; }
   .top-header #mobile-menu-btn { width: 44px; height: 44px; }
-  .header-actions { grid-template-columns: 1fr; }
-  .header-actions .btn { min-height: 46px; }
+  .top-header { gap: 10px; margin-bottom: 14px; padding-bottom: 10px; }
+  .header-title-wrap h1 { font-size: 1.05rem; }
+  #page-subtitle { font-size: 0.75rem; }
+  /* Phones: status pills live in the monitoring pane — header keeps title + actions */
+  .header-live-stats { display: none; }
+  /* Compact identity chip: avatar + name only */
+  #header-session-chip { padding: 4px 8px; gap: 6px; }
+  #header-session-chip .header-session-text small,
+  #header-session-role { display: none; }
+  /* Coordinated actions: chip row, primary full-width, then icon-only pair */
+  .header-actions { grid-template-columns: 1fr auto auto; align-items: center; }
+  #btn-run-pipeline { order: 1; grid-column: 1 / -1; }
+  #btn-theme-toggle { order: 2; }
+  #btn-refresh { order: 3; }
+  .header-actions .btn { min-height: 42px; font-size: 0.78rem; }
+  /* Icon-only compact actions: icons are universal, truncated labels are not */
+  #btn-theme-toggle, #btn-refresh { width: 44px; min-height: 44px; padding: 0; }
+  #btn-theme-toggle span, #btn-refresh span { display: none; }
+  #btn-theme-toggle .btn-svg-icon, #btn-refresh .btn-svg-icon { width: 18px; height: 18px; }
   .live-pill { font-size: 0.68rem; }
   .metric-card { flex-direction: row; }
   .metric-icon { width: 36px; height: 36px; }
@@ -2582,7 +2613,7 @@ pre, code, .mono-code, .json-display {
   .metric-card { padding: 10px; }
   .metric-value { font-size: 1.1rem; }
   .metric-label { font-size: 0.7rem; }
-  .header-title-wrap h1 { font-size: 1.1rem; }
+  .header-title-wrap h1 { font-size: 1rem; }
   .card-header h3 { font-size: 0.9rem; }
   .banner-text h4 { font-size: 0.9rem; }
   .banner-text p { font-size: 0.78rem; }
