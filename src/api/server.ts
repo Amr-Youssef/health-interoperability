@@ -166,13 +166,25 @@ export function createPlatformApp() {
 
   const fhirSerializer = new FhirR4Serializer();
 
-  // Auto-boot middleware for Serverless Environments (Vercel)
+  // Auto-boot middleware with timeout protection for Serverless Environments (Vercel)
   let isBooted = false;
   let bootPromise: Promise<void> | null = null;
   app.use(async (req, res, next) => {
+    // Never block auth pages or health check
+    if (req.path.startsWith('/auth') || req.path === '/api/health') {
+      return next();
+    }
     if (!isBooted) {
       if (!bootPromise) {
-        bootPromise = engine.boot().then(() => { isBooted = true; });
+        bootPromise = Promise.race([
+          engine.boot(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Boot timeout (serverless)')), 2500))
+        ]).then(() => {
+          isBooted = true;
+        }).catch((err) => {
+          console.warn('[BOOT WARNING]', err.message);
+          isBooted = true; // Avoid blocking further requests
+        });
       }
       await bootPromise;
     }
@@ -190,8 +202,9 @@ export function createPlatformApp() {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     next();
   });
-    // Serve static UI - auth pages are public, app shell is protected
-  const publicDir = path.join(__dirname, '../../public');
+
+  // Serve static UI - resilient path resolution across local and Vercel serverless
+  const publicDir = path.join(process.cwd(), 'public');
   const staticOpts = {
     index: false as const,
     setHeaders: (res: Response, filePath: string) => {
@@ -203,10 +216,14 @@ export function createPlatformApp() {
   };
   app.use('/auth', express.static(path.join(publicDir, 'auth'), staticOpts));
   app.get(['/', '/index.html'], async (req: Request, res: Response, next) => {
-    const user = await extractAuthUser(req);
-    if (!user) return res.redirect('/auth/login.html');
-    res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    return res.sendFile(path.join(publicDir, 'index.html'));
+    try {
+      const user = await extractAuthUser(req);
+      if (!user) return res.redirect('/auth/login.html');
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      return res.sendFile(path.join(publicDir, 'index.html'));
+    } catch (err) {
+      return res.redirect('/auth/login.html');
+    }
   });
   app.use(express.static(publicDir, staticOpts));
   app.use('/api/hospital', hospitalRoutes);
