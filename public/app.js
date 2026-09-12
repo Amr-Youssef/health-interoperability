@@ -432,9 +432,24 @@ const appAuth = {
       if (patCard) patCard.style.display = 'none';
     }
 
+    // Hide group labels left with zero visible items for this role
+    this.syncNavGroups();
+
     // click the default tab
     const dTab = document.getElementById(`tab-btn-${defaultTab}`);
     if(dTab) dTab.click();
+  },
+
+  syncNavGroups() {
+    document.querySelectorAll('.nav-group-label').forEach(label => {
+      let el = label.nextElementSibling;
+      let visible = false;
+      while (el && el.classList.contains('nav-item')) {
+        if (el.style.display !== 'none') { visible = true; break; }
+        el = el.nextElementSibling;
+      }
+      label.style.display = visible ? '' : 'none';
+    });
   }
 };
 
@@ -707,10 +722,18 @@ function getSvgIcon(name, extraClasses = '') {
   return icons[name] || '';
 }
 
-// Flat Precision Toast Notification
+// Flat Precision Toast Notification — capped & deduped to stay quiet
 function showToast(title, message, type = 'success') {
   const container = document.getElementById('toast-container');
   if (!container) return;
+  // Dedupe: identical toast within 4s is noise, skip it
+  const key = `${type}|${title}|${message}`;
+  const now = Date.now();
+  if (container.dataset.lastKey === key && now - (+container.dataset.lastAt || 0) < 4000) return;
+  container.dataset.lastKey = key;
+  container.dataset.lastAt = String(now);
+  // Cap: never stack more than 3, drop the oldest
+  while (container.children.length >= 3) container.firstChild.remove();
 
   const toast = document.createElement('div');
   toast.className = `toast toast-${type}`;
@@ -792,11 +815,7 @@ function initThemeSwitcher() {
       const newTheme = isCurrentlyLight ? 'dark' : 'light';
       applyTheme(newTheme);
       localStorage.setItem('app_theme', newTheme);
-      showToast(
-        newTheme === 'light' ? 'الوضع الفاتح' : 'الوضع الداكن',
-        newTheme === 'light' ? 'تم التحويل إلى السمة الرسمية الفاتحة بنجاح.' : 'تم التحويل إلى السمة الرسمية الداكنة بنجاح.',
-        'info'
-      );
+      // Silent switch on purpose: the button label already reflects the state, a toast here is pure noise.
     });
   }
 }

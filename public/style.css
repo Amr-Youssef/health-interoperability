@@ -479,7 +479,6 @@ pre {
   color: var(--sidebar-on-surface);
   font-weight: 600;
 }
-}
 
 .nav-item.active .nav-icon-wrap {
   background: var(--m3-primary-container);
@@ -541,22 +540,40 @@ pre {
   padding: 3px 6px;
   border-radius: var(--radius-sharp);
 }
-.session-card { display:flex; align-items:center; gap:10px; background:var(--sidebar-well); padding:10px 12px; margin-bottom:12px; }
-.session-avatar { width:36px; height:36px; background:var(--sidebar-icon-wrap-bg); display:flex; align-items:center; justify-content:center; color:var(--sidebar-on-surface-variant); flex-shrink:0; }
-.session-avatar svg { width:18px; height:18px; }
-.session-info { min-width:0; flex:1; display:flex; flex-direction:column; gap:2px; }
-.session-name-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
-.session-name-row strong { font-size:0.88rem; color:var(--sidebar-on-surface); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px; }
-.session-org { font-size:0.70rem; color:var(--sidebar-on-surface-variant); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.session-meta { font-size:0.62rem; color:var(--sidebar-on-surface-muted); font-family:'JetBrains Mono',monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+/* NOTE: .session-card is permanently hidden (identity lives in the header chip) — sub-rules removed. */
 .header-session-chip { display:flex; align-items:center; gap:8px; background:var(--m3-surface-container); padding:6px 10px; min-width:0; max-width:320px; }
 .header-avatar { width:28px; height:28px; background:var(--m3-surface-container-high); display:flex; align-items:center; justify-content:center; color:var(--m3-on-surface-variant); flex-shrink:0; }
 .header-avatar svg { width:14px; height:14px; }
 .header-session-text { display:flex; flex-direction:column; min-width:0; line-height:1.2; }
 .header-session-text strong { font-size:0.82rem; color:var(--m3-on-surface); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px; }
 .header-session-text small { font-size:0.68rem; color:var(--m3-on-surface-variant); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px; }
-body.sidebar-collapsed .session-card { justify-content:center; padding:8px; }
-body.sidebar-collapsed .session-card .session-info { display:none; }
+
+/* =========================================
+   CALM CHROME — quieter sidebar / header / toasts
+   Tokens only (var(--*)) per DESIGN_SYSTEM.
+   ========================================= */
+.nav-group-label {
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: var(--m3-on-surface-muted);
+  font-family: 'JetBrains Mono', 'IBM Plex Sans Arabic', monospace;
+  letter-spacing: 0.02em;
+  padding: 0 14px;
+  margin: 14px 0 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nav-menu > .nav-group-label:first-child { margin-top: 2px; }
+/* Identity lives in the header chip — the drawer stays purely navigational */
+.session-card { display: none !important; }
+/* Quieter footer: version stays, standards recede */
+.standards-badges-grid { gap: 3px; opacity: 0.7; }
+.std-pill { font-size: 0.58rem; padding: 2px 5px; }
+/* Calmer live status */
+.live-pill { padding: 3px 8px; font-size: 0.68rem; gap: 5px; }
+/* Consistent, quiet keyboard focus */
+:focus-visible { outline: 2px solid var(--m3-primary); outline-offset: 2px; }
 
 /* =========================================
    COLLAPSED SIDEBAR STATE
@@ -626,6 +643,7 @@ body.sidebar-collapsed .main-content {
 
 .top-header {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 26px;
@@ -637,6 +655,8 @@ body.sidebar-collapsed .main-content {
   display: flex;
   flex-direction: column;
   gap: 5px;
+  min-width: 0;
+  flex: 1 1 280px;
 }
 
 .header-title-row {
@@ -725,9 +745,9 @@ body.sidebar-collapsed .main-content {
 
 .header-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: center;
-  flex-shrink: 0;
 }
 
 /* Active Patient Context Bar */
@@ -1853,6 +1873,7 @@ body.light-theme .toast,
    UTILITIES
    ========================================= */
 .mt-4 { margin-top: 12px; }
+.mb-4 { margin-bottom: 12px; }
 .mt-6 { margin-top: 18px; }
 .mb-6 { margin-bottom: 18px; }
 .text-center { text-align: center; }
@@ -2261,8 +2282,22 @@ body.light-theme .toast,
 .py-4 { padding-top: 12px; padding-bottom: 12px; }
 
 /* =========================================
+   CROSS-BREAKPOINT CLEANUP — same behavior on every viewport
+   ========================================= */
+/* Section headers wrap gracefully instead of squeezing (all sizes) */
+.card-header, .section-title, .mpi-card-header, .viewer-header, .source-header { flex-wrap: wrap; gap: 10px; }
+/* Balanced page headings */
+.header-title-wrap h1 { text-wrap: balance; }
+/* JS-rendered tables inside flush card bodies scroll instead of clipping
+   (parent .card keeps overflow:hidden for its header backgrounds) */
+.card-body.p-0 { overflow-x: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+/* Long viewer URLs wrap instead of pushing layout */
+.viewer-url-wrap { min-width: 0; overflow-wrap: anywhere; }
+
+/* =========================================
    RESPONSIVE — Mobile & Tablet (RTL-first)
-   Breakpoints: ≤1024 tablet-landscape/drawer, ≤768 tablet-portrait,
+   Breakpoints: ≤1280 small-laptop, ≤1200 narrow-desktop (explorer stacks),
+   ≤1024 tablet-landscape/drawer, ≤768 tablet-portrait,
    ≤640 large-phone, ≤480 small-phone, ≤380 compact.
    Tokens only (var(--*)) — no hex / no hard radius per DESIGN_SYSTEM.
    ========================================= */
@@ -2305,6 +2340,16 @@ pre, code, .mono-code, .json-display {
 .sidebar-backdrop.open { display: block; }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; min-width: 0; }
 
+/* ---------- Small laptops (≤1280px): gentle density ramp ---------- */
+@media (max-width: 1280px) {
+  .main-content { padding: 22px 24px 50px; }
+}
+/* ---------- Narrow desktop / large tablet (≤1200px): stack explorer ---------- */
+@media (max-width: 1200px) {
+  .fhir-explorer-layout { grid-template-columns: 1fr; }
+  .endpoint-list { flex-direction: row; flex-wrap: wrap; }
+  .endpoint-btn { flex: 1 1 160px; }
+}
 /* ---------- Tablet landscape & below: drawer navigation (≤1024px) ---------- */
 @media (max-width: 1024px) {
   #mobile-menu-btn { display: inline-flex; }
@@ -2353,11 +2398,11 @@ pre, code, .mono-code, .json-display {
     padding: 18px 16px 60px;
     padding-bottom: max(60px, calc(env(safe-area-inset-bottom) + 40px));
   }
-  .fhir-explorer-layout { grid-template-columns: 1fr; }
   .top-header { flex-wrap: wrap; gap: 12px; align-items: flex-start; }
   .header-title-container { flex: 1 1 240px; min-width: 0; }
   .header-actions { flex-wrap: wrap; flex: 1 1 100%; }
-  .metrics-grid { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)) !important; }
+  /* Mid-density tables between desktop and phone */
+  .data-table th, .data-table td { padding: 10px 12px; }
   .sources-grid { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
   .active-patient-bar { flex-wrap: wrap; }
   .patient-combobox { width: 100%; max-width: 100%; flex: 1 1 240px; }
@@ -2395,10 +2440,8 @@ pre, code, .mono-code, .json-display {
   .metric-card { padding: 12px; gap: 10px; }
   .metric-value { font-size: 1.25rem; }
   .sources-grid { grid-template-columns: 1fr; gap: 10px; }
-  .fhir-explorer-layout { grid-template-columns: 1fr; }
-  .endpoint-list { flex-direction: row; flex-wrap: wrap; }
-  .endpoint-btn { flex: 1 1 140px; min-height: 44px; }
-  .card-header { flex-wrap: wrap; gap: 10px; padding: 12px 14px; }
+  .endpoint-btn { min-height: 44px; }
+  .card-header { padding: 12px 14px; }
   .card-body { padding: 12px 14px; }
   .mpi-card-header { flex-wrap: wrap; gap: 10px; }
   .banner-info { padding: 12px 14px; align-items: flex-start; }
@@ -2517,8 +2560,18 @@ pre, code, .mono-code, .json-display {
 
 /* ---------- Reduced motion ---------- */
 @media (prefers-reduced-motion: reduce) {
-  .sidebar { transition: none; }
-  .tab-pane.active { animation: none; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+/* ---------- Short viewports: compact sidebar chrome ---------- */
+@media (max-height: 750px) {
+  .brand { margin-bottom: 10px; }
+  .source-status-badge { margin-bottom: 10px; }
+  .sidebar-footer { padding-top: 8px; }
+  .standards-badges-grid { display: none; }
 }
 
 /* =========================================
