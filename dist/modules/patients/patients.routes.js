@@ -128,6 +128,13 @@ export function createPatientsRoutes(canonicalStore) {
         const record = await canonicalStore.getLongitudinalRecord(requestedId);
         if (!record)
             return res.status(404).json({ error: 'Patient not found' });
+        // NCA/PDPL accountability: every national-auditor record access is audit-logged (purpose: audit context only).
+        if (user && user.role?.role_code === 'MOH_AUDITOR') {
+            try {
+                await prisma.auditLog.create({ data: { entity_type: 'Patient', entity_id: requestedId, action: 'AUDIT_VIEW_LONGITUDINAL', actor_id: user.id, organization_id: user.organization_id, details: `MOH_AUDITOR opened longitudinal record in audit context for ${requestedId}` } }).catch(() => { });
+            }
+            catch { }
+        }
         res.json(record);
     });
     return router;

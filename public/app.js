@@ -1109,15 +1109,33 @@ function initMobileDrawer() {
   const sidebar = document.getElementById('sidebar');
   const backdrop = document.getElementById('sidebar-backdrop');
   if (!btn || !sidebar || !backdrop) return;
-  const open = () => { sidebar.classList.add('open'); backdrop.classList.add('open'); btn.setAttribute('aria-expanded','true'); backdrop.setAttribute('aria-hidden','false'); };
-  const close = () => { sidebar.classList.remove('open'); backdrop.classList.remove('open'); btn.setAttribute('aria-expanded','false'); backdrop.setAttribute('aria-hidden','true'); };
+  const open = () => { sidebar.classList.add('open'); backdrop.classList.add('open'); btn.setAttribute('aria-expanded','true'); backdrop.setAttribute('aria-hidden','false'); sidebar.setAttribute('aria-hidden','false'); document.body.style.overflow = 'hidden'; const first = sidebar.querySelector('.nav-item'); if (first && window.innerWidth <= 1024) first.focus({ preventScroll: true }); };
+  const close = () => { if (!sidebar.classList.contains('open')) return; sidebar.classList.remove('open'); backdrop.classList.remove('open'); btn.setAttribute('aria-expanded','false'); backdrop.setAttribute('aria-hidden','true'); if (window.innerWidth <= 1024) sidebar.setAttribute('aria-hidden','true'); document.body.style.overflow = ''; if (sidebar.contains(document.activeElement)) btn.focus({ preventScroll: true }); };
   btn.addEventListener('click', () => sidebar.classList.contains('open') ? close() : open());
   backdrop.addEventListener('click', close);
   document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
-  window.addEventListener('resize', () => { if (window.innerWidth > 1024) close(); });
-  document.querySelectorAll('.nav-item').forEach(el => el.addEventListener('click', () => { if (window.innerWidth <= 1024) close(); }));
+  window.addEventListener('resize', () => { if (window.innerWidth > 1024) { sidebar.classList.remove('open'); backdrop.classList.remove('open'); btn.setAttribute('aria-expanded','false'); document.body.style.overflow = ''; } });
+  document.querySelectorAll('.nav-item, .logout-btn').forEach(el => el.addEventListener('click', () => { if (window.innerWidth <= 1024) close(); }));
   let sx=0; sidebar.addEventListener('touchstart', e=> sx=e.touches[0].clientX, {passive:true});
   sidebar.addEventListener('touchend', e=> { if (e.changedTouches[0].clientX - sx < -50) close(); }, {passive:true});
+  /* RTL edge-swipe to open: touch starts within 24px of the right edge, swipes left */
+  let ex=0, ey=0;
+  document.addEventListener('touchstart', e=> {
+    if (window.innerWidth > 1024 || sidebar.classList.contains('open')) return;
+    const t = e.touches[0];
+    if (window.innerWidth - t.clientX <= 24) { ex = t.clientX; ey = t.clientY; }
+    else ex = 0;
+  }, {passive:true});
+  document.addEventListener('touchend', e=> {
+    if (!ex || window.innerWidth > 1024 || sidebar.classList.contains('open')) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - ex, dy = Math.abs(t.clientY - ey);
+    if (dx < -60 && Math.abs(dx) > dy * 1.5) open();
+    ex = 0;
+  }, {passive:true});
+  const syncAria = () => { if (window.innerWidth <= 1024 && !sidebar.classList.contains('open')) sidebar.setAttribute('aria-hidden','true'); else sidebar.setAttribute('aria-hidden','false'); };
+  syncAria();
+  window.addEventListener('resize', syncAria);
 }
 
 function initNavigation() {
@@ -2851,7 +2869,7 @@ async function loadPatientsDropdown() {
     const badgeEl = document.getElementById('longitudinal-total-badge');
     if (badgeEl) badgeEl.textContent = 'سياق تدقيقي فقط';
     const lc = document.getElementById('longitudinal-content');
-    if (lc && !window._auditPatientId) lc.innerHTML = `<div class="card" style="padding:28px; text-align:center; color:var(--m3-on-surface-variant);"><p style="font-size:0.95rem; font-weight:700; color:var(--m3-on-surface);">الوصول لسجل مريض من سياق تدقيقي فقط</p><p style="font-size:0.84rem; margin-top:6px;">افتح سجلاً من Monitoring ← سجل الرسائل ← المسار ← «فتح السجل في سياق تدقيقي».</p></div>`;
+    if (lc && !window._auditPatientId) lc.innerHTML = `<div class="card" style="padding:28px; text-align:center; color:var(--m3-on-surface-variant);"><p style="font-size:0.95rem; font-weight:700; color:var(--m3-on-surface);">الوصول لسجل مريض من سياق تدقيقي فقط</p><p style="font-size:0.84rem; margin-top:6px;">افتح سجلاً من Monitoring ← سجل الرسائل ← المسار ← «فتح السجل في سياق تدقيقي».</p><p style="font-size:0.78rem; margin-top:6px;">يُوثَّق كل وصول لسجل مريض في سجل التدقيق (AUDIT_VIEW_LONGITUDINAL).</p></div>`;
     renderRecentChips();
     return;
   }
@@ -4790,6 +4808,8 @@ async function loadProvenanceRecords() {
       return;
     }
 
+    // PDPL data minimisation: the national auditor sees lineage/metadata only — raw clinical payloads stay hidden.
+    const _hideRaw = appAuth.currentRole === 'MOH_AUDITOR';
     container.innerHTML = records.slice(0,50).map((p) => `
       <div class="card mb-6" style="padding:18px 20px; border-right:4px solid var(--m3-tertiary);">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -4797,7 +4817,7 @@ async function loadProvenanceRecords() {
             <h4 style="font-size:1.02rem; color:var(--m3-on-surface);">${p.targetEntityType} (المعرف: <code>${p.targetEntityId.substring(0, 8)}...</code>)</h4>
             <span class="metric-sub">${p.activityDescription || p.mappingVersion || ''} • درجة جودة ${p.validationScore||100}%</span>
           </div>
-          <button class="btn btn-secondary btn-sm" onclick="fetch('/api/raw-store/${p.sourceRecordId}').then(r=>r.json()).then(j=>alert(JSON.stringify(j,null,2))).catch(()=>alert('لا توجد حمولة خام'))">عرض الخام</button>
+          ${_hideRaw ? '<span class="badge badge-secondary" title="الحمولة الخام محجوبة عن المدقق — تقليل البيانات">الخام محجوب</span>' : `<button class="btn btn-secondary btn-sm" onclick="fetch('/api/raw-store/${p.sourceRecordId}').then(r=>r.json()).then(j=>alert(JSON.stringify(j,null,2))).catch(()=>alert('لا توجد حمولة خام'))">عرض الخام</button>`}
           </div>
           <div style="display:flex; align-items:center; gap:8px; font-size:0.78rem; color:var(--m3-on-surface-variant); margin-bottom:8px;"><span style="background:var(--m3-surface-container-high); padding:2px 6px;">${p.sourceSystemId}</span> → <span style="background:var(--m3-primary-container); padding:2px 6px;">${p.targetEntityType}</span> → <span style="background:var(--m3-tertiary-container); padding:2px 6px;">MPI</span></div>
           <span class="badge badge-success">جودة التحقق: ${p.validationScore}/100</span>
@@ -4916,8 +4936,15 @@ async function loadSecurityAuditChain() {
 document.getElementById('btn-verify-audit-chain')?.addEventListener('click', async () => {
   const btn = document.getElementById('btn-verify-audit-chain');
   if (btn) btn.disabled = true;
-  await loadSecurityAuditChain();
-  showToast('تم التحقق','السلسلة المشفرة سليمة 100% وخالية من أي تلاعب (NCA Tamper-Proof Verified)','success');
+  try {
+    // Real verification — the toast must reflect the actual recomputed result, never a hardcoded claim.
+    const v = await fetch('/api/security/audit-chain/verify').then(r => r.json());
+    await loadSecurityAuditChain();
+    if (v && v.isValid) showToast('تم التحقق', `السلسلة المشفرة سليمة وخالية من أي تلاعب — ${v.totalBlocks || 0} كتلة (NCA Tamper-Proof Verified)`, 'success');
+    else showToast('انكسار في السلسلة', `فشل التحقق عند الكتلة #${v?.brokenAtIndex ?? '?'} — يلزم تحقيق فوري`, 'error');
+  } catch (e) {
+    showToast('خطأ', 'تعذر التحقق من سلامة السلسلة المشفرة', 'error');
+  }
   if (btn) btn.disabled = false;
 });
 
