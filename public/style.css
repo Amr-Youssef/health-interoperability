@@ -441,7 +441,19 @@ body.light-theme .sidebar,
   padding-top: 8px;
   border-top: 1px solid rgba(255,255,255,0.06);
   margin-top: 8px;
+  /* Quiet scrolling: sidebar is always dark, so use sidebar tokens (theme-proof) */
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
 }
+.nav-menu:hover,
+.nav-menu:focus-within {
+  scrollbar-color: var(--sidebar-item-hover) transparent;
+}
+.nav-menu::-webkit-scrollbar { width: 4px; }
+.nav-menu::-webkit-scrollbar-track { background: transparent; }
+.nav-menu::-webkit-scrollbar-thumb { background: transparent; border-radius: var(--radius-pill); }
+.nav-menu:hover::-webkit-scrollbar-thumb,
+.nav-menu:focus-within::-webkit-scrollbar-thumb { background: var(--sidebar-item-hover); }
 
 .nav-item {
   display: flex;
@@ -1755,6 +1767,19 @@ body.light-theme .json-display,
   background: #0F172A;
   color: #F8FAFC;
 }
+/* Code viewer is always dark — dark-aware thumb (theme-proof) */
+.json-display {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.json-display:hover,
+.json-display:focus-within {
+  scrollbar-color: var(--sidebar-item-hover) transparent;
+}
+.json-display::-webkit-scrollbar-track { background: transparent; }
+.json-display::-webkit-scrollbar-thumb { background: transparent; border-radius: var(--radius-pill); }
+.json-display:hover::-webkit-scrollbar-thumb,
+.json-display:focus-within::-webkit-scrollbar-thumb { background: var(--sidebar-item-hover); }
 
 /* =========================================
    TOAST NOTIFICATIONS (BORDERLESS)
@@ -2438,6 +2463,20 @@ pre, code, .mono-code, .json-display {
     visibility: visible;
     transition: transform var(--motion-slow) ease;
   }
+  /* Drawer scrolls on .sidebar itself — same quiet treatment */
+  .sidebar {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+  .sidebar:hover,
+  .sidebar:focus-within {
+    scrollbar-color: var(--sidebar-item-hover) transparent;
+  }
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-track { background: transparent; }
+  .sidebar::-webkit-scrollbar-thumb { background: transparent; border-radius: var(--radius-pill); }
+  .sidebar:hover::-webkit-scrollbar-thumb,
+  .sidebar:focus-within::-webkit-scrollbar-thumb { background: var(--sidebar-item-hover); }
   /* Collapse toggle is desktop-only — meaningless inside the drawer */
   .sidebar-toggle-btn { display: none; }
   /* Pin logout above the drawer bottom edge: always visible, never lost in the scroll */
@@ -2636,6 +2675,11 @@ pre, code, .mono-code, .json-display {
   .endpoint-btn, .combobox-item, .auth-tab-btn { min-height: 44px; }
   .form-input, .form-select { min-height: 44px; }
   input[type="checkbox"], input[type="radio"] { width: 20px; height: 20px; }
+  /* Touch has no hover: keep a faint thumb always visible while scrolling */
+  .nav-menu, .sidebar, .json-display { scrollbar-color: var(--sidebar-item-hover) transparent; }
+  .nav-menu::-webkit-scrollbar-thumb,
+  .sidebar::-webkit-scrollbar-thumb,
+  .json-display::-webkit-scrollbar-thumb { background: var(--sidebar-item-hover); }
 }
 
 /* ---------- Landscape phones: keep content reachable ---------- */
