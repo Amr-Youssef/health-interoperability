@@ -752,7 +752,7 @@ function showToast(title, message, type = 'success') {
   setTimeout(() => {
     toast.style.opacity = '0';
     toast.style.transform = 'translateY(-6px)';
-    toast.style.transition = 'all 0.2s ease';
+    toast.style.transition = 'opacity var(--motion-base) ease, transform var(--motion-base) ease';
     setTimeout(() => toast.remove(), 200);
   }, 4000);
 }
@@ -5057,9 +5057,9 @@ async function loadAdminGovernance() {
         if (list.length === 0) pendingEl.innerHTML = '<div class="text-center py-3" style="color:var(--m3-on-surface-variant);">لا توجد منشآت بانتظار الاعتماد — جميع المنشآت معتمدة ونشطة</div>';
         else pendingEl.innerHTML = list.map((o) => {
           const admin = o.admins?.[0];
-          const adminHtml = admin ? `<div style="margin-top:6px; background:var(--m3-surface-container); border-radius:6px; padding:6px 8px; font-size:0.78rem;"><strong>أدمن المنشأة:</strong> ${admin.fullName} (@${admin.username}) • ${admin.email||'لا بريد'} • ${admin.phone||'لا هاتف'} <span class="badge ${admin.isActive?'badge-success':'badge-warning'}">${admin.isActive?'نشط':'معلق'}</span> ${o.hasMapping?'<span class="badge badge-info">خرائط محفوظة</span>':''}</div>` : `<div style="margin-top:6px; font-size:0.75rem; color:var(--m3-error);">⚠️ لا يوجد أدمن مرتبط - المنشأة من تسجيل قديم</div>`;
+          const adminHtml = admin ? `<div style="margin-top:6px; background:var(--m3-surface-container); border-radius:var(--radius-sharp); padding:6px 8px; font-size:0.78rem;"><strong>أدمن المنشأة:</strong> ${admin.fullName} (@${admin.username}) • ${admin.email||'لا بريد'} • ${admin.phone||'لا هاتف'} <span class="badge ${admin.isActive?'badge-success':'badge-warning'}">${admin.isActive?'نشط':'معلق'}</span> ${o.hasMapping?'<span class="badge badge-info">خرائط محفوظة</span>':''}</div>` : `<div style="margin-top:6px; font-size:0.75rem; color:var(--m3-error);">⚠️ لا يوجد أدمن مرتبط - المنشأة من تسجيل قديم</div>`;
           const dateStr = o.createdAt ? new Date(o.createdAt).toLocaleDateString('ar-SA') : '';
-          return `<div style="padding:10px; border:1px solid var(--m3-outline-variant); border-radius:8px; margin-bottom:8px; background:var(--m3-surface);"><div style="display:flex; justify-content:space-between; align-items:flex-start;"><div><strong>${o.organizationNameAr || o.organizationName}</strong> <span class="badge badge-warning">PENDING</span><br><small>${o.organizationName} • ${o.region} • ${o.organizationType} • ${dateStr}</small>${adminHtml}</div><div style="display:flex; flex-direction:column; gap:6px; min-width:90px;"><button class="btn btn-primary btn-sm" onclick="approveHospital('${o.id}')">اعتماد وتفعيل</button><button class="btn btn-secondary btn-sm" onclick="rejectHospital('${o.id}')">رفض</button></div></div></div>`;
+          return `<div style="padding:10px; border:1px solid var(--m3-outline-variant); border-radius:var(--radius-sharp); margin-bottom:8px; background:var(--m3-surface);"><div style="display:flex; justify-content:space-between; align-items:flex-start;"><div><strong>${o.organizationNameAr || o.organizationName}</strong> <span class="badge badge-warning">PENDING</span><br><small>${o.organizationName} • ${o.region} • ${o.organizationType} • ${dateStr}</small>${adminHtml}</div><div style="display:flex; flex-direction:column; gap:6px; min-width:90px;"><button class="btn btn-primary btn-sm" onclick="approveHospital('${o.id}')">اعتماد وتفعيل</button><button class="btn btn-secondary btn-sm" onclick="rejectHospital('${o.id}')">رفض</button></div></div></div>`;
         }).join('');
       }
     } else {
@@ -5080,12 +5080,12 @@ async function loadAdminGovernance() {
       const filtered = users.filter(u => !isDemo(u));
       const demoCount = users.length - filtered.length;
       const list = filtered.slice(0,50);
-      let html = demoCount>0 ? `<div style="padding:4px 8px; font-size:0.75rem; color:var(--m3-on-surface-variant); background:var(--m3-surface-container); border-radius:6px; margin-bottom:6px;">تم إخفاء ${demoCount} حساب اختبار - البيانات الحقيقية فقط</div>` : '';
+      let html = demoCount>0 ? `<div style="padding:4px 8px; font-size:0.75rem; color:var(--m3-on-surface-variant); background:var(--m3-surface-container); border-radius:var(--radius-sharp); margin-bottom:6px;">تم إخفاء ${demoCount} حساب اختبار - البيانات الحقيقية فقط</div>` : '';
       html += list.map((u) => {
         const isPendingOrg = pendingOrgIds.has(u.organizationId);
         const pendingBadge = isPendingOrg ? `<span class="badge badge-warning">منشأة معلقة</span>` : '';
         const orgStatusHint = isPendingOrg ? `<br><small style="color:var(--m3-warning);">⚠️ المنشأة بانتظار اعتماد MOH - دخول الأدمن معلق حتى التفعيل</small>` : '';
-        return `<div style="display:flex; justify-content:space-between; align-items:center; padding:6px 8px; border-bottom:1px solid var(--m3-outline-variant); ${isPendingOrg?'background:var(--m3-warning-container); border-radius:6px; margin-bottom:4px;':''}"><div><strong>${u.username}</strong> <span class="badge ${u.role==='SYS_ADMIN'?'badge-error':u.role==='MOH_ADMIN'?'badge-info':u.role==='MOH_AUDITOR'?'badge-secondary':u.role==='HOSPITAL_ADMIN'?'badge-warning':u.role==='CLINICIAN'?'badge-success':'badge-info'}">${u.role}</span> ${pendingBadge}<br><small>${u.fullName} • ${u.organizationNameAr||u.organizationName||''} • ${u.email||'لا بريد'} • ${u.phone||'لا هاتف'} • ${u.isActive?'نشط':'معطل'}</small>${orgStatusHint}</div><button class="btn btn-secondary btn-sm" onclick="toggleUserStatus('${u.id}', ${u.isActive})">${u.isActive?'تعطيل':'تفعيل'}</button></div>`;
+        return `<div style="display:flex; justify-content:space-between; align-items:center; padding:6px 8px; border-bottom:1px solid var(--m3-outline-variant); ${isPendingOrg?'background:var(--m3-warning-container); border-radius:var(--radius-sm); margin-bottom:4px;':''}"><div><strong>${u.username}</strong> <span class="badge ${u.role==='SYS_ADMIN'?'badge-error':u.role==='MOH_ADMIN'?'badge-info':u.role==='MOH_AUDITOR'?'badge-secondary':u.role==='HOSPITAL_ADMIN'?'badge-warning':u.role==='CLINICIAN'?'badge-success':'badge-info'}">${u.role}</span> ${pendingBadge}<br><small>${u.fullName} • ${u.organizationNameAr||u.organizationName||''} • ${u.email||'لا بريد'} • ${u.phone||'لا هاتف'} • ${u.isActive?'نشط':'معطل'}</small>${orgStatusHint}</div><button class="btn btn-secondary btn-sm" onclick="toggleUserStatus('${u.id}', ${u.isActive})">${u.isActive?'تعطيل':'تفعيل'}</button></div>`;
       }).join('') || 'لا يوجد مستخدمون';
       if (users.length>0 && list.length===0) html+='<div class="text-center py-2" style="color:var(--m3-on-surface-variant);">كل المستخدمين الحاليين حسابات اختبار</div>';
       usersEl.innerHTML = html;
@@ -5099,9 +5099,9 @@ async function loadAdminGovernance() {
       if (total===0) verifyEl.innerHTML = '<div class="text-center py-3" style="color:var(--m3-on-surface-variant);">لا توجد بلاغات بانتظار التحقق</div>';
       else {
         let html='';
-        (q.allergies||[]).slice(0,5).forEach((a)=>{ html+= `<div style="padding:6px; border:1px solid var(--m3-outline-variant); border-radius:6px; margin-bottom:4px; display:flex; justify-content:space-between; align-items:center;"><span>حساسية: ${a.allergenName} <small>(${a.patientInternalId||a.patientId})</small></span><span><button class="btn btn-primary btn-sm" onclick="verifyItem('allergy','${a.id}','VERIFIED')">تحقق</button> <button class="btn btn-secondary btn-sm" onclick="verifyItem('allergy','${a.id}','REFUTED')">رفض</button></span></div>`; });
-        (q.medications||[]).slice(0,5).forEach((m)=>{ html+= `<div style="padding:6px; border:1px solid var(--m3-outline-variant); border-radius:6px; margin-bottom:4px; display:flex; justify-content:space-between; align-items:center;"><span>دواء: ${m.medicationName}</span><span><button class="btn btn-primary btn-sm" onclick="verifyItem('medication','${m.id}','VERIFIED')">تحقق</button> <button class="btn btn-secondary btn-sm" onclick="verifyItem('medication','${m.id}','REFUTED')">رفض</button></span></div>`; });
-        (q.conditions||[]).slice(0,5).forEach((c)=>{ html+= `<div style="padding:6px; border:1px solid var(--m3-outline-variant); border-radius:6px; margin-bottom:4px; display:flex; justify-content:space-between; align-items:center;"><span>تشخيص: ${c.conditionName}</span><span><button class="btn btn-primary btn-sm" onclick="verifyItem('condition','${c.id}','VERIFIED')">تحقق</button> <button class="btn btn-secondary btn-sm" onclick="verifyItem('condition','${c.id}','REFUTED')">رفض</button></span></div>`; });
+        (q.allergies||[]).slice(0,5).forEach((a)=>{ html+= `<div style="padding:6px; border:1px solid var(--m3-outline-variant); border-radius:var(--radius-sharp); margin-bottom:4px; display:flex; justify-content:space-between; align-items:center;"><span>حساسية: ${a.allergenName} <small>(${a.patientInternalId||a.patientId})</small></span><span><button class="btn btn-primary btn-sm" onclick="verifyItem('allergy','${a.id}','VERIFIED')">تحقق</button> <button class="btn btn-secondary btn-sm" onclick="verifyItem('allergy','${a.id}','REFUTED')">رفض</button></span></div>`; });
+        (q.medications||[]).slice(0,5).forEach((m)=>{ html+= `<div style="padding:6px; border:1px solid var(--m3-outline-variant); border-radius:var(--radius-sharp); margin-bottom:4px; display:flex; justify-content:space-between; align-items:center;"><span>دواء: ${m.medicationName}</span><span><button class="btn btn-primary btn-sm" onclick="verifyItem('medication','${m.id}','VERIFIED')">تحقق</button> <button class="btn btn-secondary btn-sm" onclick="verifyItem('medication','${m.id}','REFUTED')">رفض</button></span></div>`; });
+        (q.conditions||[]).slice(0,5).forEach((c)=>{ html+= `<div style="padding:6px; border:1px solid var(--m3-outline-variant); border-radius:var(--radius-sharp); margin-bottom:4px; display:flex; justify-content:space-between; align-items:center;"><span>تشخيص: ${c.conditionName}</span><span><button class="btn btn-primary btn-sm" onclick="verifyItem('condition','${c.id}','VERIFIED')">تحقق</button> <button class="btn btn-secondary btn-sm" onclick="verifyItem('condition','${c.id}','REFUTED')">رفض</button></span></div>`; });
         verifyEl.innerHTML = html;
         }
       }
@@ -5134,7 +5134,7 @@ async function loadOrgChangeRequests(){
     const r=await fetch('/api/moh/organization-changes');
     const list=await r.json();
     if(!Array.isArray(list) || list.length===0) el.innerHTML='<div class="text-center py-3" style="color:var(--m3-on-surface-variant);">لا توجد طلبات تغيير معلقة</div>';
-    else el.innerHTML=list.map(o=>`<div style="padding:8px; border:1px solid var(--m3-outline-variant); border-radius:6px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;"><div><strong>${o.organizationNameAr||o.organizationName}</strong> <span class="badge badge-warning">${o.field}</span><br><small>${o.oldValue||'—'} → <strong>${o.newValue}</strong> • بواسطة ${o.requestedBy} • ${new Date(o.createdAt).toLocaleDateString('ar-SA')}</small></div><div style="display:flex; gap:6px;"><button class="btn btn-primary btn-sm" onclick="approveOrgChange('${o.id}')">اعتماد</button><button class="btn btn-secondary btn-sm" onclick="rejectOrgChange('${o.id}')">رفض</button></div></div>`).join('');
+    else el.innerHTML=list.map(o=>`<div style="padding:8px; border:1px solid var(--m3-outline-variant); border-radius:var(--radius-sharp); margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;"><div><strong>${o.organizationNameAr||o.organizationName}</strong> <span class="badge badge-warning">${o.field}</span><br><small>${o.oldValue||'—'} → <strong>${o.newValue}</strong> • بواسطة ${o.requestedBy} • ${new Date(o.createdAt).toLocaleDateString('ar-SA')}</small></div><div style="display:flex; gap:6px;"><button class="btn btn-primary btn-sm" onclick="approveOrgChange('${o.id}')">اعتماد</button><button class="btn btn-secondary btn-sm" onclick="rejectOrgChange('${o.id}')">رفض</button></div></div>`).join('');
   }catch(e){ el.innerHTML=`<div style="color:var(--m3-error);">${e.message}</div>`; }
 }
 async function approveOrgChange(id){ try{ const r=await fetch('/api/moh/organization-changes/'+id+'/approve',{method:'POST'}); const j=await r.json(); if(r.ok){ showToast('تم الاعتماد','تم تطبيق التغيير','success'); loadOrgChangeRequests(); loadAdminGovernance(); } else showToast('خطأ',j.error,'error'); }catch(e){ showToast('خطأ',e.message,'error'); } }
@@ -5202,8 +5202,8 @@ async function loadAppointments(){
         }
       }
       if(a.status==='booked'){
-        if(appAuth.currentRole==='HOSPITAL_ADMIN') actions+=`<button class="btn btn-warning btn-sm" onclick="updateAppointment('${a.id}','arrived')">وصول</button> `;
-        else if(appAuth.currentRole==='CLINICIAN' && a.clinician_id===appAuth.user?.id) actions+=`<button class="btn btn-warning btn-sm" onclick="updateAppointment('${a.id}','arrived')">وصول</button> `;
+        if(appAuth.currentRole==='HOSPITAL_ADMIN') actions+=`<button class="btn btn-secondary btn-sm" onclick="updateAppointment('${a.id}','arrived')">وصول</button> `;
+        else if(appAuth.currentRole==='CLINICIAN' && a.clinician_id===appAuth.user?.id) actions+=`<button class="btn btn-secondary btn-sm" onclick="updateAppointment('${a.id}','arrived')">وصول</button> `;
       }
       if(a.status==='arrived'){
         if(appAuth.currentRole==='HOSPITAL_ADMIN' || (appAuth.currentRole==='CLINICIAN' && a.clinician_id===appAuth.user?.id)) actions+=`<button class="btn btn-success btn-sm" onclick="updateAppointment('${a.id}','fulfilled')">إتمام</button> `;
