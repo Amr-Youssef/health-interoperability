@@ -11,7 +11,8 @@
     "test": "vitest run",
     "demo": "tsx src/demo/run-demo.ts",
     "benchmark": "tsx src/benchmark/benchmark-runner.ts",
-    "clean:data": "node -e \"const fs = require('fs'); fs.rmSync('.data', { recursive: true, force: true }); fs.rmSync('data/hospitals-registry.json', { force: true }); fs.rmSync('data/dynamic-hospitals.json', { force: true }); console.log('Cleaned all persistent data.');\""
+    "clean:data": "node -e \"const fs = require('fs'); fs.rmSync('.data', { recursive: true, force: true }); fs.rmSync('data/hospitals-registry.json', { force: true }); fs.rmSync('data/dynamic-hospitals.json', { force: true }); console.log('Cleaned all persistent data.');\"",
+    "postinstall": "prisma generate"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

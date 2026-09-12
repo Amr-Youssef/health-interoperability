@@ -166,6 +166,19 @@ export function createPlatformApp() {
 
   const fhirSerializer = new FhirR4Serializer();
 
+  // Auto-boot middleware for Serverless Environments (Vercel)
+  let isBooted = false;
+  let bootPromise: Promise<void> | null = null;
+  app.use(async (req, res, next) => {
+    if (!isBooted) {
+      if (!bootPromise) {
+        bootPromise = engine.boot().then(() => { isBooted = true; });
+      }
+      await bootPromise;
+    }
+    next();
+  });
+
   // Role-based API Routes (V2 Database Schema) - rate limited
   app.use('/api/auth/register', authLimiter);
   app.use('/api/auth/login', loginLimiter);
