@@ -115,7 +115,7 @@
 | دائري | `50%` | — | النقاط والأفاتار ونقاط الخط الزمني فقط |
 
 **الممنوع:** أي `border-radius` صلب (`8px/6px/4px/10px`) خارج تعريفات التوكنات — الاستثناء الوحيد `50%` أعلاه.
-| `box-shadow` | `none` للكروت المسطحة، `0 20px 60px rgba(0,0,0,0.65)` فقط للمودال/التوست العائم `public/style.css:2216,1612` | `0 2px 12px var(--m3-*)` الملونة (أزيلت من `public/index.html:1444`) |
+| `box-shadow` | `none` للكروت المسطحة، `0 20px 60px rgba(0,0,0,0.65)` للمودال/التوست، `0 12px 32px rgba(0,0,0,0.30)` للشريط العائم (وفاتح `rgba(15,23,42,0.14)`) | `0 2px 12px var(--m3-*)` الملونة (أزيلت من `public/index.html:1444`) |
 | `border` | `1px solid var(--m3-outline-variant)` (=transparent) للكروت — `public/style.css:32` | `1px solid #0ea5e9` الملون |
 
 ---
@@ -124,16 +124,26 @@
 
 ### Card
 ```css
-.card { background: var(--m3-surface-container); border-radius: var(--radius-sharp); }
+.card { background: var(--m3-surface-container); border-radius: var(--radius-lg); }
 .card-header { background: var(--m3-surface-container-high); padding:14px 18px; }
 ```
+- الآبار الداخلية (`source-details`, `identifier-box`) بـ `var(--radius-md)` — إيقاع متداخل `12/8/6`.
 
 ### Banner Info
 ```css
-.banner-info { background: var(--m3-surface-container); border-right:4px solid var(--m3-primary); }
+.banner-info { background: var(--m3-surface-container); }
+.banner-info::before { background: var(--m3-secondary); } /* الشريط الجانبي الوحيد */
+.banner-info.banner-primary::before { background: var(--m3-primary); } /* الحوكمة */
+.banner-info.banner-tertiary::before { background: var(--m3-tertiary); } /* الوطني */
 .banner-icon { background: var(--m3-surface-container-high); color: var(--m3-on-surface-variant); }
 ```
+- ممنوع `border-right` مضمّن مع `::before` (شريط مضاعف 8px) — اللون عبر المعـدِّل فقط.
 - لا تستخدم `background:var(--m3-primary-container)` أو `linear-gradient` — كانت شاذة في `public/index.html:1575`
+
+### Page Chrome (شريط العنوان العام يملك العنوان — لا عناوين `h1/h2` داخل الصفحات)
+- `.actions-group`: صف إجراءات `{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px; }` أعلى الصفحة عند الحاجة.
+- `.table-responsive, .table-wrap`: غلاف تمرير أفقي إلزامي لأي جدول داخل `card-body` مبطّن.
+- إحصائية بلا أيقونة (صفحة الأمن): `.metric-card:has(> .metric-value)` يكدّس القيمة فوق التسمية تلقائياً.
 
 ### Metric Card
 - الأيقونة: `.bg-blue → secondary-container`, `.bg-emerald → primary-container`, `.bg-cyan → secondary-container` (وُحّدت — أُلغي الاستثناء المخبري السماوي النيوني)، `.bg-purple → tertiary-container`, `.bg-amber → warning-container` — `public/style.css:857`
@@ -159,7 +169,11 @@
 6. **لا `transition: all`:** سمِّ الخصائص المتحركة صراحة.
 7. **النص الوصفي ≤ `75ch`:** أي فقرة وصفية بلا سقف مقروئية شاذة.
 8. **الشارة لغة حالة:** `info`=محايد/عدادات، `success`=سليم/مكتمل، `warning`=انتباه/معلق/غير مؤكد، `error`=فشل، `purple`=وطني/مفردات، `secondary`=نظامي باهت — لا لون زخرفي.
-9. **الاستثناء الوحيد:** تقرير PDF `public/style.css:1750-2147` يستخدم `#1b5e20` (أخضر وزارة الصحة الرسمي) و `#cbd5e1` للطباعة — مسموح لأنه وثيقة ورقية بيضاء ثابتة، ليس داشبورد.
+9. **عنوان واحد للصفحة:** الهيدر العام (`#page-title`) يملك العنوان — ممنوع `h1/h2` مكرر داخل أي `tab-pane`.
+10. **لا حدود/فواصل شفافة:** `border:1px solid var(--m3-outline-variant)` شفاف = لا شيء — لا يُستخدم كحد أو فاصل؛ الفصل بالمسافة أو بئر `container-low`.
+11. **لا كلاسات غير معرفة:** كل كلاس في HTML/JS يجب أن يوجد في CSS (`panel`, `btn-warning`, `metric-val` كانت أشباحاً تُرسم بلا تنسيق).
+12. **نسخة هادئة:** لا ترجمات إنجليزية مكررة للعناوين العربية (أكواد المعايير `FHIR/SNOMED/NPHIES/MPI/CDS/LOINC` تُحفظ دائماً)، لا جمل معيدة لنفس المعنى، وعنوان الصفحة للهيدر العام فقط.
+13. **الاستثناء الوحيد:** تقرير PDF `public/style.css:1750-2147` يستخدم `#1b5e20` (أخضر وزارة الصحة الرسمي) و `#cbd5e1` للطباعة — مسموح لأنه وثيقة ورقية بيضاء ثابتة، ليس داشبورد.
 
 ---
 
@@ -167,7 +181,7 @@
 
 - التبديل عبر `body.light-theme` و `[data-theme="light"]` — `public/style.css:85` و `public/app.js:658`
 - كل توكن له قيمتان (دارك/فاتح) — لا تكتب لون ثابت بدون `var`.
-- اختبار: بدّل الزر `public/index.html:520` وتأكد كل `var(--m3-*)` يتغير تلقائياً. شفافية `rgba(255,255,255,0.18)` للشارات على الشريط مسموحة لأن الشريط دائماً داكن.
+- اختبار: بدّل الزر `public/index.html:520` وتأكد كل `var(--m3-*)` يتغير تلقائياً. الشفافية البيضاء مسموحة فقط حيث السطح داكن دائماً: فاصل القائمة `rgba(255,255,255,0.06)` ومقبض تمرير طبقة الدخول `rgba(255,255,255,0.15)`.
 
 ---
 
@@ -176,8 +190,10 @@
 ```bash
 # فحص سريع قبل كل commit
 grep -rn "#[0-9a-fA-F]" public/index.html public/app.js | grep -v "الكتلة" && echo "❌ يوجد هكس شاذ"
-grep -rn "border-radius:[[:space:]]*[0-9]px" public/index.html | grep -v "var(--radius" && echo "❌ يوجد radius شاذ"
+grep -rn "border-radius:[[:space:]]*[0-9]px" public/index.html public/app.js | grep -v "radius-sharp\|radius-xs\|radius-sm\|radius-md\|radius-lg\|radius-xl\|radius-pill" && echo "❌ يوجد radius شاذ"
 grep -rn "rgba(" public/app.js | grep -v "rgba(255,255,255" && echo "❌ يوجد rgba شاذ"
+grep -rn "border-right:[[:space:]]*[0-9]px solid" public/index.html && echo "❌ يوجد شريط مضاعف (استخدم banner-primary/tertiary)"
+grep -rn "panel-title\|metric-val\"\|table-container\|btn-warning\|grid grid-2" public/index.html && echo "❌ يوجد كلاس شبح غير معرف"
 npm run build # يجب أن ينجح
 ```
 
@@ -198,6 +214,8 @@ npm run build # يجب أن ينجح
 - **2026-09-12 (تليين الطابع):** الكروت والآبار والأشرطة إلى `12px/8px`، والشريط الجانبي عائم `16px` بهامش (درج كامل على الجوال)، وتقويس الأشرطة الملونة بخصائص منطقية، وشارة سياق المريض حبة — الطابع السيادي الحاد أُحيل للتقاعد عمداً.
 - **2026-09-12 (توافق ما بعد التليين):** ظل فصل للشريط العائم (مظلم/فاتح)، حذف قاعدة `active::before` الميتة، تقليم عنوان الإصدار، التفاف إحصاءات الحالة وشريط المعاينة — كلها بتوكنات `var(--*)` فقط.
 - **2026-09-12 (صفحة-صفحة):** إزالة الأشرطة المضاعفة (3 بانرات) مع معـدِّلات `banner-primary/tertiary`، إصلاح `btn-warning` غير المعرفة (3 مواضع → secondary)، توحيد بانرَي الأمن والتصدير بلغة البطاقات (حُذفت العناوين المكررة)، تعريف `.table-responsive/.table-wrap/.actions-group`، إصلاح تباين شارات HMS الفاتح، وإزالة الحدود/الفواصل الشفافة الوهمية.
+- **2026-09-12 (مرجع):** توثيق معـدِّلات البانر، `actions-group`، الأغلفة، والمتغير بلا أيقونة + قواعد 9-12 (عنوان وحيد، لا حدود شفافة، لا كلاسات أشباح) + فحوص منع مقابلة — المرجع يطابق الكود مجدداً.
+- **2026-09-12 (نسخة هادئة):** مراجعة كل صفحة على حدة: حذف الترجمات الإنجليزية المكررة من ~25 عنواناً (مع حفظ أكواد المعايير)، تقليم الفقرات المعادة، تعريب ترويسات الجداول التقنية، وحذف الشارات الوصفية — مع قاعدة 12 الجديدة.
 
 - **2026-08-31 (عميق):** توحيد 42+ هكس شاذ (أزرق سماوي/بنفسجي/عنبري) → توكنات، توحيد 10+ `border-radius` → `0px`، توحيد كل `card-header/banner` إلى `surface-container-high/surface`، إصلاح `public/app.js:1736` شارات الحرج → `badge-error` وإضافة `public/style.css:1188`.
 - **الملفات المتأثرة:** `public/style.css:2507`, `public/index.html:123,190,1575,1852`, `public/app.js:45,2845,2876`

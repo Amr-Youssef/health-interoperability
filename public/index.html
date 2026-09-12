@@ -751,9 +751,8 @@
         <div class="section-title">
           <div class="section-title-wrap">
             <svg class="section-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-            <h3>حالة موصلات وقنوات الاستيعاب الصحية (Active Ingestion Gateways & Hospital Adapters)</h3>
+            <h3>حالة موصلات وقنوات الاستيعاب الصحية</h3>
           </div>
-          <span class="badge badge-info">القنوات الحية والمستشفيات المسجلة</span>
         </div>
 
         <div class="sources-grid" id="sources-monitoring-grid">
@@ -764,9 +763,8 @@
         <div id="auditor-overview-section" style="display:none;">
           <div class="section-title mt-6">
             <div class="section-title-wrap">
-              <h3>نظرة رقابية وطنية (قراءة فقط)</h3>
+              <h3>نظرة رقابية وطنية</h3>
             </div>
-            <span class="badge badge-info">Read-Only Audit Console</span>
           </div>
           <div class="metrics-grid" id="auditor-overview-grid">
             <div class="metric-card"><div class="metric-info"><span class="metric-label">السجلات المستقبلة</span><h3 class="metric-value" id="audit-ov-received">--</h3></div></div>
@@ -783,7 +781,7 @@
         <div id="auditor-records-section" style="display:none;">
           <div class="section-title mt-6">
             <div class="section-title-wrap">
-              <h3>سجل الرسائل (Message Stream — قراءة فقط)</h3>
+              <h3>سجل الرسائل</h3>
             </div>
           </div>
           <div class="card table-card" style="margin-bottom:12px;">
@@ -807,10 +805,10 @@
                 <tr>
                   <th>الوقت</th>
                   <th>المصدر</th>
-                  <th>Message ID</th>
-                  <th>Source Record</th>
+                  <th>معرف الرسالة</th>
+                  <th>السجل المصدر</th>
                   <th>المرحلة</th>
-                  <th>Mapping</th>
+                  <th>الربط</th>
                   <th>الجودة</th>
                   <th>النتيجة</th>
                   <th>سبب الفشل</th>
@@ -829,7 +827,7 @@
         <div id="auditor-quarantine-section" style="display:none;">
           <div class="section-title mt-6">
             <div class="section-title-wrap">
-              <h3>السجلات الفاشلة / المعزولة (Quarantine — قراءة فقط)</h3>
+              <h3>السجلات الفاشلة / المعزولة</h3>
             </div>
             <span class="badge badge-error">بدون إعادة معالجة</span>
           </div>
@@ -839,7 +837,7 @@
                 <tr>
                   <th>وقت الفشل</th>
                   <th>المصدر</th>
-                  <th>Message ID</th>
+                  <th>معرف الرسالة</th>
                   <th>المرحلة</th>
                   <th>سبب الفشل</th>
                   <th aria-label="إجراءات"></th>
@@ -867,7 +865,7 @@
         <div id="auditor-trace-modal" style="display:none; position:fixed; inset:0; z-index:1000; align-items:center; justify-content:center; background:rgba(0,0,0,0.45);">
           <div style="background:var(--m3-surface-container); border:1px solid var(--m3-outline-variant); border-radius:var(--radius-md); max-width:680px; width:94%; max-height:88vh; overflow:auto; padding:18px 20px;">
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
-              <h3 style="font-size:1.05rem;">مسار السجل (Pipeline Trace — قراءة فقط)</h3>
+              <h3 style="font-size:1.05rem;">مسار السجل</h3>
               <div style="display:flex; gap:8px;">
                 <button type="button" class="btn btn-secondary btn-sm" id="btn-auditor-evidence">تصدير كدليل تدقيق (JSON)</button>
                 <button type="button" class="btn btn-secondary btn-sm" id="btn-auditor-trace-close">إغلاق</button>
@@ -881,7 +879,7 @@
         <div class="section-title mt-6">
           <div class="section-title-wrap">
             <svg class="section-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-            <h3>سجل عمليات خط أنابيب التطبيع والتحويل المباشر (Live Pipeline Audit Stream)</h3>
+            <h3>سجل عمليات خط أنابيب التطبيع والتحويل المباشر</h3>
           </div>
         </div>
         <div class="card table-card">
@@ -908,7 +906,7 @@
           <div class="banner-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg></div>
           <div class="banner-text">
             <h4>مركز الحوكمة الوطنية الموحد – ربط الأدمن بالمريض والمستشفى</h4>
-            <p>لوحة واحدة تربط كل المنظومة: اعتماد المنشآت المعلقة، إدارة المستخدمين، طابور التحقق للبيانات المبلغة ذاتياً، وسجل المرضى الوطني – كلها من نفس قاعدة البيانات الموحدة (Single Source of Truth).</p>
+            <p>اعتماد المنشآت المعلقة، إدارة المستخدمين، طابور التحقق للبيانات المبلغة ذاتياً، وسجل المرضى الوطني — من قاعدة بيانات موحدة.</p>
           </div>
         </div>
         <div class="metrics-grid" id="admin-governance-metrics">
@@ -923,7 +921,7 @@
             <div class="card-body" id="gov-pending-list" style="max-height:360px; overflow:auto;">جاري التحميل...</div>
           </div>
           <div class="card" id="gov-create-admin-card">
-            <div class="card-header"><div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><h3>إنشاء مستخدم - صلاحيات مسؤول النظام (SYS_ADMIN)</h3></div></div>
+            <div class="card-header"><div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><h3>إنشاء مستخدم</h3></div></div>
             <div class="card-body">
               <p id="gov-create-hint" style="font-size:0.8rem; color:var(--m3-on-surface-variant); margin-bottom:8px;">SYS_ADMIN ينشئ جميع الأنواع • MOH_ADMIN ينشئ HOSPITAL/CLINICIAN/MOH_AUDITOR فقط</p>
               <form id="form-create-moh-admin" style="display:flex; flex-direction:column; gap:8px;">
@@ -952,11 +950,11 @@
         </div>
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:16px;">
           <div class="card">
-            <div class="card-header"><div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><h3>إدارة المستخدمين (تفعيل/تعطيل)</h3></div></div>
+            <div class="card-header"><div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><h3>إدارة المستخدمين</h3></div></div>
             <div class="card-body" id="gov-users-list" style="max-height:400px; overflow:auto;">جاري التحميل...</div>
           </div>
           <div class="card">
-            <div class="card-header"><div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l11 0"/><path d="M9 12l-3 3"/><path d="M9 12l-3 -3"/></svg><h3>طلبات تغيير بيانات المنشآت (بانتظار موافقة الوزارة)</h3></div><button class="btn btn-secondary btn-sm" onclick="loadOrgChangeRequests()">تحديث</button></div>
+            <div class="card-header"><div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l11 0"/><path d="M9 12l-3 3"/><path d="M9 12l-3 -3"/></svg><h3>طلبات تغيير بيانات المنشآت</h3></div><button class="btn btn-secondary btn-sm" onclick="loadOrgChangeRequests()">تحديث</button></div>
             <div class="card-body" id="gov-org-changes-list" style="max-height:300px; overflow:auto;">جاري التحميل...</div>
           </div>
           <div class="card" style="grid-column:1/-1;">
@@ -965,7 +963,7 @@
           </div>
         </div>
         <div class="card" style="margin-top:16px;">
-          <div class="card-header"><div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><h3>السجل الوطني للمرضى (مرتبط بالمستشفى والمريض)</h3></div></div>
+          <div class="card-header"><div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><h3>السجل الوطني للمرضى</h3></div></div>
           <div class="card-body" id="gov-patients-list" style="max-height:360px; overflow:auto;">جاري التحميل...</div>
         </div>
       </section>
@@ -980,8 +978,8 @@
             </svg>
           </div>
           <div class="banner-text">
-            <h4>استوديو إضافة وتكامل المستشفيات والأنظمة ديناميكياً (Hospital Onboarding Studio)</h4>
-            <p>يتيح للمشرفين ربط أي منشأة صحية أو مستشفى خاص جديد في المملكة، وتعريف مخطط بياناتها وقواعد الربط، وضخ البيانات ومعايرتها فورياً دون الحاجة لتعديل الكود البرمجي للمنصة.</p>
+            <h4>استوديو إضافة وتكامل المستشفيات والأنظمة ديناميكياً</h4>
+            <p>اربط منشأة جديدة وعرّف مخطط بياناتها وقواعد الربط، ثم ضخ البيانات فورياً دون تعديل الكود.</p>
           </div>
         </div>
 
@@ -999,7 +997,7 @@
             <div class="card-header">
               <div class="card-header-title">
                 <svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l8-4v18M13 11h4M13 15h4M13 19h4M9 9h.01M9 13h.01M9 17h.01"/></svg>
-                <h3>تسجيل منشأة صحية جديدة (Register Facility)</h3>
+                <h3>تسجيل منشأة صحية جديدة</h3>
               </div>
             </div>
             <div class="card-body">
@@ -1048,7 +1046,7 @@
                   </div>
                 </div>
                 <div style="background:var(--m3-primary-container); border:1px solid var(--m3-outline-variant); border-radius:var(--radius-md); padding:12px; margin-top:4px;">
-                  <h4 style="font-size:0.85rem; margin-bottom:10px; color:var(--m3-on-primary-container); display:flex; align-items:center; gap:6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg> حساب أدمن المنشأة (يُنشأ مباشرة مع المنشأة)</h4>
+                  <h4 style="font-size:0.85rem; margin-bottom:10px; color:var(--m3-on-primary-container); display:flex; align-items:center; gap:6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg> حساب أدمن المنشأة</h4>
                   <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
                     <div><label class="form-group" style="font-size:0.75rem; margin-bottom:4px; display:block;">اسم المستخدم للأدمن *</label><input type="text" id="onboard-admin-username" class="form-select" placeholder="مثال: kfsh_admin" required></div>
                     <div><label class="form-group" style="font-size:0.75rem; margin-bottom:4px; display:block;">كلمة المرور (8+ حروف وأرقام) *</label><input type="password" id="onboard-admin-password" class="form-select" placeholder="••••••••" required></div>
@@ -1074,7 +1072,7 @@
             <div class="card-header">
               <div class="card-header-title">
                 <svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                <h3>ضخ وتطبيع سجل للمنشأة المضافة (Ingest Custom Record)</h3>
+                <h3>ضخ وتطبيع سجل للمنشأة</h3>
               </div>
             </div>
             <div class="card-body">
@@ -1108,7 +1106,7 @@
           <div class="card-header">
             <div class="card-header-title">
               <svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              <h3>مركز استيراد ومعالجة الملفات السريرية الحية (Live Clinical File Ingestion Dropzone)</h3>
+              <h3>مركز استيراد ومعالجة الملفات السريرية</h3>
             </div>
             <div style="display:flex; gap:8px; align-items:center;">
               <span class="badge badge-info">HL7 v2.5 / FHIR R4 / CSV / JSON</span>
@@ -1116,9 +1114,9 @@
           </div>
           <div class="card-body">
             <p style="font-size:0.84rem; color:var(--m3-on-surface-variant); margin-bottom:14px;">
-              اسحب وأفلت أي ملف سريري أو مالي حقيقي من جهازك (ملف رسائل <code>.hl7</code>، حزمة موارد <code>.json</code> FHIR R4، أو جدول مرضى <code>.csv</code>) ليقوم المحرك الذكي باكتشاف التنسيق ومعايرته وتطبيعه وإدراجه فورياً في خط الأنابيب.
+              اسحب ملفاً سريرياً أو مالياً (<code>.hl7</code>، <code>.json</code>، <code>.csv</code>) ليكتشف المحرك تنسيقه ويطبّعه ويدرجه في خط الأنابيب فورياً.
             </p>
-            <div style="background:var(--m3-warning-container); border:1px solid var(--m3-warning); border-radius:var(--radius-md); padding:8px 12px; margin-bottom:12px; font-size:0.78rem; color:var(--m3-on-warning-container);">⚠️ يجب اختيار <strong>المنشأة المستهدفة</strong> من القائمة أعلاه قبل رفع أي ملف - سيتم ربط الملف بالمنشأة المختارة في قاعدة البيانات الحقيقية (مرفوض إذا كانت بانتظار الاعتماد)</div>
+            <div style="background:var(--m3-warning-container); border:1px solid var(--m3-warning); border-radius:var(--radius-md); padding:8px 12px; margin-bottom:12px; font-size:0.78rem; color:var(--m3-on-warning-container);">⚠️ اختر المنشأة المستهدفة من القائمة أعلاه قبل الرفع — سيُربط الملف بها، ويُرفض إن كانت بانتظار الاعتماد</div>
 
             <div class="file-dropzone" id="clinical-file-dropzone">
               <input type="file" id="input-clinical-file" accept=".hl7,.json,.csv,.txt" style="display:none;">
@@ -1137,7 +1135,7 @@
 
             <!-- Quick Load Sample Files -->
             <div style="margin-top:16px;">
-              <span style="font-size:0.78rem; font-weight:700; color:var(--m3-on-surface-muted); display:block; margin-bottom:8px;">أو جرب بيانات تجريبية للاختبار فقط (Demo - لا تُحتسب كبيانات حقيقية):</span>
+              <span style="font-size:0.78rem; font-weight:700; color:var(--m3-on-surface-muted); display:block; margin-bottom:8px;">أو جرّب بيانات تجريبية:</span>
               <div style="display:flex; gap:8px; flex-wrap:wrap;">
                 <button type="button" class="btn btn-secondary btn-sm btn-sample-file" data-sample="hl7">
                   <svg class="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
@@ -1164,7 +1162,7 @@
           <div class="card-header">
             <div class="card-header-title">
               <svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg>
-              <h3>المنشآت الصحية المضافة ديناميكياً إلى المنصة (Onboarded Facilities)</h3>
+              <h3>المنشآت الصحية المضافة</h3>
             </div>
           </div>
           <div class="card-body p-0">
@@ -1197,8 +1195,8 @@
             </svg>
           </div>
           <div class="banner-text">
-            <h4>محرك دعم القرار السريري والسلامة الدوائية والمؤشرات الوطنية (CDS Hooks & Population Health)</h4>
-            <p>يقوم محرك CDS Hooks بفحص الملف الصحي الموحد للمريض وتحليل الوصفات الطبية مع نتائج المختبر وترميز هيئة الغذاء والدواء لمنع التعارضات الدوائية، مع رصد المؤشرات الوبائية التراكمية.</p>
+            <h4>محرك دعم القرار السريري والسلامة الدوائية والمؤشرات الوطنية</h4>
+            <p>يفحص الملف الموحد والوصفات مع نتائج المختبر وترميز الغذاء والدواء لمنع التعارضات، ويرصد المؤشرات الوبائية.</p>
           </div>
         </div>
 
@@ -1254,12 +1252,12 @@
           <div class="card-header">
             <div class="card-header-title">
               <svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg>
-              <h3>محاكي وصف الأدوية وفحص التفاعلات اللحظي (Interactive CDS ePrescribing Simulator)</h3>
+              <h3>محاكي وصف الأدوية وفحص التفاعلات اللحظي</h3>
             </div>
           </div>
           <div class="card-body">
             <p style="font-size:0.84rem; color:var(--m3-on-surface-variant); margin-bottom:12px;">
-              اختر دواءً تجريبياً من دليل هيئة الغذاء والدواء لمحاكاة إنشاء وصفة طبية جديدة واختبار فحص تعارضاتها اللحظي مع التاريخ المرضي، وظائف الكلى، والأدوية النشطة للمريض:
+              اختر دواءً من دليل الغذاء والدواء لمحاكاة وصفة وفحص تعارضاتها مع التاريخ المرضي ووظائف الكلى والأدوية النشطة:
             </p>
             <div style="display:grid; grid-template-columns:2fr 1fr auto; gap:12px; align-items:center;">
               <div>
@@ -1295,7 +1293,7 @@
           <div class="card-header">
             <div class="card-header-title">
               <svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-              <h3>تنبيهات وبطاقات دعم القرار السريري والسلامة الدوائية (Active CDS Hooks Alerts)</h3>
+              <h3>تنبيهات وبطاقات دعم القرار السريري والسلامة الدوائية</h3>
             </div>
             <button class="btn btn-secondary btn-sm" id="btn-eval-cds">
               <svg class="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
@@ -1312,7 +1310,7 @@
           <div class="card-header">
             <div class="card-header-title">
               <svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><circle cx="12" cy="11" r="3"/></svg>
-              <h3>الرصد الوبائي الوطني وبلاغات الأمراض المعدية الفورية (Weqaa National Surveillance & Reporting)</h3>
+              <h3>الرصد الوبائي الوطني وبلاغات الأمراض المعدية الفورية</h3>
             </div>
             <button class="btn btn-secondary btn-sm" id="btn-refresh-weqaa">
               <svg class="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
@@ -1321,7 +1319,7 @@
           </div>
           <div class="card-body">
             <p style="font-size:0.84rem; color:var(--m3-on-surface-variant); margin-bottom:14px;">
-              يقوم المحرك الذكي باكتشاف الحالات المشتبهة أو المؤكدة للأمراض الوبائية الخاضعة للرصد الإلزامي (مثل حمى الضنك، متلازمة الشرق الأوسط MERS-CoV، والدرن) وتوليد إشعار رسمي قياسي مشفر وفق معيار HL7 FHIR R4 وإرساله آلياً لغرفة قيادة هيئة الصحة العامة (وقاية).
+              يكتشف الحالات المشتبهة أو المؤكدة للأمراض خاضعة الرصد (كالضنك وMERS-CoV والدرن) ويولّد إشعار FHIR R4 مشفراً لغرفة قيادة وقاية.
             </p>
 
             <div class="table-responsive mb-4">
@@ -1354,12 +1352,12 @@
           <div class="card-header">
             <div class="card-header-title">
               <svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="var(--m3-error)" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-              <h3 style="color:var(--m3-error);">بروتوكول الوصول الطارئ وتجاوز الحظر (Emergency Break-the-Glass Protocol)</h3>
+              <h3 style="color:var(--m3-error);">بروتوكول الوصول الطارئ وتجاوز الحظر</h3>
             </div>
           </div>
           <div class="card-body">
             <p style="font-size:0.84rem; color:var(--m3-on-surface-variant); margin-bottom:12px;">
-              وفق نظام حماية البيانات الشخصية السعودي (PDPL)، يتيح هذا البروتوكول للأطباء المعتمدين في أقسام الطوارئ فك حظر السجلات المقيدة عند وجود حالة إنقاذ حياة حرجة، مع تسجيل بصمة مشفرة وتوثيق فوري في سجل التدقيق الأمني.
+              للأطباء المعتمدين في الطوارئ: فك حظر السجلات المقيدة عند إنقاذ حياة حرجة، مع بصمة مشفرة وتوثيق فوري (PDPL).
             </p>
             <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
               <input type="text" id="break-glass-practitioner" class="form-select" style="max-width:220px;" placeholder="رقم ترخيص الممارس (SCFHS)" value="DR-SCFHS-99481">
@@ -1384,8 +1382,8 @@
             </svg>
           </div>
           <div class="banner-text">
-            <h4>بوابة منصة نفيس للتأمين والمطالبات المالية (NPHIES Taameen Gateway)</h4>
-            <p>محاكاة حية متكاملة لخدمات التأمين الصحي الوطني وفق وثيقة مجلس الضمان الصحي (CHI)، بما يشمل الاستعلام اللحظي عن الأهلية (Eligibility Inquiry)، وتسوية المطالبات الإلكترونية (eClaims Adjudication) المعتمدة على الترميز المالي السعودي (SBS).</p>
+            <h4>بوابة منصة نفيس للتأمين والمطالبات المالية</h4>
+            <p>الاستعلام اللحظي عن الأهلية وتسوية المطالبات الإلكترونية وفق وثيقة مجلس الضمان (CHI) والترميز المالي (SBS).</p>
           </div>
         </div>
 
@@ -1394,7 +1392,7 @@
           <div class="card-header">
             <div class="card-header-title">
               <svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <h3>التحقق اللحظي من الأهلية التأمينية (Coverage Eligibility Check)</h3>
+              <h3>التحقق اللحظي من الأهلية التأمينية</h3>
             </div>
             <button class="btn btn-primary btn-sm" id="btn-check-eligibility">
               <svg class="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -1411,7 +1409,7 @@
           <div class="card-header">
             <div class="card-header-title">
               <svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-              <h3>وثائق وبوالص التأمين الصحي المعتمدة (Normalized Coverages)</h3>
+              <h3>وثائق وبوالص التأمين الصحي المعتمدة</h3>
             </div>
           </div>
           <div class="card-body p-0">
@@ -1440,7 +1438,7 @@
           <div class="card-header">
             <div class="card-header-title">
               <svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-              <h3>سجل المطالبات الإلكترونية والتسوية الفورية (eClaims Adjudication via NPHIES)</h3>
+              <h3>سجل المطالبات الإلكترونية والتسوية الفورية</h3>
             </div>
           </div>
           <div class="card-body p-0">
@@ -1475,8 +1473,8 @@
             </svg>
           </div>
           <div class="banner-text">
-            <h4>سجل الأدوية والوصفات الطبية وترميز هيئة الغذاء والدواء (SFDA Drug Registry & Vaccines)</h4>
-            <p>تطبيع الوصفات الطبية والأدوية عبر المستشفيات المختلفة إلى <strong>كود الدواء السعودي المعتمد (Saudi Drug Code - SDC)</strong> والترميز الدولي (ATC / RxNorm)، وتتبع جدول التطعيمات الوطني لوزارة الصحة.</p>
+            <h4>سجل الأدوية والوصفات الطبية وترميز هيئة الغذاء والدواء</h4>
+            <p>تطبيع الوصفات إلى كود الدواء السعودي (SDC) والترميز الدولي (ATC / RxNorm)، وتتبع جدول التطعيمات الوطني.</p>
           </div>
         </div>
 
@@ -1485,7 +1483,7 @@
           <div class="card-header">
             <div class="card-header-title">
               <svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg>
-              <h3>الوصفات الطبية المعيارية (Normalized ePrescriptions - MedicationRequests)</h3>
+              <h3>الوصفات الطبية المعيارية</h3>
             </div>
           </div>
           <div class="card-body p-0">
@@ -1514,7 +1512,7 @@
           <div class="card-header">
             <div class="card-header-title">
               <svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 2 4 4-4 4"/><path d="m17 7 3-3"/><path d="M19 9 8.7 19.3c-1 1-2.5 1-3.4 0l-.6-.6c-1-1-1-2.5 0-3.4L15 5"/><path d="m9 11 4 4"/><path d="m5 19-3 3"/></svg>
-              <h3>سجل التطعيمات واللقاحات الوطنية (Saudi MOH Immunizations Registry)</h3>
+              <h3>سجل التطعيمات واللقاحات الوطنية</h3>
             </div>
           </div>
           <div class="card-body p-0">
@@ -1589,8 +1587,8 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           </div>
           <div class="banner-text">
-            <h4>محرك تسوية الهويات (Master Patient Index - MPI)</h4>
-            <p>يقوم محرك MPI بربط السجلات القادمة من مستشفيات مختلفة بأرقام ملفات (MRN) متباينة لنفس المريض في هوية وطنية موحدة باستخدام المطابقة الحتمية (Deterministic) والاحتمالية (Probabilistic).</p>
+            <h4>محرك تسوية الهويات (MPI)</h4>
+            <p>يربط سجلات المستشفيات بأرقام ملفاتها المتباينة في هوية وطنية موحدة بالمطابقة الحتمية والاحتمالية.</p>
           </div>
         </div>
 
@@ -1599,13 +1597,13 @@
           <div class="card-header">
             <div class="card-header-title">
               <svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
-              <h3>لوحة التحكم في دمج وفصل هويات المرضى (MPI Identity Merge & Unmerge)</h3>
+              <h3>لوحة التحكم في دمج وفصل هويات المرضى</h3>
             </div>
             <span class="badge badge-info">إدارة الهويات الوطنية الموحدة</span>
           </div>
           <div class="card-body">
             <p style="font-size:0.84rem; color:var(--m3-on-surface-variant); margin-bottom:14px;">
-              تتيح هذه الأداة لمدير المنظومة (HIE Steward) دمج ملفين مكررين لمريض واحد، حيث يتم نقل كافة المعرفات (MRNs) والزيارات والتشخيصات والوصفات الطبية إلى الهوية الدائمة الباقية (Survivor)، مع تسجيل العملية مشفرة في سلسلة التدقيق (NCA Audit Chain).
+              ادمج ملفين مكررين لمريض واحد بنقل معرفاتهما وسجلاتهما إلى الهوية الباقية، مع توثيق مشفر في سلسلة التدقيق.
             </p>
 
             <form id="form-mpi-merge" style="display:grid; grid-template-columns:1fr 1fr 1.5fr auto; gap:12px; align-items:flex-end;">
@@ -1645,7 +1643,7 @@
           <div class="card-body" style="padding:16px;">
             <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
               <svg style="width:20px;height:20px; color:var(--m3-primary);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <h3 style="margin:0; font-size:1rem;">اختيار المريض – بحث قابل للتوسع لملايين السجلات</h3>
+              <h3 style="margin:0; font-size:1rem;">اختيار المريض</h3>
               <span id="longitudinal-total-badge" class="badge badge-info" style="margin-right:auto;">—</span>
             </div>
             <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
@@ -1663,7 +1661,7 @@
             <div id="longitudinal-recent-chips" style="margin-top:10px; display:flex; gap:6px; flex-wrap:wrap;"></div>
             <div id="longitudinal-results" style="margin-top:14px; display:grid; grid-template-columns:repeat(auto-fill, minmax(280px,1fr)); gap:10px; max-height:380px; overflow:auto; padding:2px;"></div>
             <div id="longitudinal-pagination" style="margin-top:12px; display:flex; justify-content:space-between; align-items:center; font-size:0.82rem; color:var(--m3-on-surface-variant);"></div>
-            <div id="longitudinal-search-hint" style="margin-top:8px; font-size:0.75rem; color:var(--m3-on-surface-muted);">الخوارزمية: بحث مفهرس على الهوية/الاسم/الهاتف عبر <code>ILIKE</code> مع ترقيم صفحي على الخادم (page/limit) — لا يتم تحميل كل الملايين في المتصفح. اكتب حرفين للبحث أو اتركه فارغاً لعرض الأحدث.</div>
+            <div id="longitudinal-search-hint" style="margin-top:8px; font-size:0.75rem; color:var(--m3-on-surface-muted);">اكتب حرفين للبحث أو اتركه فارغاً لعرض الأحدث — البحث مفهرس على الخادم ولا يُحمّل كل السجلات.</div>
           </div>
         </div>
 
@@ -1763,8 +1761,8 @@
 
       <!-- TAB: PERSONAL DATA EDITING (PATIENT ONLY - Authorized Fields) -->
       <section class="tab-pane" id="pane-profile">
-        <div class="banner-info" style="border-right:4px solid var(--m3-primary); background:var(--m3-surface-container);">
-          <div class="banner-icon" style="background:var(--m3-surface-container-high); color:var(--m3-on-surface-variant);">
+        <div class="banner-info banner-primary">
+          <div class="banner-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-5"/><path d="M12 12l8-8a2.18 2.18 0 0 1 3 3l-8 8a2 2 0 0 1-1 .59l-3 1 1-3a2 2 0 0 1 .59-1z"/></svg>
           </div>
           <div class="banner-text">
@@ -1994,10 +1992,7 @@
           </div>
           <div class="banner-text">
             <h4 id="hosp-migration-title">نظام إدارة المستشفى — بوابة الترحيل والربط الوطني</h4>
-            <p id="hosp-migration-subtitle">مرحباً بك في نظامك الخاص. ارفع البيانات القديمة من نظامك السابق (CSV / HL7 / FHIR) وسيقوم محرك التطبيع الوطني بتحويلها وربطها تلقائياً مع السجل الموحد مع الحفاظ على مصدرها الأصلي.</p>
-          </div>
-          <div style="margin-right:auto; display:flex; gap:8px; align-items:center;">
-            <span class="badge badge-info">HMS Gateway</span>
+            <p id="hosp-migration-subtitle">ارفع بيانات نظامك السابق (CSV / HL7 / FHIR) ليحوّلها محرك التطبيع ويربطها بالسجل الموحد مع حفظ مصدرها.</p>
           </div>
         </div>
 
@@ -2020,7 +2015,6 @@
           </div>
           <div class="card-body" style="padding:14px 16px; background:var(--m3-surface-container-low); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
             <span style="font-size:0.82rem; color:var(--m3-on-surface-variant);">معرف المنشأة: <code id="hosp-hms-id">—</code> • نوع: <strong id="hosp-hms-type">—</strong></span>
-            <span style="font-size:0.78rem; color:var(--m3-on-surface-muted);">بوابة مخصصة لإدارة وترحيل بيانات منشأتك فقط • معزولة تنظيمياً وفق <code>NCA</code> و <code>PDPL</code></span>
           </div>
         </div>
         <div id="hosp-quality-report" class="card" style="padding:10px 14px; background:var(--m3-surface-container-high); border:1px solid var(--m3-outline-variant); margin-bottom:12px; font-size:0.82rem;"></div>
@@ -2082,7 +2076,7 @@
 
             <div style="margin-top:16px; padding:10px 12px; background:var(--m3-surface-container-low); border:1px solid var(--m3-outline-variant); border-radius:var(--radius-md); display:flex; gap:10px; align-items:flex-start;">
               <svg style="width:18px;height:18px; color:var(--m3-secondary); flex-shrink:0; margin-top:2px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-              <p style="font-size:0.78rem; color:var(--m3-on-surface-variant); line-height:1.5;">بعد الرفع، يتحول ملفك من صيغة نظامك القديم إلى السجل الوطني الموحد. يمكنك متابعة حالة التطبيع في جدول "سجل التراكمات" أدناه — كل سجل يمر بـ `استيعاب → تطبيع → ربط MPI → توثيق`.</p>
+              <p style="font-size:0.78rem; color:var(--m3-on-surface-variant); line-height:1.5;">بعد الرفع، يتحول ملفك إلى السجل الوطني الموحد. تابع حالة التطبيع في سجل عمليات الترحيل أدناه — كل سجل يمر بـ `استيعاب → تطبيع → ربط MPI → توثيق`.</p>
             </div>
           </div>
         </div>
@@ -2091,7 +2085,7 @@
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;" class="mb-6">
           <div class="card">
             <div class="card-header">
-              <div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><h3>سجل عمليات الترحيل (خاص بمنشأتك)</h3></div>
+              <div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><h3>سجل عمليات الترحيل</h3></div>
               <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-hosp-imports"><svg class="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg><span>تحديث</span></button>
             </div>
             <div class="card-body p-0">
@@ -2104,7 +2098,7 @@
 
           <div class="card">
             <div class="card-header">
-              <div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><h3>مرضى منشأتك المرتبطون — واجهة عرض مرضى المنشأة</h3><span class="badge badge-success" id="hosp-patients-count">—</span></div>
+              <div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><h3>مرضى منشأتك المرتبطون</h3><span class="badge badge-success" id="hosp-patients-count">—</span></div>
               <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;"><input id="hosp-patients-search" class="form-input" placeholder="ابحث بالاسم/الهوية" style="flex:1; min-width:140px; padding:6px 10px; font-size:0.82rem;"><button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-hosp-patients"><svg class="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg><span>تحديث</span></button></div>
             </div>
             <div class="card-body p-0">
@@ -2267,7 +2261,7 @@
           </div>
           <div class="banner-text">
             <h4>السجل العام الموحد لجميع المرضى — نظرة وطنية شاملة (منفصلة عن سجل منشأتي)</h4>
-            <p>هذا السجل يعرض <strong>جميع المرضى الموحدين في قاعدة البيانات الوطنية</strong> (بعد تطبيع `MPI` وربط الهويات). هو <strong>منفصل عرضاً</strong> عن جدول "مرضى منشأتي" لكنه <strong>متكامل بياناتياً</strong>: نفس قاعدة البيانات، نفس المعايير (`SNOMED/ICD/LOINC/SFDA`)، ونفس سلسلة التدقيق. مستشفاك يرى هنا الحالات المحولة أو التاريخ الوطني للمريض عند الحاجة للرعاية المشتركة — قراءة فقط، بلا تعديل.</p>
+            <p>هذا السجل يعرض <strong>جميع المرضى الموحدين في قاعدة البيانات الوطنية</strong> (بعد تطبيع `MPI` وربط الهويات). هو <strong>منفصل عرضاً</strong> عن جدول "مرضى منشأتي" لكنه <strong>متكامل بياناتياً</strong>: نفس قاعدة البيانات، نفس المعايير (`SNOMED/ICD/LOINC/SFDA`)، ونفس سلسلة التدقيق.</p>
           </div>
           <span class="badge badge-purple">قراءة فقط • وطني</span>
         </div>
@@ -2275,7 +2269,7 @@
         <div class="card mb-6" style="background:var(--m3-surface-container-low);">
           <div class="card-body" style="display:flex; gap:10px; align-items:flex-start;">
             <svg style="width:18px;height:18px; color:var(--m3-on-surface-variant); flex-shrink:0; margin-top:2px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-            <p style="font-size:0.82rem; color:var(--m3-on-surface-variant); line-height:1.6; margin:0;"><strong>التكامل محفوظ:</strong> مرضى منشأتك المرحّلون في التبويب السابق هم <strong>جزء</strong> من هذا السجل العام. أي مريض ترحله يظهر تلقائياً هنا بعد تطبيعه وربطه في `MPI`. العزل هنا <strong>عرضي فقط</strong> لتسهيل التركيز: جدول منشأتك للمتابعة اليومية، والجدول العام للاستعلام الوطني عند التحويل أو الطوارئ. كل التحديثات تُسجل في `Provenance` و `Audit Chain`.</p>
+              <p style="font-size:0.82rem; color:var(--m3-on-surface-variant); line-height:1.6; margin:0;"><strong>التكامل محفوظ:</strong> مرضى منشأتك المرحّلون جزء من هذا السجل ويظهرون هنا بعد التطبيع والربط. العزل عرضي فقط: جدول منشأتك للمتابعة اليومية، والعام للاستعلام الوطني. كل التحديثات موثقة في `Provenance` و `Audit Chain`.</p>
           </div>
         </div>
 
@@ -2321,8 +2315,8 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M18 6a9 9 0 0 1-9 9H6"/><polyline points="15 3 18 6 15 9"/></svg>
           </div>
           <div class="banner-text">
-            <h4>استوديو قواعد الربط وتصنيف المصطلحات (Mapping & Terminology Studio)</h4>
-            <p>استعراض قواعد تحويل الحقول (Field Transformation) والربط بين أنظمة الترميز الطبية (SFDA SDC, SNOMED CT, ICD-10-AM, SBS, LOINC).</p>
+            <h4>استوديو قواعد الربط وتصنيف المصطلحات</h4>
+            <p>استعراض قواعد تحويل الحقول والربط بين أنظمة الترميز (SFDA SDC, SNOMED CT, ICD-10-AM, SBS, LOINC).</p>
           </div>
         </div>
 
@@ -2330,7 +2324,7 @@
           <div class="card-header">
             <div class="card-header-title">
               <svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
-              <h3>مصفوفة تحويل المصطلحات الطبية (Terminology Concept Crosswalk)</h3>
+              <h3>مصفوفة تحويل المصطلحات الطبية</h3>
             </div>
           </div>
           <div class="card-body p-0">
@@ -2356,14 +2350,14 @@
           <div class="card-header">
             <div class="card-header-title">
               <svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-              <h3>قواعد ربط حقول المستشفيات (Mapping Configurations)</h3>
+              <h3>قواعد ربط حقول المستشفيات</h3>
             </div>
           </div>
           <div class="card-body" id="mapping-configs-list">
             <!-- Populated by app.js -->
           </div>
           <div class="card" style="margin-top:16px; background:var(--m3-surface-container-low);">
-            <div class="card-header"><h3>اختبار تحويل (Test Mapping)</h3></div>
+            <div class="card-header"><h3>اختبار تحويل</h3></div>
             <div class="card-body" style="display:grid; gap:10px;">
               <textarea id="mapping-test-input" class="form-input" rows="4" placeholder='{"sourceSystemId":"hospital-a","sourceEntityType":"patient_reg","payload":{"p_id":"TEST-1","nid":"1088445566","name_ar":"أحمد"}}'></textarea>
               <div style="display:flex; gap:8px;"><button class="btn btn-primary btn-sm" id="btn-test-mapping">تشغيل اختبار التحويل</button><button class="btn btn-secondary btn-sm" onclick="document.getElementById('mapping-test-output').textContent=''">مسح</button></div>
@@ -2380,8 +2374,8 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
           </div>
           <div class="banner-text">
-            <h4>سلسلة النسب وتتبع مصدر البيانات (Data Lineage & Provenance)</h4>
-            <p>تتيح المنصة إمكانية تتبع كل تشخيص، نتيجة فحص، وصفة دواء، أو مطالبة مالية إلى سجل المصدر الخام بدقة مع توثيق إصدار المحول وقواعد الربط ونقاط جودة البيانات.</p>
+            <h4>سلسلة النسب وتتبع مصدر البيانات</h4>
+            <p>تتبع كل تشخيص أو فحص أو وصفة أو مطالبة إلى سجل المصدر الخام، مع إصدار المحول وقواعد الربط ودرجة الجودة.</p>
           </div>
         </div>
 
@@ -2549,8 +2543,7 @@
 
         <div class="card">
           <div class="card-header">
-            <h3>سجل كتل التدقيق المشفرة الحية (Live Cryptographic Audit Blocks)</h3>
-            <span class="badge badge-info">SHA-256 Linked Blocks</span>
+            <h3>سجل كتل التدقيق المشفرة</h3>
           </div>
           <div class="card-body">
             <div class="table-card">
@@ -2591,7 +2584,7 @@
         <div class="grid-2">
           <div class="card">
             <div class="card-header">
-              <h3>ملخص مخرجات التصدير الضخم (Export Packages)</h3>
+              <h3>ملخص مخرجات التصدير</h3>
             </div>
             <div class="card-body">
               <div id="bulk-export-summary" style="background: var(--m3-surface-container-low); border-radius:var(--radius-md); font-family: monospace; padding:12px;">
@@ -2602,7 +2595,7 @@
 
           <div class="card">
             <div class="card-header">
-              <h3>معاينة تدفق البيانات NDJSON (Live Stream Preview)</h3>
+              <h3>معاينة تدفق البيانات NDJSON</h3>
               <div style="display:flex; gap:6px;"><button class="btn btn-sm btn-secondary" id="btn-copy-bulk-ndjson">نسخ NDJSON</button><button class="btn btn-sm btn-primary" id="btn-download-bulk-ndjson" style="display:none;">تنزيل NDJSON</button></div>
             </div>
             <div class="card-body">
