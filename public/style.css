@@ -2390,6 +2390,12 @@ body.light-theme .toast,
 #pane-security .metric-card:has(> .metric-value) { flex-direction: column; align-items: flex-start; gap: 2px; }
 /* Orphaned action rows (ex hero headers): quiet action bar */
 .actions-group { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 20px; }
+/* Prescriptions & immunizations toolbar (all viewports) */
+.rx-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 18px; background: var(--m3-surface-container-high); }
+.rx-search-wrap { display: flex; align-items: center; gap: 8px; flex: 1 1 260px; min-width: 0; background: var(--m3-surface-container-low); padding: 6px 12px; border-radius: var(--radius-sm); }
+.rx-search-wrap svg { width: 16px; height: 16px; color: var(--m3-on-surface-muted); flex-shrink: 0; }
+.rx-search-wrap .form-input { flex: 1; min-width: 0; background: transparent; padding: 6px 0; }
+.rx-scroll-hint { display: none; font-size: 0.72rem; color: var(--m3-on-surface-muted); }
 
 /* =========================================
    RESPONSIVE — Mobile & Tablet (RTL-first)
@@ -2530,6 +2536,9 @@ pre, code, .mono-code, .json-display {
   .patient-combobox { width: 100%; max-width: 100%; flex: 1 1 240px; }
   /* Drawer keeps navigation + version; standards recede on touch layouts */
   .standards-badges-grid { display: none; }
+  /* Wide clinical tables still scroll on tablets — hint it */
+  .rx-scroll-hint { display: inline; }
+  .rx-toolbar { padding: 10px 14px; }
 }
 
 /* ---------- Tablet portrait (≤768px) ---------- */
@@ -2670,6 +2679,24 @@ pre, code, .mono-code, .json-display {
   }
   .report-preview-modal { padding: 8px; }
   .report-preview-sheet { width: 100% !important; max-width: 100% !important; }
+  /* Prescriptions & immunizations become stacked cards — no horizontal scroll */
+  .rx-toolbar { flex-direction: column; align-items: stretch; }
+  .rx-search-wrap { flex: 1 1 100%; }
+  .rx-scroll-hint { display: none; }
+  .rx-card-body { overflow: visible; padding: 10px !important; background: transparent; }
+  .rx-table { min-width: 0 !important; width: 100%; }
+  .rx-table thead { display: none; }
+  .rx-table, .rx-table tbody { display: block; width: 100%; }
+  .rx-table tr { display: block; width: 100%; background: var(--m3-surface-container); border-radius: var(--radius-md); padding: 6px 14px; margin-bottom: 10px; }
+  .rx-table tr[style*="background:var(--m3-primary-container)"] > td { background: transparent; }
+  .rx-table tr[style*="background:var(--m3-tertiary-container)"] > td { background: transparent; }
+  .rx-table td { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; width: 100%; padding: 8px 0; font-size: 0.82rem; background: transparent !important; text-align: left; border-bottom: none !important; }
+  .rx-table td::before { content: attr(data-label); font-size: 0.7rem; font-weight: 700; color: var(--m3-on-surface-muted); flex-shrink: 0; max-width: 40%; text-align: right; padding-top: 2px; }
+  .rx-table td > * { min-width: 0; }
+  .rx-card-body .rx-table tbody td:first-child { position: static; box-shadow: none; background: var(--m3-surface-container-low) !important; margin: 2px -6px 4px; padding: 8px 10px; border-radius: var(--radius-sm); align-items: center; }
+  .rx-table td code { overflow-wrap: anywhere; }
+  .rx-table td[colspan] { display: block; text-align: center; justify-content: center; }
+  .rx-table td[colspan]::before { content: none; }
 }
 
 /* ---------- Small phones (≤480px) ---------- */

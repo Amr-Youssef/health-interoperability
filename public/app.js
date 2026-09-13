@@ -2692,37 +2692,115 @@ async function loadNphiesTab() {
   }
 }
 
-// 5. MEDICATIONS & IMMUNIZATIONS TAB
+// 5. MEDICATIONS & IMMUNIZATIONS TAB (mobile-first: searchable + card labels)
+let cachedRxMeds = [];
+let cachedRxVax = [];
+
+function renderRxMeds(list) {
+  const medTbody = document.getElementById('medications-tbody');
+  const countEl = document.getElementById('medications-count');
+  if (countEl) countEl.textContent = String(list.length) + ' وصفة';
+  if (!medTbody) return;
+  if (!list.length) {
+    medTbody.innerHTML = '<tr><td colspan="8" class="text-center py-4">لا توجد وصفات مطابقة للبحث</td></tr>';
+    return;
+  }
+  medTbody.innerHTML = list.map((m) => {
+    const linkedPatient = cachedPatients.find(p => p.id === m.patientId);
+    const patientName = linkedPatient ? (linkedPatient.nameAr || linkedPatient.name) : 'مريض مسجل';
+    const isCurrentPatient = m.patientId === currentPatientId;
+    const rowStyle = isCurrentPatient ? 'background:var(--m3-primary-container);' : '';
+    return `
+        <tr style="${rowStyle}">
+          <td data-label="المريض"><strong>${patientName}</strong>${isCurrentPatient ? ' <span class="badge badge-success" style="font-size:0.65rem;">النشط</span>' : ''}</td>
+          <td data-label="الدواء بالمصدر"><strong>${m.medication?.code?.sourceCode}</strong><br><small style="color:var(--m3-on-surface-muted);">${m.medication?.code?.sourceDisplay || ''}</small></td>
+          <td data-label="المستشفى المصدر"><span class="badge badge-info">${m.provenance?.sourceSystemId}</span></td>
+          <td data-label="كود الدواء السعودي"><strong style="color:var(--m3-on-secondary-container);"><code>${m.medication?.code?.sfdaCode || 'SDC-0628500100101'}</code></strong><br><small style="color:var(--m3-on-surface-variant);">${m.medication?.code?.sfdaDisplay || 'Glucophage 500mg'}</small></td>
+          <td data-label="التصنيف العلمي"><span class="badge badge-purple">${m.medication?.code?.atcCode || 'A10BA02'}</span><br><small style="color:var(--m3-on-surface-muted);">RxNorm: ${m.medication?.code?.rxnormCode || '860975'}</small></td>
+          <td data-label="الجرعة والاستخدام">${m.dosageInstruction?.[0]?.textAr || m.dosageInstruction?.[0]?.text || '1 tab PO BID'}</td>
+          <td data-label="الكمية والتكرار"><strong>${m.dispenseRequest?.quantity?.value || 60} ${m.dispenseRequest?.quantity?.unit || 'TAB'}</strong> (${m.dispenseRequest?.numberOfRepeatsAllowed || 2} مرات تكرار)</td>
+          <td data-label="تاريخ الوصفة"><code>${new Date(m.authoredOn).toLocaleDateString('ar-SA')}</code></td>
+        </tr>`;
+  }).join('');
+}
+
+function renderRxVax(list) {
+  const vaxTbody = document.getElementById('immunizations-tbody');
+  const countEl = document.getElementById('immunizations-count');
+  if (countEl) countEl.textContent = String(list.length) + ' تطعيم';
+  if (!vaxTbody) return;
+  if (!list.length) {
+    vaxTbody.innerHTML = '<tr><td colspan="9" class="text-center py-4">لا توجد تطعيمات مطابقة للبحث</td></tr>';
+    return;
+  }
+  vaxTbody.innerHTML = list.map((v) => {
+    const linkedPatient = cachedPatients.find(p => p.id === v.patientId);
+    const patientName = linkedPatient ? (linkedPatient.nameAr || linkedPatient.name) : 'مريض مسجل';
+    const isCurrentPatient = v.patientId === currentPatientId;
+    const rowStyle = isCurrentPatient ? 'background:var(--m3-primary-container);' : '';
+    return `
+        <tr style="${rowStyle}">
+          <td data-label="المريض"><strong>${patientName}</strong>${isCurrentPatient ? ' <span class="badge badge-success" style="font-size:0.65rem;">النشط</span>' : ''}</td>
+          <td data-label="اللقاح بالمصدر"><strong>${v.vaccineCode?.sourceCode}</strong><br><small style="color:var(--m3-on-surface-muted);">${v.vaccineCode?.sourceDisplay || ''}</small></td>
+          <td data-label="المستشفى المصدر"><span class="badge badge-info">${v.provenance?.sourceSystemId}</span></td>
+          <td data-label="كود وزارة الصحة"><strong style="color:var(--m3-on-primary-container);"><code>${v.vaccineCode?.sourceCode?.includes('SA-VAX') ? v.vaccineCode?.sourceCode : 'SA-VAX-FLU-01'}</code></strong></td>
+          <td data-label="المعيار الدولي"><span class="badge badge-purple">CVX ${v.vaccineCode?.cvxCode || '158'}</span></td>
+          <td data-label="رقم التشغيلة"><code>${v.lotNumber}</code></td>
+          <td data-label="تاريخ الانتهاء"><code>${v.expirationDate}</code></td>
+          <td data-label="تاريخ الإعطاء"><code>${new Date(v.occurrenceDateTime).toLocaleDateString('ar-SA')}</code></td>
+          <td data-label="موقع الحقن">${v.site || 'العضلة الدالية اليسرى'}</td>
+        </tr>`;
+  }).join('');
+}
+
+function filterRxMeds() {
+  const q = (document.getElementById('medications-search')?.value || '').trim().toLowerCase();
+  const clearBtn = document.getElementById('medications-search-clear');
+  if (clearBtn) clearBtn.style.display = q ? 'block' : 'none';
+  if (!q) { renderRxMeds(cachedRxMeds); return; }
+  renderRxMeds(cachedRxMeds.filter(m => {
+    const hay = [m.medication?.code?.sourceCode, m.medication?.code?.sourceDisplay, m.medication?.code?.sfdaCode, m.medication?.code?.sfdaDisplay, m.medication?.code?.atcCode, m.medication?.code?.rxnormCode, m.provenance?.sourceSystemId, m.dosageInstruction?.[0]?.textAr, m.dosageInstruction?.[0]?.text].filter(Boolean).join(' ').toLowerCase();
+    return hay.includes(q);
+  }));
+}
+
+function filterRxVax() {
+  const q = (document.getElementById('immunizations-search')?.value || '').trim().toLowerCase();
+  const clearBtn = document.getElementById('immunizations-search-clear');
+  if (clearBtn) clearBtn.style.display = q ? 'block' : 'none';
+  if (!q) { renderRxVax(cachedRxVax); return; }
+  renderRxVax(cachedRxVax.filter(v => {
+    const hay = [v.vaccineCode?.sourceCode, v.vaccineCode?.sourceDisplay, v.vaccineCode?.cvxCode, v.lotNumber, v.provenance?.sourceSystemId, v.site].filter(Boolean).join(' ').toLowerCase();
+    return hay.includes(q);
+  }));
+}
+
+function initRxSearch() {
+  const medInput = document.getElementById('medications-search');
+  const vaxInput = document.getElementById('immunizations-search');
+  if (medInput && !medInput.dataset.bound) {
+    medInput.dataset.bound = '1';
+    medInput.addEventListener('input', filterRxMeds);
+    document.getElementById('medications-search-clear')?.addEventListener('click', () => { medInput.value = ''; filterRxMeds(); medInput.focus(); });
+  }
+  if (vaxInput && !vaxInput.dataset.bound) {
+    vaxInput.dataset.bound = '1';
+    vaxInput.addEventListener('input', filterRxVax);
+    document.getElementById('immunizations-search-clear')?.addEventListener('click', () => { vaxInput.value = ''; filterRxVax(); vaxInput.focus(); });
+  }
+}
+
 async function loadMedicationsTab() {
   try {
+    initRxSearch();
     const resMeds = await fetch('/api/medications');
     let meds = await resMeds.json();
     if (!Array.isArray(meds)) meds = [];
     if (appAuth.currentRole === 'PATIENT' && currentPatientId) {
       meds = meds.filter(m => m.patientId === currentPatientId);
     }
-    const medTbody = document.getElementById('medications-tbody');
-
-    if (medTbody && meds) {
-      medTbody.innerHTML = meds.map((m) => {
-        const linkedPatient = cachedPatients.find(p => p.id === m.patientId);
-        const patientName = linkedPatient ? (linkedPatient.nameAr || linkedPatient.name) : 'مريض مسجل';
-        const isCurrentPatient = m.patientId === currentPatientId;
-        const rowStyle = isCurrentPatient ? 'background:var(--m3-primary-container);' : '';
-
-        return `
-        <tr style="${rowStyle}">
-          <td><strong>${patientName}</strong>${isCurrentPatient ? ' <span class="badge badge-success" style="font-size:0.65rem;">النشط</span>' : ''}</td>
-          <td><strong>${m.medication?.code?.sourceCode}</strong><br><small style="color:var(--m3-on-surface-muted);">${m.medication?.code?.sourceDisplay || ''}</small></td>
-          <td><span class="badge badge-info">${m.provenance?.sourceSystemId}</span></td>
-          <td><strong style="color:var(--m3-on-secondary-container);"><code>${m.medication?.code?.sfdaCode || 'SDC-0628500100101'}</code></strong><br><small style="color:var(--m3-on-surface-variant);">${m.medication?.code?.sfdaDisplay || 'Glucophage 500mg'}</small></td>
-          <td><span class="badge badge-purple">${m.medication?.code?.atcCode || 'A10BA02'}</span><br><small style="color:var(--m3-on-surface-muted);">RxNorm: ${m.medication?.code?.rxnormCode || '860975'}</small></td>
-          <td>${m.dosageInstruction?.[0]?.textAr || m.dosageInstruction?.[0]?.text || '1 tab PO BID'}</td>
-          <td><strong>${m.dispenseRequest?.quantity?.value || 60} ${m.dispenseRequest?.quantity?.unit || 'TAB'}</strong> (${m.dispenseRequest?.numberOfRepeatsAllowed || 2} مرات تكرار)</td>
-          <td><code>${new Date(m.authoredOn).toLocaleDateString('ar-SA')}</code></td>
-        </tr>`;
-      }).join('') || '<tr><td colspan="8" class="text-center py-4">لا توجد وصفات طبية خاصة بك مسجلة حالياً</td></tr>';
-    }
+    cachedRxMeds = meds;
+    filterRxMeds();
 
     const resVax = await fetch('/api/immunizations');
     let vaxList = await resVax.json();
@@ -2730,29 +2808,8 @@ async function loadMedicationsTab() {
     if (appAuth.currentRole === 'PATIENT' && currentPatientId) {
       vaxList = vaxList.filter(v => v.patientId === currentPatientId);
     }
-    const vaxTbody = document.getElementById('immunizations-tbody');
-
-    if (vaxTbody && vaxList) {
-      vaxTbody.innerHTML = vaxList.map((v) => {
-        const linkedPatient = cachedPatients.find(p => p.id === v.patientId);
-        const patientName = linkedPatient ? (linkedPatient.nameAr || linkedPatient.name) : 'مريض مسجل';
-        const isCurrentPatient = v.patientId === currentPatientId;
-        const rowStyle = isCurrentPatient ? 'background:var(--m3-primary-container);' : '';
-
-        return `
-        <tr style="${rowStyle}">
-          <td><strong>${patientName}</strong>${isCurrentPatient ? ' <span class="badge badge-success" style="font-size:0.65rem;">النشط</span>' : ''}</td>
-          <td><strong>${v.vaccineCode?.sourceCode}</strong><br><small style="color:var(--m3-on-surface-muted);">${v.vaccineCode?.sourceDisplay || ''}</small></td>
-          <td><span class="badge badge-info">${v.provenance?.sourceSystemId}</span></td>
-          <td><strong style="color:var(--m3-on-primary-container);"><code>${v.vaccineCode?.sourceCode?.includes('SA-VAX') ? v.vaccineCode?.sourceCode : 'SA-VAX-FLU-01'}</code></strong></td>
-          <td><span class="badge badge-purple">CVX ${v.vaccineCode?.cvxCode || '158'}</span></td>
-          <td><code>${v.lotNumber}</code></td>
-          <td><code>${v.expirationDate}</code></td>
-          <td><code>${new Date(v.occurrenceDateTime).toLocaleDateString('ar-SA')}</code></td>
-          <td>${v.site || 'العضلة الدالية اليسرى'}</td>
-        </tr>`;
-      }).join('') || '<tr><td colspan="9" class="text-center py-4">لا توجد تطعيمات خاصة بك مسجلة حالياً</td></tr>';
-    }
+    cachedRxVax = vaxList;
+    filterRxVax();
   } catch (err) {
     console.error('Failed to load medications and immunizations', err);
   }

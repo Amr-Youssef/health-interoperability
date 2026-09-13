@@ -1482,9 +1482,18 @@
               <svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg>
               <h3>الوصفات الطبية المعيارية</h3>
             </div>
+            <span class="badge badge-info" id="medications-count">—</span>
           </div>
-          <div class="card-body p-0">
-            <table class="data-table">
+          <div class="rx-toolbar">
+            <div class="rx-search-wrap">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="search" id="medications-search" class="form-input" placeholder="ابحث باسم الدواء أو الكود (SDC / ATC)..." autocomplete="off">
+              <button type="button" id="medications-search-clear" class="combobox-clear" style="display:none;" title="مسح البحث">✕</button>
+            </div>
+            <span class="rx-scroll-hint">اسحب الجدول أفقياً لعرض كل الأعمدة</span>
+          </div>
+          <div class="card-body p-0 rx-card-body">
+            <table class="data-table rx-table" id="medications-table">
               <thead>
                 <tr>
                   <th>المريض</th>
@@ -1511,9 +1520,18 @@
               <svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 2 4 4-4 4"/><path d="m17 7 3-3"/><path d="M19 9 8.7 19.3c-1 1-2.5 1-3.4 0l-.6-.6c-1-1-1-2.5 0-3.4L15 5"/><path d="m9 11 4 4"/><path d="m5 19-3 3"/></svg>
               <h3>سجل التطعيمات واللقاحات الوطنية</h3>
             </div>
+            <span class="badge badge-purple" id="immunizations-count">—</span>
           </div>
-          <div class="card-body p-0">
-            <table class="data-table">
+          <div class="rx-toolbar">
+            <div class="rx-search-wrap">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="search" id="immunizations-search" class="form-input" placeholder="ابحث باسم اللقاح أو الكود (MOH / CVX)..." autocomplete="off">
+              <button type="button" id="immunizations-search-clear" class="combobox-clear" style="display:none;" title="مسح البحث">✕</button>
+            </div>
+            <span class="rx-scroll-hint">اسحب الجدول أفقياً لعرض كل الأعمدة</span>
+          </div>
+          <div class="card-body p-0 rx-card-body">
+            <table class="data-table rx-table" id="immunizations-table">
               <thead>
                 <tr>
                   <th>المريض</th>
