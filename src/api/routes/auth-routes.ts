@@ -666,7 +666,7 @@ async function ensureDefaultAccounts() {
 });
 
 // Transient Prisma connection codes (cold start / pool wakeup) — safe to retry once.
-const TRANSIENT_PRISMA_CODES = new Set(['P1001', 'P1002', 'P1008', 'P1010', 'P1017']);
+const TRANSIENT_PRISMA_CODES = new Set(['P1001', 'P1002', 'P1008', 'P1010', 'P1017', 'P2002']);
 async function withDbRetry<T>(fn: () => Promise<T>): Promise<T> {
   try {
     return await fn();
