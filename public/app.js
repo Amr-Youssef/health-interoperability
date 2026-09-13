@@ -1599,7 +1599,7 @@ function initActions() {
         const el = data.eligibility;
         container.innerHTML = `
           <div style="background:var(--m3-surface-container-low); border:1px solid var(--m3-outline-variant); border-right:3px solid var(--m3-primary); border-radius:var(--radius-sm); padding:18px 22px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
               <div style="display:flex; align-items:center; gap:10px;">
                 <div style="width:36px; height:36px; border-radius:var(--radius-xs); background:var(--m3-primary-container); border:1px solid var(--m3-primary); display:flex; align-items:center; justify-content:center; color:var(--m3-on-primary-container);">
                   ${getSvgIcon('shieldCheck', 'style="width:18px; height:18px;"')}
@@ -2640,6 +2640,8 @@ async function loadNphiesTab() {
 
     // Coverages Table
     const covTbody = document.getElementById('nphies-coverages-tbody');
+    const covCount = document.getElementById('nphies-coverages-count');
+    if (covCount) covCount.textContent = String(data.coverages?.length || 0) + ' وثيقة';
     if (covTbody && data.coverages) {
       covTbody.innerHTML = data.coverages.map((c) => {
         const linkedPatient = cachedPatients.find(p => p.id === c.patientId);
@@ -2648,20 +2650,22 @@ async function loadNphiesTab() {
         const rowStyle = isCurrent ? 'background:var(--m3-primary-container);' : '';
         return `
         <tr style="${rowStyle}">
-          <td><code>${c.policyNumber}</code></td>
-          <td><strong>${patientName}</strong>${isCurrent ? ' <span class="badge badge-success" style="font-size:0.65rem;">النشط</span>' : ''}</td>
-          <td>${c.payerNameAr || c.payerName}</td>
-          <td><code>${c.memberId}</code></td>
-          <td><span class="badge badge-info">${c.networkClass}</span></td>
-          <td><strong style="color:var(--m3-on-primary-container); font-size:0.95rem;">${c.copayPercentage}%</strong></td>
-          <td><strong>${c.copayMaxCapSAR} ر.س</strong></td>
-          <td><span class="badge badge-success">نشطة</span></td>
+          <td data-label="رقم البوليصة"><code>${c.policyNumber}</code></td>
+          <td data-label="المريض"><strong>${patientName}</strong>${isCurrent ? ' <span class="badge badge-success" style="font-size:0.65rem;">النشط</span>' : ''}</td>
+          <td data-label="شركة التأمين">${c.payerNameAr || c.payerName}</td>
+          <td data-label="رقم العضوية"><code>${c.memberId}</code></td>
+          <td data-label="فئة الشبكة"><span class="badge badge-info">${c.networkClass}</span></td>
+          <td data-label="نسبة التحمل"><strong style="color:var(--m3-on-primary-container); font-size:0.95rem;">${c.copayPercentage}%</strong></td>
+          <td data-label="الحد الأقصى"><strong>${c.copayMaxCapSAR} ر.س</strong></td>
+          <td data-label="الحالة"><span class="badge badge-success">نشطة</span></td>
         </tr>`;
       }).join('') || '<tr><td colspan="8" class="text-center py-4">لا توجد وثائق تأمين</td></tr>';
     }
 
     // Claims Table — with SBS breakdown per best practices
     const claimsTbody = document.getElementById('nphies-claims-tbody');
+    const claimsCount = document.getElementById('nphies-claims-count');
+    if (claimsCount) claimsCount.textContent = String(data.claims?.length || 0) + ' مطالبة';
     if (claimsTbody && data.claims) {
       claimsTbody.innerHTML = data.claims.map((clm) => {
         const resp = data.claimResponses?.find((r) => r.claimId === clm.internalId);
@@ -2675,15 +2679,15 @@ async function loadNphiesTab() {
 
         return `
           <tr style="${rowStyle}">
-            <td><code>${clm.internalId.substring(0, 8)}...</code></td>
-            <td><strong>${patientName}</strong>${isCurrent ? ' <span class="badge badge-success" style="font-size:0.65rem;">النشط</span>' : ''}</td>
-            <td><span class="badge badge-info">${clm.provenance?.sourceSystemId}</span></td>
-            <td><code>${sbsCode}</code><br><small style="color:var(--m3-on-surface-muted);">${clm.items?.[0]?.serviceName || 'Consultation'}</small></td>
-            <td><strong>${clm.totalGrossSAR} ر.س</strong></td>
-            <td><span style="color:var(--m3-on-warning-container); font-weight:700;">${resp ? resp.totalPatientCopaySAR : clm.totalPatientCopaySAR} ر.س</span></td>
-            <td><strong style="color:var(--m3-on-primary-container); font-weight:700;">${resp ? resp.totalPayerPayableSAR : clm.totalInsurerClaimedSAR} ر.س</strong></td>
-            <td><span class="badge badge-success">${resp ? resp.disposition : 'معتمدة'}</span></td>
-            <td><code>${txId}</code></td>
+            <td data-label="رقم المطالبة"><code>${clm.internalId.substring(0, 8)}...</code></td>
+            <td data-label="المريض"><strong>${patientName}</strong>${isCurrent ? ' <span class="badge badge-success" style="font-size:0.65rem;">النشط</span>' : ''}</td>
+            <td data-label="المستشفى المصدر"><span class="badge badge-info">${clm.provenance?.sourceSystemId}</span></td>
+            <td data-label="رمز الخدمة"><code>${sbsCode}</code><br><small style="color:var(--m3-on-surface-muted);">${clm.items?.[0]?.serviceName || 'Consultation'}</small></td>
+            <td data-label="الإجمالي"><strong>${clm.totalGrossSAR} ر.س</strong></td>
+            <td data-label="تحمل المريض"><span style="color:var(--m3-on-warning-container); font-weight:700;">${resp ? resp.totalPatientCopaySAR : clm.totalPatientCopaySAR} ر.س</span></td>
+            <td data-label="مطالبة التأمين"><strong style="color:var(--m3-on-primary-container); font-weight:700;">${resp ? resp.totalPayerPayableSAR : clm.totalInsurerClaimedSAR} ر.س</strong></td>
+            <td data-label="قرار التسوية"><span class="badge badge-success">${resp ? resp.disposition : 'معتمدة'}</span></td>
+            <td data-label="رقم المعاملة"><code>${txId}</code></td>
           </tr>
         `;
       }).join('') || '<tr><td colspan="9" class="text-center py-4">لا توجد مطالبات</td></tr>';
