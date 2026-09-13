@@ -4126,7 +4126,7 @@ function renderLongitudinalContent(data, patientId) {
               <span class="metric-sub">${idLabel}: <code>${nid}</code> | الميلاد: <code>${p.birthDate || '—'}</code> | الجنس: <strong>${p.gender === 'male' ? 'ذكر' : p.gender === 'female' ? 'أنثى' : 'غير محدد'}</strong> | الهاتف: <code>${phone}</code> | المدينة: <strong>${address}</strong></span>
             </div>
           </div>
-          <div style="display:flex; gap:8px; align-items:center;">
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
             <button type="button" class="btn btn-secondary btn-sm" id="btn-print-patient-summary" onclick="openMedicalReportPreview('${patientId}')">
               ${getSvgIcon('printer', 'btn-svg-icon')}
               <span>معاينة وطباعة التقرير المعتمد (PDF)</span>
@@ -4176,8 +4176,8 @@ function renderLongitudinalContent(data, patientId) {
             <h3>الوصفات والأدوية الطبية المعتمدة (SFDA ePrescriptions)</h3>
           </div>
         </div>
-        <div class="card-body p-0">
-          <table class="data-table">
+        <div class="card-body p-0 rx-card-body">
+          <table class="data-table rx-table">
             <thead>
               <tr>
                 <th>الدواء بالمصدر</th>
@@ -4191,12 +4191,12 @@ function renderLongitudinalContent(data, patientId) {
             <tbody>
               ${medications.map((m) => `
                 <tr>
-                  <td><strong>${m.medication?.code?.sourceCode}</strong></td>
-                  <td><span class="badge badge-info">${m.provenance?.sourceSystemId}</span></td>
-                  <td><code>${m.medication?.code?.sfdaCode || '0628500100101'}</code> (${m.medication?.code?.sfdaDisplay || 'Glucophage 500mg'})</td>
-                  <td>${m.dosageInstruction?.[0]?.textAr || m.dosageInstruction?.[0]?.text || '1 tab PO BID'}</td>
-                  <td><strong>${m.dispenseRequest?.quantity?.value || 60} ${m.dispenseRequest?.quantity?.unit || 'TAB'}</strong></td>
-                  <td><code>${new Date(m.authoredOn).toLocaleDateString('ar-SA')}</code></td>
+                  <td data-label="الدواء بالمصدر"><strong>${m.medication?.code?.sourceCode}</strong></td>
+                  <td data-label="المصدر"><span class="badge badge-info">${m.provenance?.sourceSystemId}</span></td>
+                  <td data-label="كود الدواء السعودي"><code>${m.medication?.code?.sfdaCode || '0628500100101'}</code> (${m.medication?.code?.sfdaDisplay || 'Glucophage 500mg'})</td>
+                  <td data-label="الجرعة والاستخدام">${m.dosageInstruction?.[0]?.textAr || m.dosageInstruction?.[0]?.text || '1 tab PO BID'}</td>
+                  <td data-label="الكمية"><strong>${m.dispenseRequest?.quantity?.value || 60} ${m.dispenseRequest?.quantity?.unit || 'TAB'}</strong></td>
+                  <td data-label="التاريخ"><code>${new Date(m.authoredOn).toLocaleDateString('ar-SA')}</code></td>
                 </tr>
               `).join('') || '<tr><td colspan="6" class="text-center py-4">لا توجد وصفات أدوية</td></tr>'}
             </tbody>
@@ -4212,8 +4212,8 @@ function renderLongitudinalContent(data, patientId) {
             <h3>التشخيصات السريرية المعيارية الموحدة (Normalized Conditions)</h3>
           </div>
         </div>
-        <div class="card-body p-0">
-          <table class="data-table">
+        <div class="card-body p-0 rx-card-body">
+          <table class="data-table rx-table">
             <thead>
               <tr>
                 <th>التشخيص بالمصدر</th>
@@ -4227,12 +4227,12 @@ function renderLongitudinalContent(data, patientId) {
             <tbody>
               ${conditions.map((c) => `
                 <tr>
-                  <td><strong>${c.code?.sourceCode}</strong> (${c.code?.sourceDisplay || ''})</td>
-                  <td><span class="badge badge-info">${c.provenance?.sourceSystemId}</span></td>
-                  <td><code>${c.code?.snomedCode || 'N/A'}</code> ${c.code?.snomedDisplay || ''}</td>
-                  <td><span class="badge badge-purple">${c.code?.icd10amCode || 'N/A'}</span></td>
-                  <td><span class="badge badge-warning">${c.code?.sbsCode || 'N/A'}</span></td>
-                  <td><code>${new Date(c.recordedDate).toLocaleDateString('ar-SA')}</code></td>
+                  <td data-label="التشخيص بالمصدر"><strong>${c.code?.sourceCode}</strong> (${c.code?.sourceDisplay || ''})</td>
+                  <td data-label="المصدر"><span class="badge badge-info">${c.provenance?.sourceSystemId}</span></td>
+                  <td data-label="SNOMED CT"><code>${c.code?.snomedCode || 'N/A'}</code> ${c.code?.snomedDisplay || ''}</td>
+                  <td data-label="ICD-10-AM"><span class="badge badge-purple">${c.code?.icd10amCode || 'N/A'}</span></td>
+                  <td data-label="SBS"><span class="badge badge-warning">${c.code?.sbsCode || 'N/A'}</span></td>
+                  <td data-label="التاريخ"><code>${new Date(c.recordedDate).toLocaleDateString('ar-SA')}</code></td>
                 </tr>
               `).join('') || '<tr><td colspan="6" class="text-center py-4">لا توجد تشخيصات</td></tr>'}
             </tbody>
@@ -4248,8 +4248,8 @@ function renderLongitudinalContent(data, patientId) {
             <h3>النتائج المخبرية المعيارية (LOINC Standardized Observations)</h3>
           </div>
         </div>
-        <div class="card-body p-0">
-          <table class="data-table">
+        <div class="card-body p-0 rx-card-body">
+          <table class="data-table rx-table">
             <thead>
               <tr>
                 <th>اسم الفحص بالمصدر</th>
@@ -4263,12 +4263,12 @@ function renderLongitudinalContent(data, patientId) {
             <tbody>
               ${observations.map((o) => `
                 <tr>
-                  <td><strong>${o.code?.sourceCode}</strong></td>
-                  <td><span class="badge badge-info">${o.provenance?.sourceSystemId}</span></td>
-                  <td><code>LOINC ${o.code?.loincCode || 'N/A'}</code></td>
-                  <td><strong style="color:var(--m3-on-primary-container); font-size:1rem;">${o.valueQuantity?.value} ${o.valueQuantity?.unit || ''}</strong></td>
-                  <td>${o.referenceRange?.text || '4.0 - 5.6 %'}</td>
-                  <td><code>${new Date(o.effectiveDateTime).toLocaleDateString('ar-SA')}</code></td>
+                  <td data-label="اسم الفحص"><strong>${o.code?.sourceCode}</strong></td>
+                  <td data-label="المصدر"><span class="badge badge-info">${o.provenance?.sourceSystemId}</span></td>
+                  <td data-label="كود LOINC"><code>LOINC ${o.code?.loincCode || 'N/A'}</code></td>
+                  <td data-label="النتيجة"><strong style="color:var(--m3-on-primary-container); font-size:1rem;">${o.valueQuantity?.value} ${o.valueQuantity?.unit || ''}</strong></td>
+                  <td data-label="المرجع الطبيعي">${o.referenceRange?.text || '4.0 - 5.6 %'}</td>
+                  <td data-label="التاريخ"><code>${new Date(o.effectiveDateTime).toLocaleDateString('ar-SA')}</code></td>
                 </tr>
               `).join('') || '<tr><td colspan="6" class="text-center py-4">لا توجد نتائج مخبرية</td></tr>'}
             </tbody>
@@ -4284,8 +4284,8 @@ function renderLongitudinalContent(data, patientId) {
             <h3>سجل التطعيمات واللقاحات (National Immunizations)</h3>
           </div>
         </div>
-        <div class="card-body p-0">
-          <table class="data-table">
+        <div class="card-body p-0 rx-card-body">
+          <table class="data-table rx-table">
             <thead>
               <tr>
                 <th>اللقاح بالمصدر</th>
@@ -4299,12 +4299,12 @@ function renderLongitudinalContent(data, patientId) {
             <tbody>
               ${immunizations.map((i) => `
                 <tr>
-                  <td><strong>${i.vaccineCode?.sourceCode}</strong></td>
-                  <td><span class="badge badge-info">${i.provenance?.sourceSystemId}</span></td>
-                  <td><code>${i.vaccineCode?.sourceCode?.includes('SA-VAX') ? i.vaccineCode?.sourceCode : 'SA-VAX-FLU-01'}</code></td>
-                  <td><span class="badge badge-purple">CVX ${i.vaccineCode?.cvxCode || '158'}</span></td>
-                  <td><code>${i.lotNumber}</code></td>
-                  <td><code>${new Date(i.occurrenceDateTime).toLocaleDateString('ar-SA')}</code></td>
+                  <td data-label="اللقاح بالمصدر"><strong>${i.vaccineCode?.sourceCode}</strong></td>
+                  <td data-label="المصدر"><span class="badge badge-info">${i.provenance?.sourceSystemId}</span></td>
+                  <td data-label="كود وزارة الصحة"><code>${i.vaccineCode?.sourceCode?.includes('SA-VAX') ? i.vaccineCode?.sourceCode : 'SA-VAX-FLU-01'}</code></td>
+                  <td data-label="CVX"><span class="badge badge-purple">CVX ${i.vaccineCode?.cvxCode || '158'}</span></td>
+                  <td data-label="رقم التشغيلة"><code>${i.lotNumber}</code></td>
+                  <td data-label="التاريخ"><code>${new Date(i.occurrenceDateTime).toLocaleDateString('ar-SA')}</code></td>
                 </tr>
               `).join('') || '<tr><td colspan="6" class="text-center py-4">لا توجد تطعيمات</td></tr>'}
             </tbody>
@@ -4321,8 +4321,8 @@ function renderLongitudinalContent(data, patientId) {
           </div>
           <span class="badge ${allergies.some(a => a.criticality === 'high') ? 'badge-warning' : 'badge-success'}">${allergies.length} حالات مسجلة</span>
         </div>
-        <div class="card-body p-0">
-          <table class="data-table">
+        <div class="card-body p-0 rx-card-body">
+          <table class="data-table rx-table">
             <thead>
               <tr>
                 <th>المادة المسببة (Allergen)</th>
@@ -4336,12 +4336,12 @@ function renderLongitudinalContent(data, patientId) {
             <tbody>
               ${allergies.map((a) => `
                 <tr>
-                  <td><strong>${a.substanceTextAr || a.substanceText}</strong><br><small style="color:var(--m3-on-surface-muted);">${a.substanceText}</small></td>
-                  <td><span class="badge badge-info">${a.provenance?.sourceSystemId}</span></td>
-                  <td><code>SNOMED ${a.substanceCode?.snomedCode || '764146007'}</code></td>
-                  <td><span class="badge ${a.criticality === 'high' ? 'badge-warning' : 'badge-info'}">${a.criticality === 'high' ? 'عالية الخطورة (High)' : 'منخفضة'}</span></td>
-                  <td><strong style="color:var(--m3-error);">${a.reactions?.[0]?.manifestationTextAr || a.reactions?.[0]?.manifestationText || 'صدمة تحسسية'}</strong></td>
-                  <td><code>${new Date(a.recordedDate).toLocaleDateString('ar-SA')}</code></td>
+                  <td data-label="المادة المسببة"><strong>${a.substanceTextAr || a.substanceText}</strong><br><small style="color:var(--m3-on-surface-muted);">${a.substanceText}</small></td>
+                  <td data-label="المصدر"><span class="badge badge-info">${a.provenance?.sourceSystemId}</span></td>
+                  <td data-label="كود SNOMED"><code>SNOMED ${a.substanceCode?.snomedCode || '764146007'}</code></td>
+                  <td data-label="درجة الخطورة"><span class="badge ${a.criticality === 'high' ? 'badge-warning' : 'badge-info'}">${a.criticality === 'high' ? 'عالية الخطورة (High)' : 'منخفضة'}</span></td>
+                  <td data-label="التفاعل"><strong style="color:var(--m3-error);">${a.reactions?.[0]?.manifestationTextAr || a.reactions?.[0]?.manifestationText || 'صدمة تحسسية'}</strong></td>
+                  <td data-label="تاريخ التسجيل"><code>${new Date(a.recordedDate).toLocaleDateString('ar-SA')}</code></td>
                 </tr>
               `).join('') || '<tr><td colspan="6" class="text-center py-4">لا توجد حساسيات مسجلة</td></tr>'}
             </tbody>
@@ -4357,8 +4357,8 @@ function renderLongitudinalContent(data, patientId) {
             <h3>التقارير التشخيصية والمخبرية المجمعة (Standard Diagnostic Reports)</h3>
           </div>
         </div>
-        <div class="card-body p-0">
-          <table class="data-table">
+        <div class="card-body p-0 rx-card-body">
+          <table class="data-table rx-table">
             <thead>
               <tr>
                 <th>اسم التقرير التشخيصي</th>
@@ -4372,12 +4372,12 @@ function renderLongitudinalContent(data, patientId) {
             <tbody>
               ${diagnosticReports.map((d) => `
                 <tr>
-                  <td><strong>${d.code?.loincDisplay || 'Comprehensive Metabolic 2000 Panel'}</strong></td>
-                  <td><span class="badge badge-info">${d.provenance?.sourceSystemId}</span></td>
-                  <td><code>LOINC ${d.code?.loincCode || '24323-8'}</code></td>
-                  <td><span class="badge badge-success">${d.status}</span></td>
-                  <td style="max-width:320px; font-size:0.82rem;">${d.conclusionAr || d.conclusion || 'نتائج ضمن المعدل المطلوب'}</td>
-                  <td><code>${new Date(d.issued).toLocaleDateString('ar-SA')}</code></td>
+                  <td data-label="اسم التقرير"><strong>${d.code?.loincDisplay || 'Comprehensive Metabolic 2000 Panel'}</strong></td>
+                  <td data-label="المصدر"><span class="badge badge-info">${d.provenance?.sourceSystemId}</span></td>
+                  <td data-label="كود LOINC"><code>LOINC ${d.code?.loincCode || '24323-8'}</code></td>
+                  <td data-label="الحالة"><span class="badge badge-success">${d.status}</span></td>
+                  <td data-label="الخلاصة" style="font-size:0.82rem; overflow-wrap:anywhere;">${d.conclusionAr || d.conclusion || 'نتائج ضمن المعدل المطلوب'}</td>
+                  <td data-label="تاريخ الإصدار"><code>${new Date(d.issued).toLocaleDateString('ar-SA')}</code></td>
                 </tr>
               `).join('') || '<tr><td colspan="6" class="text-center py-4">لا توجد تقارير تشخيصية مجمعة</td></tr>'}
             </tbody>
@@ -4400,7 +4400,7 @@ function renderLongitudinalContent(data, patientId) {
               ${getSvgIcon('hospital', 'style="width:13px; height:13px;"')}
             </div>
             <div class="timeline-card">
-              <div style="display:flex; justify-content:space-between; margin-bottom:6px; align-items:center;">
+              <div style="display:flex; justify-content:space-between; margin-bottom:6px; align-items:center; flex-wrap:wrap; gap:6px;">
                 <strong style="color:var(--m3-on-surface); font-size:0.96rem;">زيارة ${e.class} (${e.departmentAr || 'العيادة'})</strong>
                 <span class="badge badge-info">${e.provenance?.sourceSystemId} (رقم الزيارة: ${e.sourceVisitId})</span>
               </div>
