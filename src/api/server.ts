@@ -204,7 +204,8 @@ export function createPlatformApp() {
       await prismaInstance.$queryRaw`SELECT 1`;
       db = 'up';
     } catch { db = 'down'; }
-    res.json({ ok: db === 'up', db, dbMs: Date.now() - started, uptimeSec: Math.round(process.uptime()), time: new Date().toISOString() });
+    const { getDatabaseSource } = await import('../lib/prisma.js');
+    res.json({ ok: db === 'up', db, dbSource: getDatabaseSource(), dbMs: Date.now() - started, uptimeSec: Math.round(process.uptime()), time: new Date().toISOString() });
   });
 
   // Public routes (migrated to modules/public)
