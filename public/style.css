@@ -2707,6 +2707,9 @@ pre, code, .mono-code, .json-display {
   #form-book-appointment button[type="submit"] { width: 100%; min-height: 44px; }
   /* Patient access log: actions stack full width above the cards */
   #pane-patient-access .card-body .btn { flex: 1 1 100%; min-height: 44px; }
+  /* Patient profile: save/cancel stack full width; self-reported rows wrap */
+  #form-edit-profile .btn { flex: 1 1 100%; min-height: 44px; }
+  #self-reported-health-card div[style*="space-between"] { flex-wrap: wrap; }
   .rx-table .rx-actions { display: flex; flex: 1 1 auto; min-width: 0; }
   /* Certified report preview: paper grids halve, paper tables scroll */
   .pdf-patient-grid, .pdf-kpi-bar { grid-template-columns: repeat(2, 1fr); }
