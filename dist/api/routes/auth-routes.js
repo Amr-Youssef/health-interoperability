@@ -42,7 +42,25 @@ function normalizeGender(g) {
         return 'female';
     return null;
 }
+// Short-circuit so warm instances skip re-seeding for 5 minutes (single cheap lookup).
+let seedHealthyUntil = 0;
 async function ensureDefaultAccounts() {
+    const now = Date.now();
+    if (now < seedHealthyUntil)
+        return;
+    // Fast path: if the sentinel SYS_ADMIN exists and is active, the seed is healthy —
+    // skip ~10 writes + 5 bcrypt hashes on every login (serverless timeout source).
+    try {
+        const sentinel = await prisma.user.findUnique({
+            where: { username: 'admin' },
+            select: { id: true, is_active: true, role: { select: { role_code: true } } }
+        });
+        if (sentinel?.is_active && sentinel.role?.role_code === 'SYS_ADMIN') {
+            seedHealthyUntil = now + 5 * 60 * 1000;
+            return;
+        }
+    }
+    catch { /* fall through to full seeding on lookup failure */ }
     let mohOrg = await prisma.organization.findFirst({ where: { organization_type: 'MOH' } });
     if (!mohOrg) {
         mohOrg = await prisma.organization.create({
@@ -163,6 +181,7 @@ async function ensureDefaultAccounts() {
             is_active: true
         }
     });
+    seedHealthyUntil = Date.now() + 5 * 60 * 1000;
 }
 router.post('/register', async (req, res) => {
     try {
@@ -628,24 +647,47 @@ router.post('/register', async (req, res) => {
         res.status(500).json({ error: 'Internal server error during registration' });
     }
 });
-router.post('/login', async (req, res) => {
+// Transient Prisma connection codes (cold start / pool wakeup) — safe to retry once.
+const TRANSIENT_PRISMA_CODES = new Set(['P1001', 'P1002', 'P1008', 'P1010', 'P1017']);
+async function withDbRetry(fn) {
     try {
-        await ensureDefaultAccounts();
+        return await fn();
+    }
+    catch (e) {
+        if (e?.code && TRANSIENT_PRISMA_CODES.has(String(e.code))) {
+            await new Promise((r) => setTimeout(r, 600));
+            return await fn();
+        }
+        throw e;
+    }
+}
+router.post('/login', async (req, res) => {
+    // Stage tracker: returned as `stage` on 500 so the next failure is instantly localizable.
+    let stage = 'seed';
+    try {
+        await withDbRetry(() => ensureDefaultAccounts());
         const { username, password } = req.body;
         if (!username || !password) {
             return res.status(400).json({ error: 'Username and password required' });
         }
-        const user = await prisma.user.findUnique({
+        stage = 'lookup';
+        const user = await withDbRetry(() => prisma.user.findUnique({
             where: { username },
             include: { role: true, organization: true }
-        });
+        }));
         if (!user || !user.is_active) {
             return res.status(401).json({ error: 'Invalid credentials or inactive user' });
         }
+        if (!user.role?.role_code) {
+            console.error(`Login error [norole]: user ${user.id} has no role relation`);
+            return res.status(500).json({ error: 'Internal server error during login', stage: 'norole' });
+        }
+        stage = 'verify';
         const isMatch = await bcrypt.compare(password, user.password_hash);
         if (!isMatch) {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
+        stage = 'token';
         const token = jwt.sign({ userId: user.id, role: user.role.role_code, orgId: user.organization_id, patientProfileId: user.patient_profile_id }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
         setAuthCookie(res, token);
         res.json({
@@ -663,8 +705,8 @@ router.post('/login', async (req, res) => {
         });
     }
     catch (error) {
-        console.error('Login error:', error);
-        res.status(500).json({ error: 'Internal server error during login' });
+        console.error(`Login error [${stage}]:`, error);
+        res.status(500).json({ error: 'Internal server error during login', stage });
     }
 });
 router.post('/logout', (req, res) => {

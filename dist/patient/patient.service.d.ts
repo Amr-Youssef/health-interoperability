@@ -66,8 +66,8 @@ export declare function getPatientSelfView(patientId: string, userId: string): P
         };
         role: {
             id: string;
-            role_code: import(".prisma/client").$Enums.RoleCode;
             role_name: string;
+            role_code: import(".prisma/client").$Enums.RoleCode;
             description: string | null;
             is_system_role: boolean;
         };
@@ -131,8 +131,8 @@ export declare function updatePatientSelfData(patientId: string, userId: string,
         };
         role: {
             id: string;
-            role_code: import(".prisma/client").$Enums.RoleCode;
             role_name: string;
+            role_code: import(".prisma/client").$Enums.RoleCode;
             description: string | null;
             is_system_role: boolean;
         };

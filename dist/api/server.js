@@ -40,6 +40,7 @@ import { createSmartRoutes } from '../modules/smart/smart.routes.js';
 import { createClinicalWriteRoutes } from '../modules/clinical-write/clinical-write.routes.js';
 import { createAuditRoutes } from '../modules/audit/audit.routes.js';
 import crypto from 'crypto';
+import fs from 'fs/promises';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 import { prisma as prismaInstance } from '../lib/prisma.js';
@@ -161,17 +162,71 @@ export function createPlatformApp() {
     const provenanceService = new PrismaProvenanceService();
     const engine = new NormalizationEngine(rawStore, canonicalStore, mpi, terminologyService, provenanceService);
     const fhirSerializer = new FhirR4Serializer();
+    // Auto-boot middleware with timeout protection for Serverless Environments (Vercel)
+    let isBooted = false;
+    let bootPromise = null;
+    app.use(async (req, res, next) => {
+        // Never block auth pages or health check
+        if (req.path.startsWith('/auth') || req.path === '/api/health') {
+            return next();
+        }
+        if (!isBooted) {
+            if (!bootPromise) {
+                bootPromise = Promise.race([
+                    engine.boot(),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Boot timeout (serverless)')), 2500))
+                ]).then(() => {
+                    isBooted = true;
+                }).catch((err) => {
+                    console.warn('[BOOT WARNING]', err.message);
+                    isBooted = true; // Avoid blocking further requests
+                });
+            }
+            await bootPromise;
+        }
+        next();
+    });
     // Role-based API Routes (V2 Database Schema) - rate limited
     app.use('/api/auth/register', authLimiter);
     app.use('/api/auth/login', loginLimiter);
     app.use('/api/auth', authRoutes);
+    // Public platform health probe (no sensitive data — liveness + DB reachability only)
+    app.get('/api/health', async (_req, res) => {
+        const started = Date.now();
+        let db = 'down';
+        try {
+            await prismaInstance.$queryRaw `SELECT 1`;
+            db = 'up';
+        }
+        catch {
+            db = 'down';
+        }
+        const { getDatabaseSource } = await import('../lib/prisma.js');
+        res.json({ ok: db === 'up', db, dbSource: getDatabaseSource(), dbMs: Date.now() - started, uptimeSec: Math.round(process.uptime()), time: new Date().toISOString() });
+    });
     // Public routes (migrated to modules/public)
     app.use((req, res, next) => {
         res.setHeader('X-Content-Type-Options', 'nosniff');
         next();
     });
-    // Serve static UI - auth pages are public, app shell is protected
-    const publicDir = path.join(__dirname, '../../public');
+    // Serve static UI - resilient path resolution across local and Vercel serverless
+    const publicDir = path.join(process.cwd(), 'public');
+    const sendHtml = async (filePath, res, next) => {
+        try {
+            const html = await fs.readFile(filePath, 'utf8');
+            const nonce = res.locals?.nonce;
+            const securedHtml = nonce
+                ? html
+                    .replace(/<script(\s*)>/g, `<script nonce="${nonce}">`)
+                    .replace(/<style(\s*)>/g, `<style nonce="${nonce}">`)
+                : html;
+            res.setHeader('Content-Type', 'text/html; charset=utf-8');
+            return res.send(securedHtml);
+        }
+        catch (err) {
+            return next(err);
+        }
+    };
     const staticOpts = {
         index: false,
         setHeaders: (res, filePath) => {
@@ -185,13 +240,23 @@ export function createPlatformApp() {
                 res.setHeader('Content-Type', 'application/json; charset=utf-8');
         }
     };
+    app.use('/auth', async (req, res, next) => {
+        if (req.method !== 'GET' || !req.path.endsWith('.html'))
+            return next();
+        const requestedFile = path.basename(req.path);
+        return sendHtml(path.join(publicDir, 'auth', requestedFile), res, next);
+    });
     app.use('/auth', express.static(path.join(publicDir, 'auth'), staticOpts));
     app.get(['/', '/index.html'], async (req, res, next) => {
-        const user = await extractAuthUser(req);
-        if (!user)
+        try {
+            const user = await extractAuthUser(req);
+            if (!user)
+                return res.redirect('/auth/login.html');
+            return sendHtml(path.join(publicDir, 'index.html'), res, next);
+        }
+        catch (err) {
             return res.redirect('/auth/login.html');
-        res.setHeader('Content-Type', 'text/html; charset=utf-8');
-        return res.sendFile(path.join(publicDir, 'index.html'));
+        }
     });
     app.use(express.static(publicDir, staticOpts));
     app.use('/api/hospital', hospitalRoutes);

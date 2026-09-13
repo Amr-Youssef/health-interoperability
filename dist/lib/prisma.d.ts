@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+export declare function getDatabaseSource(): string;
 export declare const prisma: PrismaClient<{
     log: ("error" | "warn")[];
     datasources: {

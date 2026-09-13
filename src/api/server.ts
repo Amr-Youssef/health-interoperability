@@ -40,6 +40,7 @@ import { createSmartRoutes } from '../modules/smart/smart.routes.js';
 import { createClinicalWriteRoutes } from '../modules/clinical-write/clinical-write.routes.js';
 import { createAuditRoutes } from '../modules/audit/audit.routes.js';
 import crypto from 'crypto';
+import fs from 'fs/promises';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -217,6 +218,21 @@ export function createPlatformApp() {
 
   // Serve static UI - resilient path resolution across local and Vercel serverless
   const publicDir = path.join(process.cwd(), 'public');
+  const sendHtml = async (filePath: string, res: Response, next: express.NextFunction) => {
+    try {
+      const html = await fs.readFile(filePath, 'utf8');
+      const nonce = (res as any).locals?.nonce;
+      const securedHtml = nonce
+        ? html
+            .replace(/<script(\s*)>/g, `<script nonce="${nonce}">`)
+            .replace(/<style(\s*)>/g, `<style nonce="${nonce}">`)
+        : html;
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      return res.send(securedHtml);
+    } catch (err) {
+      return next(err);
+    }
+  };
   const staticOpts = {
     index: false as const,
     setHeaders: (res: Response, filePath: string) => {
@@ -226,13 +242,17 @@ export function createPlatformApp() {
       else if (filePath.endsWith('.json')) res.setHeader('Content-Type', 'application/json; charset=utf-8');
     }
   };
+  app.use('/auth', async (req: Request, res: Response, next) => {
+    if (req.method !== 'GET' || !req.path.endsWith('.html')) return next();
+    const requestedFile = path.basename(req.path);
+    return sendHtml(path.join(publicDir, 'auth', requestedFile), res, next);
+  });
   app.use('/auth', express.static(path.join(publicDir, 'auth'), staticOpts));
   app.get(['/', '/index.html'], async (req: Request, res: Response, next) => {
     try {
       const user = await extractAuthUser(req);
       if (!user) return res.redirect('/auth/login.html');
-      res.setHeader('Content-Type', 'text/html; charset=utf-8');
-      return res.sendFile(path.join(publicDir, 'index.html'));
+      return sendHtml(path.join(publicDir, 'index.html'), res, next);
     } catch (err) {
       return res.redirect('/auth/login.html');
     }
