@@ -1,10 +1,10 @@
 import { PrismaClient } from '@prisma/client';
 
-const CLOUD_DB_URL = "postgres://a94223c997cef1bf2237c8028bac295e0f65fb8f8e93e75220d68980e03961bd:sk_bxEEuQhVYitprs16P1tVj@db.prisma.io:5432/postgres?sslmode=require";
+// (Removed 2026-09-13: previously hardcoded cloud URL deleted after key rotation — env only.)
 
-// Name of the env var actually in use (or 'embedded-fallback'). Exposed via
+// Name of the env var actually in use (or 'missing'). Exposed via
 // /api/health for ops diagnosis — the VALUE is never exposed anywhere.
-let matchedSource = 'embedded-fallback';
+let matchedSource = 'missing';
 
 function getDatabaseUrl(): string {
   const names = [
@@ -28,9 +28,9 @@ function getDatabaseUrl(): string {
     }
   }
 
-  // Guaranteed fallback to the active cloud Prisma Postgres instance
-  matchedSource = 'embedded-fallback';
-  return CLOUD_DB_URL;
+  // No embedded fallback: fail loudly so a missing DATABASE_URL is caught at boot, not at login.
+  matchedSource = 'missing';
+  throw new Error('No database URL configured: set STORAGE_POSTGRES_URL / POSTGRES_URL / PRISMA_DATABASE_URL / DATABASE_URL (non-localhost).');
 }
 
 export function getDatabaseSource(): string {
