@@ -40,7 +40,23 @@ function normalizeGender(g: string): 'male' | 'female' | null {
   return null;
 }
 
+// Short-circuit so warm instances skip re-seeding for 5 minutes (single cheap lookup).
+let seedHealthyUntil = 0;
 async function ensureDefaultAccounts() {
+  const now = Date.now();
+  if (now < seedHealthyUntil) return;
+  // Fast path: if the sentinel SYS_ADMIN exists and is active, the seed is healthy —
+  // skip ~10 writes + 5 bcrypt hashes on every login (serverless timeout source).
+  try {
+    const sentinel = await prisma.user.findUnique({
+      where: { username: 'admin' },
+      select: { id: true, is_active: true, role: { select: { role_code: true } } }
+    });
+    if (sentinel?.is_active && sentinel.role?.role_code === 'SYS_ADMIN') {
+      seedHealthyUntil = now + 5 * 60 * 1000;
+      return;
+    }
+  } catch { /* fall through to full seeding on lookup failure */ }
   let mohOrg = await prisma.organization.findFirst({ where: { organization_type: 'MOH' } });
   if (!mohOrg) {
     mohOrg = await prisma.organization.create({
@@ -170,6 +186,7 @@ async function ensureDefaultAccounts() {
       is_active: true
     }
   });
+  seedHealthyUntil = Date.now() + 5 * 60 * 1000;
 }
 
   router.post('/register', async (req: Request, res: Response) => {

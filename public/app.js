@@ -2412,6 +2412,11 @@ async function loadOnboardedHospitals() {
   try {
     const res = await fetch('/api/hospitals');
     const hospitals = await res.json();
+    if (!Array.isArray(hospitals)) {
+      const tbody = document.getElementById('onboarded-hospitals-tbody');
+      if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4">تعذر تحميل المنشآت — تحقق من تسجيل الدخول ثم حدّث</td></tr>';
+      return;
+    }
 
     const tbody = document.getElementById('onboarded-hospitals-tbody');
     const select = document.getElementById('select-ingest-hospital');
