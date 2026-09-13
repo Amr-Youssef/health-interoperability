@@ -1,7 +1,7 @@
 /* ==========================================================================
    المنصة الوطنية للربط والتشغيل الصحي البيني (Saudi Interoperability Engine)
    Borderless High-Contrast Theme System with Inverted Contrast Sidebar
-   - In Dark Mode: Lighter Refined Charcoal Sidebar (#2E2E2F) on Dark Canvas (#0C0C0E)
+   - In Dark Mode: Harmonized Graphite Sidebar (#333338, secondary-container tone) on Dark Canvas (#0C0C0E)
    - In Light Mode: Deep Executive Dark Sidebar (#141519) on Light Canvas (#D9DEE7)
    - Complete borderless flat architecture with crystal-clear tonal contrast
    - Sharp 0px geometry & clean modern aesthetics
@@ -17,12 +17,12 @@
   --m3-surface-container-high: #36363D;    /* Headers / Table Headers / Active */
   --m3-surface-container-highest: #43434B; /* Popovers / Hover State / Secondary BTN */
 
-  /* Inverted Sidebar in Dark Mode (Deepened #2E2E2F, lifted hover/active for clearer selection) */
-  --sidebar-bg: #2E2E2F;
-  --sidebar-item-bg: #2E2E2F;
-  --sidebar-item-hover: #41414A;
-  --sidebar-item-active: #4D4D56;
-  --sidebar-icon-wrap-bg: #41414A;
+  /* Inverted Sidebar in Dark Mode (Harmonized #333338 = secondary-container tone: distinct from cards #2B2B30, floats off canvas #0C0C0E) */
+  --sidebar-bg: #333338;
+  --sidebar-item-bg: #333338;
+  --sidebar-item-hover: #45454E;
+  --sidebar-item-active: #54545E;
+  --sidebar-icon-wrap-bg: #45454E;
   --sidebar-well: #232326;
   --sidebar-on-surface: #FFFFFF;
   --sidebar-on-surface-variant: #D1D1D6;
@@ -344,7 +344,7 @@ body.light-theme .sidebar,
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--m3-error);
+  color: var(--m3-error-bright);
   flex-shrink: 0;
   box-shadow: none !important;
   padding: 0;
@@ -355,7 +355,7 @@ body.light-theme .sidebar,
   height: 28px;
   min-width: 28px;
   min-height: 28px;
-  color: var(--m3-error);
+  color: var(--m3-error-bright);
   fill: currentColor;
   flex-shrink: 0;
   -webkit-flex-shrink: 0;
@@ -593,7 +593,7 @@ body.light-theme .sidebar,
 .nav-group-label {
   font-size: 0.66rem;
   font-weight: 700;
-  color: var(--m3-on-surface-muted);
+  color: var(--sidebar-on-surface-muted);
   font-family: 'JetBrains Mono', 'IBM Plex Sans Arabic', monospace;
   letter-spacing: 0.02em;
   padding: 0 14px;
