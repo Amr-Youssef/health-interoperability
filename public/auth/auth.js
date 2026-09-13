@@ -1,4 +1,32 @@
 (() => {
+  // ---------- THEME (mirrors public/app.js via shared localStorage key app_theme) ----------
+  // register.html carries its own copy of this block (it must NOT load auth.js: dual submit handlers).
+  (function initAuthTheme(){
+    const root = document.documentElement;
+    const btn = document.getElementById('auth-theme-toggle');
+    const label = document.getElementById('auth-theme-toggle-text');
+    const moon = document.querySelector('#auth-theme-toggle .theme-icon-moon');
+    const sun = document.querySelector('#auth-theme-toggle .theme-icon-sun');
+    const render = (theme) => {
+      const light = theme === 'light';
+      root.setAttribute('data-theme', theme);
+      document.body.classList.toggle('light-theme', light);
+      if (label) label.textContent = light ? 'الوضع الداكن' : 'الوضع الفاتح';
+      if (moon) moon.style.display = light ? 'none' : 'inline-block';
+      if (sun) sun.style.display = light ? 'inline-block' : 'none';
+    };
+    let theme = 'dark';
+    try { theme = localStorage.getItem('app_theme') || root.getAttribute('data-theme') || 'dark'; }
+    catch (e) { theme = root.getAttribute('data-theme') || 'dark'; }
+    if (theme !== 'light') theme = 'dark';
+    render(theme);
+    if (btn) btn.addEventListener('click', () => {
+      theme = theme === 'light' ? 'dark' : 'light';
+      try { localStorage.setItem('app_theme', theme); } catch (e) {}
+      render(theme);
+    });
+  })();
+
   const $ = (s) => document.querySelector(s);
   const errBox = (msg) => {
     const box = $('#register-error'), txt = $('#register-error-text');

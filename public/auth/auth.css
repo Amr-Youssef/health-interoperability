@@ -13,3 +13,6 @@
 .auth-isolated-tabs .auth-tab{flex:1;text-align:center;padding:10px;border:1px solid var(--m3-outline-variant);text-decoration:none;color:var(--m3-on-surface-variant);background:var(--m3-surface-container-high);border-radius:var(--radius-sm);font-weight:700;font-size:0.85rem}
 .auth-isolated-tabs .auth-tab.active{background:var(--m3-primary);color:var(--m3-on-primary);border-color:var(--m3-primary)}
 .auth-isolated-card .auth-footer-notice{margin-top:14px;text-align:center}
+.auth-theme-toggle{position:fixed;top:16px;inset-inline-start:16px;z-index:60;box-shadow:0 6px 20px rgba(0,0,0,0.35)}
+body.light-theme .auth-theme-toggle,[data-theme="light"] .auth-theme-toggle{box-shadow:0 6px 20px rgba(15,23,42,0.16)}
+@media(max-width:640px){.auth-theme-toggle{top:12px;inset-inline-start:12px;min-width:44px;min-height:44px;padding:8px}.auth-theme-toggle span{display:none}}
