@@ -25,6 +25,10 @@
       try { localStorage.setItem('app_theme', theme); } catch (e) {}
       render(theme);
     });
+    // Live cross-tab sync: a theme change on the platform/register applies here instantly.
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'app_theme' && (e.newValue === 'light' || e.newValue === 'dark')) { theme = e.newValue; render(theme); }
+    });
   })();
 
   const $ = (s) => document.querySelector(s);

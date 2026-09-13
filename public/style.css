@@ -159,6 +159,10 @@ body.light-theme,
   --m3-on-error-container: #7F1D1D;
 }
 
+/* Native controls (date pickers, scrollbars, form widgets) follow the active theme */
+html[data-theme="dark"] { color-scheme: dark; }
+html[data-theme="light"] { color-scheme: light; }
+
 /* =========================================
    BASE RESET & TYPOGRAPHY
    ========================================= */

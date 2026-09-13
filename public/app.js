@@ -823,6 +823,11 @@ function initThemeSwitcher() {
       // Silent switch on purpose: the button label already reflects the state, a toast here is pure noise.
     });
   }
+
+  // Live cross-tab sync: a theme change on login/register applies here instantly (and vice versa).
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'app_theme' && (e.newValue === 'light' || e.newValue === 'dark')) applyTheme(e.newValue);
+  });
 }
 
 let globalPatientSearchState = { q: '', page: 1, limit: 12, total: 0, totalPages: 1, items: [] };
