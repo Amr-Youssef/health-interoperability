@@ -17,7 +17,7 @@
 
 /* ── Steps indicator ── */
 .steps-bar{display:flex;align-items:center;justify-content:center;gap:0;margin:20px 0 28px;padding:0 24px}
-.step-dot{width:10px;height:10px;border-radius:50%;background:var(--m3-surface-container-highest);transition:all .3s ease;flex-shrink:0}
+.step-dot{width:10px;height:10px;border-radius:50%;background:var(--m3-surface-container-highest);transition:width var(--motion-slow) ease,background-color var(--motion-slow) ease,box-shadow var(--motion-slow) ease;flex-shrink:0}
 .step-dot.active{width:12px;height:12px;background:var(--m3-primary);box-shadow:0 0 0 4px color-mix(in srgb, var(--m3-primary) 20%, transparent)}
 .step-dot.done{background:var(--m3-primary)}
 .step-line{height:2px;flex:1;background:var(--m3-surface-container-highest);margin:0 6px;transition:background .3s ease}
@@ -34,7 +34,7 @@
 .auth-form-group{margin-bottom:14px}
 .auth-form-group label{font-size:.82rem;font-weight:700;display:flex;gap:4px;margin-bottom:6px;letter-spacing:-0.01em}
 .req{color:var(--m3-error);font-weight:800}
-.auth-input{width:100%;padding:11px 14px;background:var(--m3-surface-container-low);color:var(--m3-on-surface);font-size:.88rem;outline:none;border:1px solid transparent;border-radius:var(--radius-sm);transition:all .15s ease}
+.auth-input{width:100%;padding:11px 14px;background:var(--m3-surface-container-low);color:var(--m3-on-surface);font-size:.88rem;outline:none;border:1px solid transparent;border-radius:var(--radius-sm);transition:background-color var(--motion-fast) ease,border-color var(--motion-fast) ease}
 .auth-input:focus{background:var(--m3-surface-container-high);border-color:var(--m3-primary)}
 .auth-input.invalid{border-color:var(--m3-error);background:color-mix(in srgb, var(--m3-error) 6%, var(--m3-surface-container-low))}
 .auth-input.valid{border-color:var(--m3-primary)}
@@ -45,10 +45,10 @@
 .inline-ok.show{display:block}
 
 /* ── Password meter ── */
-.pwd-meter{height:4px;border-radius:2px;background:var(--m3-surface-container-high);margin-top:6px;display:flex;gap:2px;overflow:hidden}
-.pwd-meter i{flex:1;background:transparent;border-radius:2px;transition:background .2s ease}
+.pwd-meter{height:4px;border-radius:var(--radius-pill);background:var(--m3-surface-container-high);margin-top:6px;display:flex;gap:2px;overflow:hidden}
+.pwd-meter i{flex:1;background:transparent;border-radius:var(--radius-pill);transition:background-color var(--motion-base) ease}
 .pwd-meter i.filled{background:var(--m3-error)}
-.pwd-meter i.mid{background:#e6a700}
+.pwd-meter i.mid{background:var(--m3-warning)}
 .pwd-meter i.strong{background:var(--m3-primary)}
 .pwd-toggle{position:absolute;inset-inline-start:10px;top:50%;transform:translateY(-50%);background:none;color:var(--m3-on-surface-variant);cursor:pointer;font-size:.75rem;font-weight:700;border:none;padding:4px}
 .auth-input-wrap{position:relative}
@@ -56,7 +56,7 @@
 
 /* ── Gender pills ── */
 .radio-row{display:flex;gap:10px}
-.radio-pill{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:11px 12px;background:var(--m3-surface-container-low);cursor:pointer;font-weight:700;font-size:.85rem;border:1px solid transparent;border-radius:var(--radius-sm);transition:all .15s ease}
+.radio-pill{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:11px 12px;background:var(--m3-surface-container-low);cursor:pointer;font-weight:700;font-size:.85rem;border:1px solid transparent;border-radius:var(--radius-sm);transition:background-color var(--motion-fast) ease,border-color var(--motion-fast) ease}
 .radio-pill:hover{background:var(--m3-surface-container-high)}
 .radio-pill.selected{border-color:var(--m3-primary);background:color-mix(in srgb, var(--m3-primary) 8%, var(--m3-surface-container-high))}
 .radio-pill input{accent-color:var(--m3-primary)}
@@ -75,9 +75,9 @@
 
 /* ── Buttons ── */
 .btn-row{display:flex;gap:10px;margin-top:8px}
-.btn-back{flex:0 0 auto;padding:12px 20px;background:var(--m3-surface-container-high);color:var(--m3-on-surface);font-weight:700;font-size:.88rem;cursor:pointer;border:1px solid var(--m3-outline-variant);border-radius:var(--radius-sm);transition:all .15s ease}
+.btn-back{flex:0 0 auto;padding:12px 20px;background:var(--m3-surface-container-high);color:var(--m3-on-surface);font-weight:700;font-size:.88rem;cursor:pointer;border:1px solid var(--m3-outline-variant);border-radius:var(--radius-sm);transition:background-color var(--motion-fast) ease,color var(--motion-fast) ease}
 .btn-back:hover{background:var(--m3-surface-container-highest)}
-.btn-next{flex:1;padding:12px;background:var(--m3-primary);color:var(--m3-on-primary);font-weight:700;font-size:.88rem;cursor:pointer;border:none;border-radius:var(--radius-sm);transition:all .15s ease}
+.btn-next{flex:1;padding:12px;background:var(--m3-primary);color:var(--m3-on-primary);font-weight:700;font-size:.88rem;cursor:pointer;border:none;border-radius:var(--radius-sm);transition:background-color var(--motion-fast) ease,color var(--motion-fast) ease}
 .btn-next:hover{filter:brightness(1.1)}
 .btn-next:disabled{opacity:.5;cursor:not-allowed}
 
@@ -94,9 +94,27 @@
 .summary-value{color:var(--m3-on-surface);font-weight:700;direction:ltr}
 
 /* ── Security badge ── */
-.auth-security-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:color-mix(in srgb, var(--m3-primary) 10%, var(--m3-surface-container));border-radius:20px;font-size:.7rem;font-weight:600;color:var(--m3-primary);margin-top:8px}
+.auth-security-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:color-mix(in srgb, var(--m3-primary) 10%, var(--m3-surface-container));border-radius:var(--radius-pill);font-size:.7rem;font-weight:600;color:var(--m3-primary);margin-top:8px}
 .pulse-dot{width:6px;height:6px;border-radius:50%;background:var(--m3-primary);animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ── Mobile (≤540px): top-anchored sheet, 16px inputs (no iOS zoom), 48px targets ── */
+@media(max-width:540px){
+  .auth-isolated-body{align-items:flex-start;padding:12px;padding-top:max(12px, env(safe-area-inset-top));padding-bottom:max(24px, env(safe-area-inset-bottom))}
+  .reg-wrap{max-width:100% !important}
+  .auth-isolated-card{padding:20px 16px}
+  .auth-isolated-head h1{font-size:1.15rem}
+  .steps-bar{margin:14px 0 20px;padding:0 8px}
+  .auth-input{font-size:16px;padding:12px 14px;min-height:48px}
+  .btn-row{gap:8px}
+  .btn-next,.btn-back{min-height:48px;font-size:.92rem}
+  .btn-back{padding:12px 16px}
+  .radio-pill{min-height:48px}
+  .summary-row{gap:10px}
+  .summary-value{min-width:0;overflow-wrap:anywhere;text-align:left}
+  .optional-section{padding:12px}
+  .info-callout{font-size:.75rem;padding:10px 12px}
+}
 </style>
 </head>
 <body class="auth-isolated-body">
