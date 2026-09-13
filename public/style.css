@@ -506,15 +506,16 @@ body.light-theme .sidebar,
   color: var(--sidebar-on-surface);
 }
 
+/* Active item speaks the interface accent: primary-tinted track + solid primary icon (btn-primary language) */
 .nav-item.active {
-  background: var(--sidebar-item-active);
+  background: color-mix(in srgb, var(--m3-primary) 24%, var(--sidebar-item-active));
   color: var(--sidebar-on-surface);
   font-weight: 600;
 }
 
 .nav-item.active .nav-icon-wrap {
-  background: var(--m3-primary-container);
-  color: var(--m3-on-primary-container);
+  background: var(--m3-primary);
+  color: var(--m3-on-primary);
 }
 
 .sidebar-footer {
