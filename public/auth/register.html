@@ -4,163 +4,157 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
-<title>إنشاء حساب - المنصة الوطنية</title>
+<title>إنشاء حساب مريض - المنصة الوطنية للربط الصحي</title>
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; script-src-attr 'unsafe-inline'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; style-src-attr 'unsafe-inline'; font-src https://fonts.gstatic.com https://fonts.googleapis.com data:; connect-src 'self'; img-src 'self' data: https://fonts.gstatic.com; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
+<meta name="referrer" content="strict-origin-when-cross-origin">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Tajawal:wght@700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../style.css">
 <link rel="stylesheet" href="./auth.css">
 <style>
-.reg-wrap{max-width:680px !important}
-.stepper{display:flex;gap:0;align-items:center;justify-content:space-between;margin:18px 0 24px; padding:0 12px}
-.step{display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--m3-on-surface-muted);font-size:.72rem;font-weight:600; flex:1}
-.step b{width:28px;height:28px;display:grid;place-items:center;border-radius:50%;background:var(--m3-surface-container-high);color:var(--m3-on-surface-variant);font-size:.8rem; border:1px solid var(--m3-outline-variant)}
-.step.active{color:var(--m3-on-surface)}
-.step.active b{background:var(--m3-on-surface);color:var(--m3-surface);border-color:var(--m3-on-surface)}
-.step.done b{background:var(--m3-primary);color:var(--m3-on-primary);border-color:var(--m3-primary)}
-.stepper-line{height:1px;flex:1;background:var(--m3-outline-variant); margin:0 8px; margin-bottom:18px}
-.stepper-line.done{background:var(--m3-primary)}
-.role-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
-.role-card{padding:18px 14px;background:var(--m3-surface-container);border:1px solid var(--m3-outline-variant);cursor:pointer;display:flex;flex-direction:column;gap:8px;position:relative; transition:all 0.15s ease}
-.role-card:hover{border-color:var(--m3-primary); background:var(--m3-surface-container-high);}
-.role-card.selected{background:var(--m3-surface-container);border-color:var(--m3-primary); box-shadow:0 1px 0 var(--m3-primary)}
-.role-card.selected::after{content:'';position:absolute;inset:0; border:1.5px solid var(--m3-primary); pointer-events:none}
-.role-card h4{font-size:0.95rem;font-weight:700; letter-spacing:-0.01em}
-.role-card p{font-size:.76rem;color:var(--m3-on-surface-variant);line-height:1.5; margin:0}
-.role-card .check{position:absolute;inset-inline-end:10px;top:10px;width:20px;height:20px;border-radius:50%;border:1.5px solid var(--m3-outline-variant);display:grid;place-items:center;font-size:.7rem; color:transparent}
-.role-card.selected .check{background:var(--m3-primary);border-color:var(--m3-primary);color:var(--m3-on-primary)}
+.reg-wrap{max-width:560px !important}
+
+/* ── Steps indicator ── */
+.steps-bar{display:flex;align-items:center;justify-content:center;gap:0;margin:20px 0 28px;padding:0 24px}
+.step-dot{width:10px;height:10px;border-radius:50%;background:var(--m3-surface-container-highest);transition:all .3s ease;flex-shrink:0}
+.step-dot.active{width:12px;height:12px;background:var(--m3-primary);box-shadow:0 0 0 4px color-mix(in srgb, var(--m3-primary) 20%, transparent)}
+.step-dot.done{background:var(--m3-primary)}
+.step-line{height:2px;flex:1;background:var(--m3-surface-container-highest);margin:0 6px;transition:background .3s ease}
+.step-line.done{background:var(--m3-primary)}
+
+/* ── Panels ── */
+.panel{display:none;animation:panelIn .35s ease}
+.panel.active{display:block}
+@keyframes panelIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── Shared form styles ── */
 .field-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-@media(max-width:640px){.field-grid{grid-template-columns:1fr}.role-cards{grid-template-columns:1fr}}
-.auth-form-group{margin-bottom:10px}
-.auth-form-group label{font-size:.8rem;font-weight:700;display:flex;gap:4px;margin-bottom:5px}
+@media(max-width:540px){.field-grid{grid-template-columns:1fr}}
+.auth-form-group{margin-bottom:14px}
+.auth-form-group label{font-size:.82rem;font-weight:700;display:flex;gap:4px;margin-bottom:6px;letter-spacing:-0.01em}
 .req{color:var(--m3-error);font-weight:800}
-.auth-input{width:100%;padding:10px 12px;background:var(--m3-surface-container-low);color:var(--m3-on-surface);font-size:.88rem;outline:none}
-.auth-input:focus{background:var(--m3-surface-container-high)}
-.auth-input.invalid{background:var(--m3-error-container);outline:1px solid var(--m3-error)}
-.auth-input.valid{outline:1px solid var(--m3-primary)}
-.field-hint{font-size:.72rem;color:var(--m3-on-surface-muted);margin-top:4px;line-height:1.4}
+.auth-input{width:100%;padding:11px 14px;background:var(--m3-surface-container-low);color:var(--m3-on-surface);font-size:.88rem;outline:none;border:1px solid transparent;border-radius:var(--radius-sm);transition:all .15s ease}
+.auth-input:focus{background:var(--m3-surface-container-high);border-color:var(--m3-primary)}
+.auth-input.invalid{border-color:var(--m3-error);background:color-mix(in srgb, var(--m3-error) 6%, var(--m3-surface-container-low))}
+.auth-input.valid{border-color:var(--m3-primary)}
+.field-hint{font-size:.72rem;color:var(--m3-on-surface-muted);margin-top:4px;line-height:1.5}
 .field-error{font-size:.72rem;color:var(--m3-error);margin-top:4px;display:none}
 .field-error.show{display:block}
 .inline-ok{font-size:.72rem;color:var(--m3-primary);margin-top:4px;display:none}
 .inline-ok.show{display:block}
-.pwd-meter{height:4px;background:var(--m3-surface-container-high);margin-top:6px;display:flex;gap:2px}
-.pwd-meter i{flex:1;background:var(--m3-surface-container-highest)}
+
+/* ── Password meter ── */
+.pwd-meter{height:4px;border-radius:2px;background:var(--m3-surface-container-high);margin-top:6px;display:flex;gap:2px;overflow:hidden}
+.pwd-meter i{flex:1;background:transparent;border-radius:2px;transition:background .2s ease}
 .pwd-meter i.filled{background:var(--m3-error)}
-.pwd-meter i.mid{background:var(--m3-warning)}
+.pwd-meter i.mid{background:#e6a700}
 .pwd-meter i.strong{background:var(--m3-primary)}
-.radio-row{display:flex;gap:10px}
-.radio-pill{flex:1;display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--m3-surface-container-low);cursor:pointer;font-weight:700;font-size:.85rem}
-.radio-pill.selected{outline:2px solid var(--m3-primary);background:var(--m3-surface-container-high)}
-.radio-pill input{accent-color:var(--m3-primary)}
-.details-box{background:var(--m3-surface-container-low);padding:12px;margin-top:4px}
-.details-box summary{cursor:pointer;font-weight:700;font-size:.85rem;color:var(--m3-on-surface);list-style:none}
-.details-box summary::-webkit-details-marker{display:none}
-.auth-error-box{background:var(--m3-error-container);color:var(--m3-on-error-container);padding:10px 12px;font-size:.84rem;display:none;align-items:center;gap:8px;margin-bottom:12px}
-.auth-error-box.show{display:flex}
-.auth-success-box{background:var(--m3-primary-container);color:var(--m3-on-primary-container);padding:10px 12px;font-size:.84rem;display:none;margin-bottom:12px}
-.pwd-toggle{position:absolute;inset-inline-start:10px;top:50%;transform:translateY(-50%);background:none;color:var(--m3-on-surface-variant);cursor:pointer;font-size:.75rem;font-weight:700}
+.pwd-toggle{position:absolute;inset-inline-start:10px;top:50%;transform:translateY(-50%);background:none;color:var(--m3-on-surface-variant);cursor:pointer;font-size:.75rem;font-weight:700;border:none;padding:4px}
 .auth-input-wrap{position:relative}
-.auth-input-wrap.has-toggle .auth-input{padding-inline-start:48px}
-.section-title-sm{font-size:.9rem;font-weight:800;margin:14px 0 8px;padding-top:10px;border-top:1px solid var(--m3-surface-container-high);color:var(--m3-on-surface)}
-.hint-badge{display:inline-flex;align-items:center;padding:2px 6px;background:var(--m3-surface-container-high);font-size:.68rem;font-weight:700;color:var(--m3-on-surface-variant)}
+.auth-input-wrap.has-toggle .auth-input{padding-inline-start:52px}
+
+/* ── Gender pills ── */
+.radio-row{display:flex;gap:10px}
+.radio-pill{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:11px 12px;background:var(--m3-surface-container-low);cursor:pointer;font-weight:700;font-size:.85rem;border:1px solid transparent;border-radius:var(--radius-sm);transition:all .15s ease}
+.radio-pill:hover{background:var(--m3-surface-container-high)}
+.radio-pill.selected{border-color:var(--m3-primary);background:color-mix(in srgb, var(--m3-primary) 8%, var(--m3-surface-container-high))}
+.radio-pill input{accent-color:var(--m3-primary)}
+
+/* ── Info callout ── */
+.info-callout{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;background:color-mix(in srgb, var(--m3-primary) 8%, var(--m3-surface-container));border-radius:var(--radius-sm);font-size:.78rem;line-height:1.6;color:var(--m3-on-surface-variant);margin-bottom:18px}
+.info-callout .callout-icon{font-size:1.1rem;flex-shrink:0;margin-top:1px}
+
+/* ── Optional section ── */
+.optional-section{background:var(--m3-surface-container-low);border:1px solid var(--m3-outline-variant);border-radius:var(--radius-sm);padding:14px;margin-top:8px}
+.optional-toggle{display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-weight:700;font-size:.85rem;color:var(--m3-on-surface)}
+.optional-toggle .arrow{transition:transform .2s ease;font-size:.7rem;color:var(--m3-on-surface-variant)}
+.optional-toggle.open .arrow{transform:rotate(180deg)}
+.optional-content{display:none;margin-top:14px;padding-top:12px;border-top:1px solid var(--m3-outline-variant)}
+.optional-content.show{display:block}
+
+/* ── Buttons ── */
+.btn-row{display:flex;gap:10px;margin-top:8px}
+.btn-back{flex:0 0 auto;padding:12px 20px;background:var(--m3-surface-container-high);color:var(--m3-on-surface);font-weight:700;font-size:.88rem;cursor:pointer;border:1px solid var(--m3-outline-variant);border-radius:var(--radius-sm);transition:all .15s ease}
+.btn-back:hover{background:var(--m3-surface-container-highest)}
+.btn-next{flex:1;padding:12px;background:var(--m3-primary);color:var(--m3-on-primary);font-weight:700;font-size:.88rem;cursor:pointer;border:none;border-radius:var(--radius-sm);transition:all .15s ease}
+.btn-next:hover{filter:brightness(1.1)}
+.btn-next:disabled{opacity:.5;cursor:not-allowed}
+
+/* ── Error/success boxes ── */
+.auth-error-box{background:color-mix(in srgb, var(--m3-error) 10%, var(--m3-surface-container));color:var(--m3-error);padding:10px 14px;font-size:.84rem;display:none;align-items:center;gap:8px;margin-bottom:14px;border-radius:var(--radius-sm);border:1px solid color-mix(in srgb, var(--m3-error) 25%, transparent)}
+.auth-error-box.show{display:flex}
+.auth-success-box{background:color-mix(in srgb, var(--m3-primary) 10%, var(--m3-surface-container));color:var(--m3-on-surface);padding:14px;font-size:.88rem;display:none;margin-bottom:14px;border-radius:var(--radius-sm);border:1px solid color-mix(in srgb, var(--m3-primary) 25%, transparent);text-align:center}
+
+/* ── Summary card ── */
+.summary-card{background:var(--m3-surface-container-low);border-radius:var(--radius-sm);padding:16px;margin-bottom:16px}
+.summary-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;font-size:.84rem}
+.summary-row:not(:last-child){border-bottom:1px solid var(--m3-surface-container-high)}
+.summary-label{color:var(--m3-on-surface-variant);font-weight:600}
+.summary-value{color:var(--m3-on-surface);font-weight:700;direction:ltr}
+
+/* ── Security badge ── */
+.auth-security-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:color-mix(in srgb, var(--m3-primary) 10%, var(--m3-surface-container));border-radius:20px;font-size:.7rem;font-weight:600;color:var(--m3-primary);margin-top:8px}
+.pulse-dot{width:6px;height:6px;border-radius:50%;background:var(--m3-primary);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 </style>
 </head>
 <body class="auth-isolated-body">
 <div id="toast-container" class="toast-container"></div>
 <main class="auth-isolated-wrap reg-wrap">
-  <div class="auth-isolated-card" style="max-width:760px">
+  <div class="auth-isolated-card">
     <div class="auth-isolated-head">
-      <div class="auth-emblem-wrap"><svg class="auth-emblem-svg" viewBox="0 0 24 24" fill="currentColor" width="52" height="52" aria-hidden="true"><path d="M13 2.5C7.2 2.5 2.5 7.2 2.5 13S7.2 23.5 13 23.5c3.3 0 6.2-1.5 8.2-3.9-.4-.1-.8-.2-1.2-.2-4.4 0-8-3.6-8-8s3.6-8 8-8c.4 0 .8-.1 1.2-.2C19.2 4 16.3 2.5 13 2.5z"/></svg></div>
-      <h1>إنشاء حساب جديد</h1>
-      <p>بيانات موثوقة • تحقق فوري • تشفير سيادي</p>
+      <div class="auth-emblem-wrap" aria-hidden="true"><svg class="auth-emblem-svg" viewBox="0 0 24 24" fill="currentColor" width="52" height="52" aria-hidden="true" focusable="false"><path d="M13 2.5C7.2 2.5 2.5 7.2 2.5 13S7.2 23.5 13 23.5c3.3 0 6.2-1.5 8.2-3.9-.4-.1-.8-.2-1.2-.2-4.4 0-8-3.6-8-8s3.6-8 8-8c.4 0 .8-.1 1.2-.2C19.2 4 16.3 2.5 13 2.5z"/></svg></div>
+      <h1>إنشاء حساب مريض</h1>
+      <p>سجلك الصحي الموحد — بياناتك تحت سيطرتك</p>
+      <div class="auth-security-badge"><span class="pulse-dot"></span><span>تشفير سيادي • PDPL</span></div>
     </div>
     <div class="auth-isolated-tabs">
       <a href="./login.html" class="auth-tab">تسجيل الدخول</a>
       <a href="./register.html" class="auth-tab active">إنشاء حساب</a>
     </div>
 
-    <div class="stepper" id="stepper">
-      <div class="step active" data-s="1"><b>1</b><span>نوع الحساب</span></div>
-      <div class="stepper-line" id="step-line-1"></div>
-      <div class="step" data-s="2"><b>2</b><span>البيانات الأساسية</span></div>
-      <div class="stepper-line" id="step-line-2"></div>
-      <div class="step" data-s="3"><b>3</b><span>التأكيد</span></div>
+    <!-- Steps indicator -->
+    <div class="steps-bar" id="steps-bar">
+      <div class="step-dot active" data-s="1"></div>
+      <div class="step-line" id="sline-1"></div>
+      <div class="step-dot" data-s="2"></div>
+      <div class="step-line" id="sline-2"></div>
+      <div class="step-dot" data-s="3"></div>
     </div>
 
     <form id="register-form" class="auth-form" novalidate>
-      <div class="role-cards" id="role-cards">
-        <div class="role-card selected" data-role="PATIENT" tabindex="0" role="button" aria-pressed="true">
-          <span class="check">✓</span>
-          <h4>فرد — سجل صحي</h4>
-          <p>هويتك الوطنية تفتح ملفك الموحد بكل المنشآت. بياناتك محمية وتحتاج موافقتك للمشاركة.</p>
-          <span class="hint-badge">هوية + جوال</span>
-        </div>
-        <div class="role-card" data-role="HOSPITAL_ADMIN" tabindex="0" role="button" aria-pressed="false">
-          <span class="check">✓</span>
-          <h4>منشأة صحية</h4>
-          <p>سجل منشأتك ككيان معتمد. يخضع لمراجعة الوزارة قبل التفعيل والربط.</p>
-          <span class="hint-badge">عربي + إنجليزي</span>
-        </div>
-        <div class="role-card" data-role="CLINICIAN" tabindex="0" role="button" aria-pressed="false">
-          <span class="check">✓</span>
-          <h4>ممارس صحي</h4>
-          <p>حساب مهني مرتبط بمنشأة معتمدة. يرث صلاحيات المنشأة ولا يعمل منفرداً.</p>
-          <span class="hint-badge">يتبع منشأة</span>
-        </div>
-      </div>
       <input type="hidden" id="register-role" value="PATIENT">
 
-      <div id="common-fields">
-        <div class="field-grid">
-          <div class="auth-form-group">
-            <label for="register-fullname">الاسم الكامل <span class="req">*</span></label>
-            <div class="auth-input-wrap"><input id="register-fullname" required class="auth-input" placeholder="مثال: أحمد محمد الرشيدي" autocomplete="name"></div>
-            <div class="field-hint">الاسم الأول واسم العائلة على الأقل • 3-80 حرف</div>
-            <div class="field-error" id="err-fullname"></div>
-          </div>
-          <div class="auth-form-group">
-            <label for="register-username">اسم المستخدم <span class="req">*</span></label>
-            <div class="auth-input-wrap"><input id="register-username" required class="auth-input" placeholder="3-30 حرف، أحرف وأرقام فقط" autocomplete="username"></div>
-            <div class="field-hint">فريد • لا يمكن تغييره لاحقاً</div>
-            <div class="field-error" id="err-username"></div>
-          </div>
+      <!-- ═══════════════════ Panel 1: Identity ═══════════════════ -->
+      <div class="panel active" id="panel-1">
+        <div class="info-callout">
+          <span class="callout-icon">🪪</span>
+          <span>أدخل بياناتك التعريفية كما في هويتك الوطنية أو إقامتك. هذه البيانات ستُستخدم لربط سجلاتك الصحية من جميع المنشآت.</span>
         </div>
 
-        <div class="field-grid">
-          <div class="auth-form-group">
-            <label for="register-password">كلمة المرور <span class="req">*</span></label>
-            <div class="auth-input-wrap has-toggle"><input id="register-password" type="password" required class="auth-input" autocomplete="new-password" placeholder="8+ أحرف، حرف ورقم"><button type="button" class="pwd-toggle" data-toggle="register-password">إظهار</button></div>
-            <div class="pwd-meter" id="pwd-meter"><i></i><i></i><i></i><i></i></div>
-            <div class="field-hint" id="pwd-hint">8 أحرف على الأقل • حرف + رقم</div>
-            <div class="field-error" id="err-password"></div>
-          </div>
-          <div class="auth-form-group">
-            <label for="register-password2">تأكيد كلمة المرور <span class="req">*</span></label>
-            <div class="auth-input-wrap has-toggle"><input id="register-password2" type="password" required class="auth-input" autocomplete="new-password" placeholder="أعد كتابة كلمة المرور"><button type="button" class="pwd-toggle" data-toggle="register-password2">إظهار</button></div>
-            <div class="field-error" id="err-password2"></div>
-            <div class="inline-ok" id="ok-password2">✓ متطابقة</div>
-          </div>
-        </div>
-      </div>
-
-      <div id="patient-section">
-        <div class="section-title-sm">📋 البيانات التعريفية (مطلوبة للسجل الموثوق)</div>
         <div class="field-grid">
           <div class="auth-form-group">
             <label for="register-nid">رقم الهوية / الإقامة <span class="req">*</span></label>
-            <div class="auth-input-wrap"><input id="register-nid" class="auth-input" placeholder="10 أرقام يبدأ بـ 1 أو 2" inputmode="numeric" maxlength="10"></div>
-            <div class="field-hint" id="nid-hint">مثال: 1xxxxxxxxx للمواطن، 2xxxxxxxxx للمقيم</div>
+            <div class="auth-input-wrap"><input id="register-nid" class="auth-input" placeholder="10 أرقام" inputmode="numeric" maxlength="10" autocomplete="off"></div>
+            <div class="field-hint">يبدأ بـ 1 (مواطن) أو 2 (مقيم)</div>
             <div class="field-error" id="err-nid"></div>
             <div class="inline-ok" id="ok-nid"></div>
           </div>
+          <div class="auth-form-group">
+            <label for="register-fullname">الاسم الكامل <span class="req">*</span></label>
+            <div class="auth-input-wrap"><input id="register-fullname" required class="auth-input" placeholder="مثال: أحمد محمد الرشيدي" autocomplete="name"></div>
+            <div class="field-hint">كما في الهوية • 3 أحرف على الأقل</div>
+            <div class="field-error" id="err-fullname"></div>
+          </div>
+        </div>
+
+        <div class="field-grid">
           <div class="auth-form-group">
             <label for="register-dob">تاريخ الميلاد <span class="req">*</span></label>
             <div class="auth-input-wrap"><input id="register-dob" type="date" class="auth-input"></div>
             <div class="field-error" id="err-dob"></div>
           </div>
-        </div>
-        <div class="field-grid">
           <div class="auth-form-group">
             <label>الجنس <span class="req">*</span></label>
             <div class="radio-row">
@@ -169,30 +163,72 @@
             </div>
             <div class="field-error" id="err-gender"></div>
           </div>
+        </div>
+
+        <div class="btn-row">
+          <button type="button" class="btn-next" id="btn-step1">التالي ←</button>
+        </div>
+      </div>
+
+      <!-- ═══════════════════ Panel 2: Account & Contact ═══════════════════ -->
+      <div class="panel" id="panel-2">
+        <div class="info-callout">
+          <span class="callout-icon">🔐</span>
+          <span>أنشئ بيانات الدخول الخاصة بك. اسم المستخدم فريد ولا يمكن تغييره لاحقاً.</span>
+        </div>
+
+        <div class="field-grid">
           <div class="auth-form-group">
-            <label for="register-phone">رقم الجوال السعودي <span class="req">*</span></label>
+            <label for="register-username">اسم المستخدم <span class="req">*</span></label>
+            <div class="auth-input-wrap"><input id="register-username" required class="auth-input" placeholder="أحرف وأرقام فقط" autocomplete="username"></div>
+            <div class="field-hint">3-30 حرف • فريد • لا يمكن تغييره</div>
+            <div class="field-error" id="err-username"></div>
+          </div>
+          <div class="auth-form-group">
+            <label for="register-phone">رقم الجوال <span class="req">*</span></label>
             <div class="auth-input-wrap"><input id="register-phone" class="auth-input" placeholder="05xxxxxxxx" inputmode="tel" dir="ltr" style="text-align:left"></div>
-            <div class="field-hint">05xxxxxxxx أو +9665xxxxxxxx — يحفظ بصيغة ‎+9665xxxxxxx</div>
+            <div class="field-hint">سيتم حفظه بصيغة +966</div>
             <div class="field-error" id="err-phone"></div>
             <div class="inline-ok" id="ok-phone"></div>
           </div>
         </div>
+
+        <div class="field-grid">
+          <div class="auth-form-group">
+            <label for="register-password">كلمة المرور <span class="req">*</span></label>
+            <div class="auth-input-wrap has-toggle"><input id="register-password" type="password" required class="auth-input" autocomplete="new-password" placeholder="8+ أحرف ورقم"><button type="button" class="pwd-toggle" data-toggle="register-password">إظهار</button></div>
+            <div class="pwd-meter" id="pwd-meter"><i></i><i></i><i></i><i></i></div>
+            <div class="field-hint" id="pwd-hint">8 أحرف على الأقل • حرف + رقم</div>
+            <div class="field-error" id="err-password"></div>
+          </div>
+          <div class="auth-form-group">
+            <label for="register-password2">تأكيد كلمة المرور <span class="req">*</span></label>
+            <div class="auth-input-wrap has-toggle"><input id="register-password2" type="password" required class="auth-input" autocomplete="new-password" placeholder="أعد كتابتها"><button type="button" class="pwd-toggle" data-toggle="register-password2">إظهار</button></div>
+            <div class="field-error" id="err-password2"></div>
+            <div class="inline-ok" id="ok-password2">✓ متطابقة</div>
+          </div>
+        </div>
+
         <div class="auth-form-group">
           <label for="register-email">البريد الإلكتروني <span style="font-weight:400;color:var(--m3-on-surface-muted)">(اختياري)</span></label>
           <div class="auth-input-wrap"><input id="register-email" type="email" class="auth-input" placeholder="name@example.com" dir="ltr" style="text-align:left" autocomplete="email"></div>
           <div class="field-error" id="err-email"></div>
         </div>
 
-        <details class="details-box">
-          <summary>➕ معلومات إضافية (اختيارية - تحسن جودة السجل)</summary>
-          <div style="display:grid;gap:10px;margin-top:12px">
+        <!-- Optional extras -->
+        <div class="optional-section">
+          <div class="optional-toggle" id="optional-toggle" role="button" tabindex="0">
+            <span>➕ معلومات إضافية (اختيارية)</span>
+            <span class="arrow">▼</span>
+          </div>
+          <div class="optional-content" id="optional-content">
             <div class="field-grid">
               <div class="auth-form-group"><label for="register-preferred-first-name">الاسم المفضل</label><div class="auth-input-wrap"><input id="register-preferred-first-name" class="auth-input" placeholder="مثال: أبو أحمد"></div></div>
               <div class="auth-form-group"><label for="register-preferred-last-name">اللقب المفضل</label><div class="auth-input-wrap"><input id="register-preferred-last-name" class="auth-input"></div></div>
             </div>
             <div class="auth-form-group"><label for="register-preferred-language">اللغة المفضلة</label><div class="auth-input-wrap"><select id="register-preferred-language" class="auth-input"><option value="ar">العربية</option><option value="en">English</option></select></div></div>
             <div class="field-grid">
-              <div class="auth-form-group"><label for="register-emergency-name">جهة اتصال للطوارئ - الاسم</label><div class="auth-input-wrap"><input id="register-emergency-name" class="auth-input"></div></div>
+              <div class="auth-form-group"><label for="register-emergency-name">جهة اتصال للطوارئ</label><div class="auth-input-wrap"><input id="register-emergency-name" class="auth-input" placeholder="الاسم"></div></div>
               <div class="auth-form-group"><label for="register-emergency-phone">هاتف الطوارئ</label><div class="auth-input-wrap"><input id="register-emergency-phone" class="auth-input" placeholder="05xxxxxxxx" dir="ltr" style="text-align:left"></div><div class="field-error" id="err-emergency-phone"></div></div>
             </div>
             <div class="auth-form-group"><label for="register-emergency-rel">صلة القرابة</label><div class="auth-input-wrap"><select id="register-emergency-rel" class="auth-input"><option value="">-- اختر --</option><option value="FATHER">أب</option><option value="MOTHER">أم</option><option value="SPOUSE">زوج/زوجة</option><option value="SIBLING">أخ/أخت</option><option value="CHILD">ابن/ابنة</option><option value="OTHER">أخرى</option></select></div></div>
@@ -201,83 +237,299 @@
               <div class="auth-form-group"><label for="register-district">الحي</label><div class="auth-input-wrap"><input id="register-district" class="auth-input"></div></div>
             </div>
             <div class="field-grid">
-              <div class="auth-form-group"><label for="register-address">العنوان (سطر)</label><div class="auth-input-wrap"><input id="register-address" class="auth-input"></div></div>
+              <div class="auth-form-group"><label for="register-address">العنوان</label><div class="auth-input-wrap"><input id="register-address" class="auth-input"></div></div>
               <div class="auth-form-group"><label for="register-postal">الرمز البريدي</label><div class="auth-input-wrap"><input id="register-postal" class="auth-input" placeholder="5 أرقام" maxlength="5" inputmode="numeric"></div><div class="field-error" id="err-postal"></div></div>
             </div>
           </div>
-        </details>
+        </div>
+
+        <div class="btn-row" style="margin-top:16px">
+          <button type="button" class="btn-back" id="btn-back2">→ رجوع</button>
+          <button type="button" class="btn-next" id="btn-step2">مراجعة وتأكيد ←</button>
+        </div>
       </div>
 
-      <div id="hospital-section" style="display:none">
-        <div class="section-title-sm">🏥 بيانات المنشأة (تخضع لموافقة الوزارة)</div>
-        <div class="field-grid">
-          <div class="auth-form-group">
-            <label for="register-org">اسم المنشأة (إنجليزي) <span class="req">*</span></label>
-            <div class="auth-input-wrap"><input id="register-org" class="auth-input" placeholder="e.g. Al-Noor Hospital" dir="ltr" style="text-align:left"></div>
-            <div class="field-error" id="err-org"></div>
-          </div>
-          <div class="auth-form-group">
-            <label for="register-org-ar">اسم المنشأة (عربي) <span class="req">*</span></label>
-            <div class="auth-input-wrap"><input id="register-org-ar" class="auth-input" placeholder="مثال: مستشفى النور"></div>
-            <div class="field-error" id="err-org-ar"></div>
-          </div>
+      <!-- ═══════════════════ Panel 3: Review & Submit ═══════════════════ -->
+      <div class="panel" id="panel-3">
+        <div class="info-callout">
+          <span class="callout-icon">✅</span>
+          <span>راجع بياناتك قبل إنشاء الحساب. يمكنك الرجوع لتعديل أي حقل.</span>
         </div>
-        <div class="field-grid">
-          <div class="auth-form-group">
-            <label for="register-facility-type">نوع المنشأة <span class="req">*</span></label>
-            <div class="auth-input-wrap"><select id="register-facility-type" class="auth-input"><option value="HOSPITAL">مستشفى - HOSPITAL</option><option value="CLINIC">عيادة - CLINIC</option><option value="DAY_SURGERY">جراحة يومية</option><option value="LABORATORY">مختبر</option><option value="PHARMACY">صيدلية</option><option value="CENTER">مركز صحي</option></select></div>
-          </div>
-          <div class="auth-form-group">
-            <label for="register-region">المنطقة <span class="req">*</span></label>
-            <div class="auth-input-wrap"><select id="register-region" class="auth-input"><option value="">-- اختر المنطقة --</option><option value="Riyadh">الرياض</option><option value="Makkah">مكة المكرمة</option><option value="Eastern">المنطقة الشرقية</option><option value="Madinah">المدينة المنورة</option><option value="Asir">عسير</option><option value="Qassim">القصيم</option><option value="Hail">حائل</option><option value="Tabuk">تبوك</option><option value="Najran">نجران</option><option value="Jazan">جازان</option><option value="AlBaha">الباحة</option><option value="AlJawf">الجوف</option><option value="NorthernBorders">الحدود الشمالية</option></select></div>
-            <div class="field-error" id="err-region"></div>
-          </div>
-        </div>
-        <div class="field-grid">
-          <div class="auth-form-group">
-            <label for="register-hphone">رقم جوال مسؤول المنشأة <span class="req">*</span></label>
-            <div class="auth-input-wrap"><input id="register-hphone" class="auth-input" placeholder="05xxxxxxxx" dir="ltr" style="text-align:left"></div>
-            <div class="field-error" id="err-hphone"></div>
-          </div>
-          <div class="auth-form-group">
-            <label for="register-hemail">البريد الرسمي للمنشأة <span class="req">*</span></label>
-            <div class="auth-input-wrap"><input id="register-hemail" type="email" class="auth-input" placeholder="info@hospital.sa" dir="ltr" style="text-align:left"></div>
-            <div class="field-error" id="err-hemail"></div>
-          </div>
-        </div>
-        <div style="background:var(--m3-warning-container);color:var(--m3-on-warning-container);padding:8px 10px;font-size:.78rem;margin-top:6px">⏳ سيتم إنشاء المنشأة بحالة <b>PENDING_APPROVAL</b> ويحتاج تفعيلها لموافقة مسؤول الوزارة (MOH_ADMIN).</div>
-      </div>
 
-      <div id="clinician-section" style="display:none">
-        <div class="section-title-sm">🩺 بيانات الطبيب - الربط بالمنشأة</div>
-        <div class="auth-form-group">
-          <label for="register-clinician-org">المنشأة التابعة <span class="req">*</span></label>
-          <div class="auth-input-wrap"><select id="register-clinician-org" class="auth-input"><option value="">-- جاري تحميل المنشآت المعتمدة --</option></select></div>
-          <div class="field-hint">يجب أن تكون المنشأة نشطة ومعتمدة من الوزارة - الطبيب يتبع منشأة دائماً</div>
-          <div class="field-error" id="err-clinician-org"></div>
+        <div class="summary-card" id="summary-card">
+          <!-- Filled by JS -->
         </div>
-        <div class="field-grid">
-          <div class="auth-form-group">
-            <label for="register-clinician-phone">رقم الجوال <span class="req">*</span></label>
-            <div class="auth-input-wrap"><input id="register-clinician-phone" class="auth-input" placeholder="05xxxxxxxx" dir="ltr" style="text-align:left"></div>
-            <div class="field-error" id="err-clinician-phone"></div>
-          </div>
-          <div class="auth-form-group">
-            <label for="register-clinician-email">البريد <span style="font-weight:400;color:var(--m3-on-surface-muted)">(اختياري)</span></label>
-            <div class="auth-input-wrap"><input id="register-clinician-email" type="email" class="auth-input" placeholder="doctor@hospital.sa" dir="ltr" style="text-align:left"></div>
-            <div class="field-error" id="err-clinician-email"></div>
-          </div>
-        </div>
-        <div style="background:var(--m3-primary-container);color:var(--m3-on-primary-container);padding:8px 10px;font-size:.78rem;margin-top:6px">🔗 الطبيب مرتبط تنظيمياً بمنشأة - لا يمكن العمل بدون منشأة - المنشأة غير النشطة يرفض الربط</div>
-      </div>
 
-      <div id="register-error" class="auth-error-box"><span id="register-error-text"></span></div>
-      <div id="register-success" class="auth-success-box"></div>
-      <button type="submit" class="auth-submit-btn" id="btn-register"><span>إنشاء الحساب والمتابعة للمنصة</span></button>
-      <p style="text-align:center;font-size:.74rem;color:var(--m3-on-surface-muted);margin-top:10px">بالتسجيل توافق على سياسة الخصوصية PDPL ومعالجة البيانات الصحية</p>
+        <div id="register-error" class="auth-error-box"><span id="register-error-text"></span></div>
+        <div id="register-success" class="auth-success-box"></div>
+
+        <div class="btn-row">
+          <button type="button" class="btn-back" id="btn-back3">→ رجوع</button>
+          <button type="submit" class="btn-next" id="btn-register">🔒 إنشاء الحساب</button>
+        </div>
+        <p style="text-align:center;font-size:.72rem;color:var(--m3-on-surface-muted);margin-top:12px;line-height:1.5">بالتسجيل توافق على سياسة الخصوصية (PDPL) ومعالجة البيانات الصحية وفقاً لأنظمة المملكة العربية السعودية</p>
+      </div>
     </form>
   </div>
 </main>
-<script src="./auth.js"></script>
+
+<script>
+// ═══════════════════════════════════════════════════
+// Patient-only Registration — Step Navigation
+// ═══════════════════════════════════════════════════
+(function(){
+  let currentStep = 1;
+  const panels = [null, document.getElementById('panel-1'), document.getElementById('panel-2'), document.getElementById('panel-3')];
+  const dots = document.querySelectorAll('.step-dot');
+  const lines = [null, document.getElementById('sline-1'), document.getElementById('sline-2')];
+
+  function goStep(n){
+    panels[currentStep].classList.remove('active');
+    panels[n].classList.add('active');
+    dots.forEach((d,i)=>{
+      d.classList.toggle('active', i+1===n);
+      d.classList.toggle('done', i+1<n);
+    });
+    if(lines[1]) lines[1].classList.toggle('done', n>=2);
+    if(lines[2]) lines[2].classList.toggle('done', n>=3);
+    currentStep = n;
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+
+  // Step 1 → 2
+  document.getElementById('btn-step1').addEventListener('click',()=>{
+    let ok = true;
+    const nid = document.getElementById('register-nid').value.trim();
+    const fullname = document.getElementById('register-fullname').value.trim();
+    const dob = document.getElementById('register-dob').value;
+    const gender = document.querySelector('input[name="gender"]:checked');
+
+    // Validate NID
+    if(!nid || !/^[12]\d{9}$/.test(nid)){
+      showErr('err-nid','رقم هوية غير صحيح: 10 أرقام يبدأ بـ 1 أو 2');
+      document.getElementById('register-nid').classList.add('invalid');
+      ok=false;
+    } else { clearErr('err-nid'); document.getElementById('register-nid').classList.remove('invalid'); document.getElementById('register-nid').classList.add('valid'); }
+
+    // Validate fullname
+    if(!fullname || fullname.length<3){
+      showErr('err-fullname','الاسم مطلوب (3 أحرف على الأقل)');
+      document.getElementById('register-fullname').classList.add('invalid');
+      ok=false;
+    } else { clearErr('err-fullname'); document.getElementById('register-fullname').classList.remove('invalid'); }
+
+    // Validate DOB
+    if(!dob){
+      showErr('err-dob','تاريخ الميلاد مطلوب');
+      ok=false;
+    } else { clearErr('err-dob'); }
+
+    // Validate gender
+    if(!gender){
+      showErr('err-gender','اختر الجنس');
+      ok=false;
+    } else { clearErr('err-gender'); }
+
+    if(ok) goStep(2);
+  });
+
+  // Step 2 → 3
+  document.getElementById('btn-step2').addEventListener('click',()=>{
+    let ok = true;
+    const username = document.getElementById('register-username').value.trim();
+    const phone = document.getElementById('register-phone').value.trim();
+    const pwd = document.getElementById('register-password').value;
+    const pwd2 = document.getElementById('register-password2').value;
+
+    if(!username || username.length<3 || !/^[a-zA-Z0-9_]+$/.test(username)){
+      showErr('err-username','3-30 حرف، أحرف إنجليزية وأرقام فقط');
+      ok=false;
+    } else { clearErr('err-username'); }
+
+    const phoneClean = phone.replace(/[\s\-\(\)]/g,'');
+    if(!phoneClean || !/^(05\d{8}|5\d{8}|\+9665\d{8}|9665\d{8})$/.test(phoneClean)){
+      showErr('err-phone','رقم جوال غير صحيح');
+      ok=false;
+    } else { clearErr('err-phone'); }
+
+    if(!pwd || pwd.length<8 || !/[A-Za-z]/.test(pwd) || !/\d/.test(pwd)){
+      showErr('err-password','8+ أحرف، حرف ورقم على الأقل');
+      ok=false;
+    } else { clearErr('err-password'); }
+
+    if(pwd !== pwd2){
+      showErr('err-password2','كلمتا المرور غير متطابقتين');
+      ok=false;
+    } else if(pwd2){ clearErr('err-password2'); }
+
+    if(ok){
+      buildSummary();
+      goStep(3);
+    }
+  });
+
+  // Back buttons
+  document.getElementById('btn-back2').addEventListener('click',()=>goStep(1));
+  document.getElementById('btn-back3').addEventListener('click',()=>goStep(2));
+
+  // Optional toggle
+  document.getElementById('optional-toggle').addEventListener('click',function(){
+    this.classList.toggle('open');
+    document.getElementById('optional-content').classList.toggle('show');
+  });
+
+  // Build summary
+  function buildSummary(){
+    const nid = document.getElementById('register-nid').value.trim();
+    const fullname = document.getElementById('register-fullname').value.trim();
+    const dob = document.getElementById('register-dob').value;
+    const gender = document.querySelector('input[name="gender"]:checked')?.value;
+    const username = document.getElementById('register-username').value.trim();
+    const phone = document.getElementById('register-phone').value.trim();
+    const email = document.getElementById('register-email').value.trim();
+
+    const genderAr = gender==='male'?'ذكر':'أنثى';
+    const rows = [
+      ['الاسم الكامل', fullname],
+      ['رقم الهوية', nid],
+      ['تاريخ الميلاد', dob],
+      ['الجنس', genderAr],
+      ['اسم المستخدم', username],
+      ['رقم الجوال', phone],
+    ];
+    if(email) rows.push(['البريد', email]);
+
+    document.getElementById('summary-card').innerHTML = rows.map(([l,v])=>`<div class="summary-row"><span class="summary-label">${l}</span><span class="summary-value">${v}</span></div>`).join('');
+  }
+
+  // Password meter
+  const pwdInput = document.getElementById('register-password');
+  const pwd2Input = document.getElementById('register-password2');
+  if(pwdInput){
+    pwdInput.addEventListener('input',function(){
+      const v = this.value;
+      const bars = document.querySelectorAll('#pwd-meter i');
+      bars.forEach(b=>{b.className=''});
+      let score = 0;
+      if(v.length>=4) score++;
+      if(v.length>=8) score++;
+      if(/[A-Za-z]/.test(v)&&/\d/.test(v)) score++;
+      if(v.length>=12 && /[^A-Za-z0-9]/.test(v)) score++;
+      for(let i=0;i<score;i++){
+        bars[i].classList.add(score<=1?'filled':score<=2?'mid':'strong');
+      }
+    });
+  }
+  if(pwd2Input){
+    pwd2Input.addEventListener('input',function(){
+      const match = this.value && this.value === pwdInput.value;
+      document.getElementById('ok-password2').classList.toggle('show', match);
+    });
+  }
+
+  // Password toggle
+  document.querySelectorAll('.pwd-toggle').forEach(btn=>{
+    btn.addEventListener('click',function(){
+      const input = document.getElementById(this.dataset.toggle);
+      if(input.type==='password'){input.type='text';this.textContent='إخفاء';}
+      else{input.type='password';this.textContent='إظهار';}
+    });
+  });
+
+  // Gender pills
+  document.querySelectorAll('.radio-pill input').forEach(r=>{
+    r.addEventListener('change',()=>{
+      document.querySelectorAll('.radio-pill').forEach(p=>p.classList.remove('selected'));
+      r.closest('.radio-pill').classList.add('selected');
+    });
+  });
+
+  // Submit
+  document.getElementById('register-form').addEventListener('submit', async function(e){
+    e.preventDefault();
+    const btn = document.getElementById('btn-register');
+    const errBox = document.getElementById('register-error');
+    const errText = document.getElementById('register-error-text');
+    const successBox = document.getElementById('register-success');
+    errBox.classList.remove('show');
+    btn.disabled = true;
+    btn.innerHTML = '⏳ جاري الإنشاء...';
+
+    const nid = document.getElementById('register-nid').value.trim();
+    const fullname = document.getElementById('register-fullname').value.trim();
+    const dob = document.getElementById('register-dob').value;
+    const gender = document.querySelector('input[name="gender"]:checked')?.value;
+    const username = document.getElementById('register-username').value.trim();
+    const phone = document.getElementById('register-phone').value.trim();
+    const pwd = document.getElementById('register-password').value;
+    const email = document.getElementById('register-email').value.trim();
+
+    const body = {
+      fullName: fullname,
+      username: username,
+      password: pwd,
+      role: 'PATIENT',
+      nid: nid,
+      phone: phone,
+      dob: dob,
+      gender: gender
+    };
+    if(email) body.email = email;
+
+    // Optional fields
+    const prefFirst = document.getElementById('register-preferred-first-name')?.value?.trim();
+    const prefLast = document.getElementById('register-preferred-last-name')?.value?.trim();
+    const prefLang = document.getElementById('register-preferred-language')?.value;
+    const emName = document.getElementById('register-emergency-name')?.value?.trim();
+    const emPhone = document.getElementById('register-emergency-phone')?.value?.trim();
+    const emRel = document.getElementById('register-emergency-rel')?.value;
+    const city = document.getElementById('register-city')?.value?.trim();
+    const district = document.getElementById('register-district')?.value?.trim();
+    const address = document.getElementById('register-address')?.value?.trim();
+    const postal = document.getElementById('register-postal')?.value?.trim();
+
+    if(prefFirst||prefLast||prefLang||emName||emPhone||emRel||city||district||address||postal){
+      body.patientProfile = {};
+      if(prefFirst) body.patientProfile.preferredFirstName = prefFirst;
+      if(prefLast) body.patientProfile.preferredLastName = prefLast;
+      if(prefLang) body.patientProfile.preferredLanguage = prefLang;
+      if(emName) body.patientProfile.emergencyContactName = emName;
+      if(emPhone) body.patientProfile.emergencyContactPhone = emPhone;
+      if(emRel) body.patientProfile.emergencyContactRelationship = emRel;
+      if(city) body.patientProfile.addressCity = city;
+      if(district) body.patientProfile.addressDistrict = district;
+      if(address) body.patientProfile.addressLine = address;
+      if(postal) body.patientProfile.addressPostalCode = postal;
+    }
+
+    try {
+      const res = await fetch('/api/auth/register', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      if(!res.ok) throw new Error(data.error || data.message || 'فشل في إنشاء الحساب');
+
+      successBox.innerHTML = '<div style="font-size:1.1rem;margin-bottom:6px">🎉 تم إنشاء حسابك بنجاح!</div><div style="font-size:.82rem;color:var(--m3-on-surface-variant)">جاري تحويلك لصفحة تسجيل الدخول...</div>';
+      successBox.style.display = 'block';
+      btn.style.display = 'none';
+      document.getElementById('btn-back3').style.display = 'none';
+
+      setTimeout(()=>{
+        window.location.href = './login.html';
+      }, 2000);
+    } catch(err){
+      errText.textContent = err.message;
+      errBox.classList.add('show');
+      btn.disabled = false;
+      btn.innerHTML = '🔒 إنشاء الحساب';
+    }
+  });
+
+  function showErr(id,msg){ const el=document.getElementById(id); if(el){el.textContent=msg;el.classList.add('show');} }
+  function clearErr(id){ const el=document.getElementById(id); if(el){el.textContent='';el.classList.remove('show');} }
+})();
+</script>
 </body>
 </html>
