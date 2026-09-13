@@ -2396,6 +2396,8 @@ body.light-theme .toast,
 .rx-search-wrap svg { width: 16px; height: 16px; color: var(--m3-on-surface-muted); flex-shrink: 0; }
 .rx-search-wrap .form-input { flex: 1; min-width: 0; background: transparent; padding: 6px 0; }
 .rx-scroll-hint { display: none; font-size: 0.72rem; color: var(--m3-on-surface-muted); }
+/* Inline row actions (appointments) — wrap on every viewport, stack inside mobile cards */
+.rx-actions { display: inline-flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 
 /* =========================================
    RESPONSIVE — Mobile & Tablet (RTL-first)
@@ -2701,6 +2703,9 @@ pre, code, .mono-code, .json-display {
   #longitudinal-results { grid-template-columns: 1fr !important; max-height: 60vh; max-height: 60dvh; }
   /* Print action is the primary mobile action — full width touch target */
   #pane-longitudinal #btn-print-patient-summary { flex: 1 1 100%; min-height: 44px; }
+  /* Appointments: booking submit is full width, row actions stack */
+  #form-book-appointment button[type="submit"] { width: 100%; min-height: 44px; }
+  .rx-table .rx-actions { display: flex; flex: 1 1 auto; min-width: 0; }
   /* Certified report preview: paper grids halve, paper tables scroll */
   .pdf-patient-grid, .pdf-kpi-bar { grid-template-columns: repeat(2, 1fr); }
   .pdf-doc-header, .pdf-section-header { flex-wrap: wrap; gap: 8px; }

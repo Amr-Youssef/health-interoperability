@@ -5286,10 +5286,10 @@ async function loadAppointments(){
         else if(appAuth.currentRole==='CLINICIAN' && a.clinician_id===appAuth.user?.id) actions+=`<button class="btn btn-secondary btn-sm" onclick="updateAppointment('${a.id}','arrived')">وصول</button> `;
       }
       if(a.status==='arrived'){
-        if(appAuth.currentRole==='HOSPITAL_ADMIN' || (appAuth.currentRole==='CLINICIAN' && a.clinician_id===appAuth.user?.id)) actions+=`<button class="btn btn-success btn-sm" onclick="updateAppointment('${a.id}','fulfilled')">إتمام</button> `;
+        if(appAuth.currentRole==='HOSPITAL_ADMIN' || (appAuth.currentRole==='CLINICIAN' && a.clinician_id===appAuth.user?.id)) actions+=`<button class="btn btn-primary btn-sm" onclick="updateAppointment('${a.id}','fulfilled')">إتمام</button> `;
       }
       if(appAuth.currentRole==='PATIENT' && ['proposed','booked'].includes(a.status)) actions+=`<button class="btn btn-secondary btn-sm" onclick="updateAppointment('${a.id}','cancelled')">إلغاء</button>`;
-      return `<tr><td><small>${a.patient_id?.substring(0,8)}...</small></td><td>${orgName}</td><td><span class="badge ${typeBadge}">${a.appointment_type}</span><br>${clinicianBadge}</td><td><span class="badge ${statusBadge}">${a.status}</span></td><td>${dateStr}</td><td>${consentBadge} <small>${a.consent?.consent_type||''}</small></td><td>${actions||'--'}</td></tr>`;
+      return `<tr><td data-label="المريض"><small>${a.patient_id?.substring(0,8)}...</small></td><td data-label="المنشأة">${orgName}</td><td data-label="النوع والطبيب"><span class="badge ${typeBadge}">${a.appointment_type}</span><br>${clinicianBadge}</td><td data-label="الحالة"><span class="badge ${statusBadge}">${a.status}</span></td><td data-label="الموعد">${dateStr}</td><td data-label="الإذن">${consentBadge} <small>${a.consent?.consent_type||''}</small></td><td data-label="إجراء"><span class="rx-actions">${actions||'--'}</span></td></tr>`;
     }).join('');
   }catch(e){ tbody.innerHTML=`<tr><td colspan="7" class="text-center py-4" style="color:var(--m3-error);">خطأ: ${e.message}</td></tr>`; }
 }
