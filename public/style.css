@@ -1,21 +1,21 @@
 /* ==========================================================================
    المنصة الوطنية للربط والتشغيل الصحي البيني (Saudi Interoperability Engine)
    Borderless High-Contrast Theme System with Inverted Contrast Sidebar
-   - In Dark Mode: Lighter Refined Charcoal Sidebar (#303030) on Dark Canvas (#121212)
-   - In Light Mode: Deep Executive Dark Sidebar (#16171B) on Light Canvas (#E9EBF0)
+   - In Dark Mode: Lighter Refined Charcoal Sidebar (#303030) on Dark Canvas (#0C0C0E)
+   - In Light Mode: Deep Executive Dark Sidebar (#16171B) on Light Canvas (#D9DEE7)
    - Complete borderless flat architecture with crystal-clear tonal contrast
    - Sharp 0px geometry & clean modern aesthetics
    ========================================================================== */
 
 :root,
 [data-theme="dark"] {
-  /* Dark Tonal Surface Hierarchy */
-  --m3-surface: #121212;                   /* Base Canvas Ground */
-  --m3-surface-dim: #0A0A0A;               /* Deepest Canvas */
-  --m3-surface-container-low: #191919;     /* Inner Wells & Nested Data Boxes */
-  --m3-surface-container: #262626;         /* Official Cards / Grid Containers */
-  --m3-surface-container-high: #2E2E2E;    /* Headers / Table Headers / Active */
-  --m3-surface-container-highest: #383838; /* Popovers / Hover State / Secondary BTN */
+  /* Dark Tonal Surface Hierarchy — deepened canvas, lifted cards for stronger separation */
+  --m3-surface: #0C0C0E;                   /* Base Canvas Ground */
+  --m3-surface-dim: #060607;               /* Deepest Canvas */
+  --m3-surface-container-low: #151517;     /* Inner Wells & Nested Data Boxes */
+  --m3-surface-container: #2B2B30;         /* Official Cards / Grid Containers */
+  --m3-surface-container-high: #36363D;    /* Headers / Table Headers / Active */
+  --m3-surface-container-highest: #43434B; /* Popovers / Hover State / Secondary BTN */
 
   /* Inverted Sidebar in Dark Mode (Lighter Gray Shade #303030) */
   --sidebar-bg: #303030;
@@ -96,13 +96,13 @@
    ========================================= */
 body.light-theme,
 [data-theme="light"] {
-  /* Light Tonal Surface Hierarchy */
-  --m3-surface: #E9EBF0;                   /* Deepened Soft Gray Canvas for Maximum Pop */
-  --m3-surface-dim: #DEE1E8;               /* Subtle Canvas Well */
-  --m3-surface-container-low: #EEF0F4;     /* Inner Wells & Nested Data Boxes */
-  --m3-surface-container: #FFFFFF;         /* Solid White Cards (Pops off #E9EBF0) */
-  --m3-surface-container-high: #F3F4F7;    /* Headers / Table Headers / Active */
-  --m3-surface-container-highest: #E5E8EE; /* Popovers / Hover State / Secondary BTN */
+  /* Light Tonal Surface Hierarchy — deepened canvas so white cards pop harder */
+  --m3-surface: #D9DEE7;                   /* Deepened Soft Gray Canvas for Maximum Pop */
+  --m3-surface-dim: #C9CFD9;               /* Subtle Canvas Well */
+  --m3-surface-container-low: #E7EAF0;     /* Inner Wells & Nested Data Boxes */
+  --m3-surface-container: #FFFFFF;         /* Solid White Cards (Pops off #D9DEE7) */
+  --m3-surface-container-high: #EEF0F4;    /* Headers / Table Headers / Active */
+  --m3-surface-container-highest: #DCE1E9; /* Popovers / Hover State / Secondary BTN */
 
   /* Inverted Sidebar in Light Mode (Executive Deep Dark #16171B) */
   --sidebar-bg: #16171B;
