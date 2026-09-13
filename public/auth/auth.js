@@ -59,7 +59,7 @@
       try{
         const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({username,password})});
         const d=await r.json();
-        if(!r.ok){ if(box){box.style.display='flex'; if(txt) txt.textContent=d.error||'فشل تسجيل الدخول';} return; }
+        if(!r.ok){ if(box){box.style.display='flex'; if(txt) txt.textContent=(d.error||'فشل تسجيل الدخول')+(d.stage?' (رمز التشخيص: '+d.stage+')':'');} return; }
         localStorage.setItem('shiep_token', d.token);
         localStorage.setItem('shiep_role', d.user.role);
         localStorage.setItem('shiep_user', JSON.stringify(d.user));

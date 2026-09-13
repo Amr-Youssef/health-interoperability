@@ -665,9 +665,25 @@ async function ensureDefaultAccounts() {
   }
 });
 
-router.post('/login', async (req: Request, res: Response) => {
+// Transient Prisma connection codes (cold start / pool wakeup) — safe to retry once.
+const TRANSIENT_PRISMA_CODES = new Set(['P1001', 'P1002', 'P1008', 'P1010', 'P1017']);
+async function withDbRetry<T>(fn: () => Promise<T>): Promise<T> {
   try {
-    await ensureDefaultAccounts();
+    return await fn();
+  } catch (e: any) {
+    if (e?.code && TRANSIENT_PRISMA_CODES.has(String(e.code))) {
+      await new Promise((r) => setTimeout(r, 600));
+      return await fn();
+    }
+    throw e;
+  }
+}
+
+router.post('/login', async (req: Request, res: Response) => {
+  // Stage tracker: returned as `stage` on 500 so the next failure is instantly localizable.
+  let stage = 'seed';
+  try {
+    await withDbRetry(() => ensureDefaultAccounts());
 
     const { username, password } = req.body;
 
@@ -675,20 +691,27 @@ router.post('/login', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Username and password required' });
     }
 
-    const user = await prisma.user.findUnique({
+    stage = 'lookup';
+    const user = await withDbRetry(() => prisma.user.findUnique({
       where: { username },
       include: { role: true, organization: true }
-    });
+    }));
 
     if (!user || !user.is_active) {
       return res.status(401).json({ error: 'Invalid credentials or inactive user' });
     }
+    if (!user.role?.role_code) {
+      console.error(`Login error [norole]: user ${user.id} has no role relation`);
+      return res.status(500).json({ error: 'Internal server error during login', stage: 'norole' });
+    }
 
+    stage = 'verify';
     const isMatch = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
+    stage = 'token';
     const token = jwt.sign(
       { userId: user.id, role: user.role.role_code, orgId: user.organization_id, patientProfileId: user.patient_profile_id },
       JWT_SECRET,
@@ -709,8 +732,8 @@ router.post('/login', async (req: Request, res: Response) => {
       }
     });
   } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ error: 'Internal server error during login' });
+    console.error(`Login error [${stage}]:`, error);
+    res.status(500).json({ error: 'Internal server error during login', stage });
   }
 });
 

@@ -196,6 +196,17 @@ export function createPlatformApp() {
   app.use('/api/auth/login', loginLimiter);
   app.use('/api/auth', authRoutes);
 
+  // Public platform health probe (no sensitive data — liveness + DB reachability only)
+  app.get('/api/health', async (_req: Request, res: Response) => {
+    const started = Date.now();
+    let db: 'up' | 'down' = 'down';
+    try {
+      await prismaInstance.$queryRaw`SELECT 1`;
+      db = 'up';
+    } catch { db = 'down'; }
+    res.json({ ok: db === 'up', db, dbMs: Date.now() - started, uptimeSec: Math.round(process.uptime()), time: new Date().toISOString() });
+  });
+
   // Public routes (migrated to modules/public)
 
   app.use((req, res, next) => {
