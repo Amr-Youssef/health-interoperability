@@ -1802,6 +1802,7 @@ function handleTabSwitch(tab) {
     }
   }
   if (tab === 'appointments') loadAppointments();
+  if (tab === 'patient-access') loadPatientAccessLog();
   if (tab === 'profile') {
     if (appAuth.currentRole === 'PATIENT') {
       loadPatientProfileTab();
@@ -5293,6 +5294,78 @@ async function loadAppointments(){
     }).join('');
   }catch(e){ tbody.innerHTML=`<tr><td colspan="7" class="text-center py-4" style="color:var(--m3-error);">خطأ: ${e.message}</td></tr>`; }
 }
+// 5b. PATIENT ACCESS LOG (who holds access to my record — derived from real appointment consents)
+async function loadPatientAccessLog(){
+  const tbody = document.getElementById('patient-access-tbody');
+  const countEl = document.getElementById('patient-access-count');
+  if(!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4">جاري تحميل سجل الوصول...</td></tr>';
+  const fmt = (v) => { try { return v ? new Date(v).toLocaleString('ar-SA') : '—'; } catch(e){ return '—'; } };
+  const typeAr = (t) => ({ROUTINE:'روتيني',CHRONIC:'مزمن',REFERRAL:'تحويل',EMERGENCY:'طوارئ'})[t] || t || '—';
+  try{
+    const r = await fetch('/api/appointments/my');
+    if(!r.ok) throw new Error('فشل التحميل (' + r.status + ')');
+    const list = await r.json();
+    const events = [];
+    (Array.isArray(list) ? list : []).forEach((a) => {
+      const org = a.organization?.organization_name_ar || a.organization?.organization_name || 'منشأة صحية';
+      const base = a.scheduled_start || a.created_at;
+      const baseTs = new Date(base).getTime() || 0;
+      events.push({ ts: baseTs, at: fmt(base), action: 'طلب موعد (' + typeAr(a.appointment_type) + ')', badge: 'badge-info', org, detail: 'حالة الموعد: ' + (a.status || '—') });
+      const c = a.consent;
+      if(c && c.granted){
+        const emergency = a.appointment_type === 'EMERGENCY';
+        const expired = c.expires_at && new Date(c.expires_at) < new Date();
+        const revoked = !!c.revoked_at;
+        events.push({ ts: new Date(c.granted_at || base).getTime() || baseTs, at: fmt(c.granted_at || base),
+          action: emergency ? 'وصول طارئ — كسر زجاج' : 'منح إذن وصول للسجل',
+          badge: revoked ? 'badge-secondary' : expired ? 'badge-warning' : emergency ? 'badge-error' : 'badge-success',
+          org, detail: (c.consent_type || 'إذن') + ' • ' + (revoked ? 'مُسحوب' : expired ? 'منتهي' : 'ساري') + (c.expires_at ? ' • حتى ' + fmt(c.expires_at) : ' • دائم') });
+        if(revoked) events.push({ ts: new Date(c.revoked_at).getTime() || baseTs, at: fmt(c.revoked_at), action: 'سحب إذن الوصول', badge: 'badge-secondary', org, detail: c.consent_type || '' });
+      } else if(c){
+        events.push({ ts: baseTs, at: fmt(base), action: 'إذن بانتظار تأكيد المنشأة', badge: 'badge-warning', org, detail: c.consent_type || '' });
+      }
+      if(a.status === 'cancelled') events.push({ ts: baseTs, at: fmt(base), action: 'إلغاء الموعد', badge: 'badge-secondary', org, detail: 'أُلغي — لا وصول' });
+    });
+    events.sort((x,y) => y.ts - x.ts);
+    if(countEl) countEl.textContent = events.length + ' حدث';
+    tbody.innerHTML = events.length ? events.map((e) => `<tr><td data-label="التاريخ"><code>${e.at}</code></td><td data-label="الإجراء"><span class="badge ${e.badge}">${e.action}</span></td><td data-label="الجهة">${e.org}</td><td data-label="التفاصيل">${e.detail}</td></tr>`).join('') : '<tr><td colspan="4" class="text-center py-4">لا توجد أحداث وصول — تُسجل هنا كل الأذونات الممنوحة للمنشآت</td></tr>';
+  }catch(err){
+    tbody.innerHTML = `<tr><td colspan="4" class="text-center py-4" style="color:var(--m3-error);">تعذر التحميل: ${err.message}</td></tr>`;
+  }
+}
+
+async function exportPatientData(){
+  try{
+    showToast('جاري التجهيز', 'تجهيز نسخة مجهولة من سجلك...', 'info');
+    let pid = (typeof currentPatientId !== 'undefined' && currentPatientId) ? currentPatientId : '';
+    if(!pid){
+      const r = await fetch('/api/patients');
+      const j = await r.json().catch(() => []);
+      const arr = Array.isArray(j) ? j : (j.items || []);
+      pid = arr[0]?.internalId || arr[0]?.internal_id || '';
+    }
+    if(!pid){ showToast('لا يوجد سجل', 'لم يتم العثور على سجلك الصحي', 'error'); return; }
+    const res = await fetch('/api/patients/' + encodeURIComponent(pid) + '/longitudinal');
+    const data = await res.json();
+    if(!data.patient) throw new Error('السجل غير موجود');
+    const anon = JSON.parse(JSON.stringify(data));
+    const p = anon.patient || {};
+    if(p.birthDate) p.birthYear = String(p.birthDate).substring(0, 4);
+    ['internalId','internal_id','givenName','familyName','givenNameAr','familyNameAr','firstName','lastName','firstNameAr','lastNameAr','phone','telecom','city','addresses','address','nationalId','nationalityCode','identifiers'].forEach((k) => { delete p[k]; });
+    anon.exportedAt = new Date().toISOString();
+    anon.deidentified = true;
+    const blob = new Blob([JSON.stringify(anon, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'my-anonymized-record.json';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    showToast('تم التصدير', 'نُزلت نسخة مجهولة الهوية من سجلك (JSON)', 'success');
+  }catch(err){ showToast('فشل التصدير', err.message, 'error'); }
+}
+
 async function updateAppointment(id,status,clinician_id){
   try{
     const body={status};
