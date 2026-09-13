@@ -22,7 +22,7 @@ const appAuth = {
       if (!onAuthPage) { location.replace('/auth/login.html'); return; }
     } else {
       fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + this.token }, credentials: 'include' }).then(async r=>{
-        if(!r.ok){ this.logout(); location.replace('/auth/login.html'); return; }
+        if(!r.ok){ await this.logout(); return; }
         try { const fresh = await r.json(); if (fresh && fresh.fullName) { this.user = fresh; localStorage.setItem('shiep_user', JSON.stringify(fresh)); updateSessionUI(); } } catch(e){}
       }).catch(()=>{});
     }

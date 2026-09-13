@@ -60,8 +60,6 @@
       if(r.ok) location.replace('/');
       else { localStorage.removeItem('shiep_token'); localStorage.removeItem('shiep_role'); localStorage.removeItem('shiep_user'); }
     }).catch(()=>{});
-  } else {
-    fetch('/api/auth/me', { credentials: 'include' }).then(r=>{ if(r.ok) location.replace('/'); }).catch(()=>{});
   }
 
   document.querySelectorAll('[data-fill]').forEach(b=>{
