@@ -1,8 +1,8 @@
 /* ==========================================================================
    المنصة الوطنية للربط والتشغيل الصحي البيني (Saudi Interoperability Engine)
    Borderless High-Contrast Theme System with Inverted Contrast Sidebar
-   - In Dark Mode: Lighter Refined Charcoal Sidebar (#303030) on Dark Canvas (#0C0C0E)
-   - In Light Mode: Deep Executive Dark Sidebar (#16171B) on Light Canvas (#D9DEE7)
+   - In Dark Mode: Lighter Refined Charcoal Sidebar (#2E2E2F) on Dark Canvas (#0C0C0E)
+   - In Light Mode: Deep Executive Dark Sidebar (#141519) on Light Canvas (#D9DEE7)
    - Complete borderless flat architecture with crystal-clear tonal contrast
    - Sharp 0px geometry & clean modern aesthetics
    ========================================================================== */
@@ -17,13 +17,13 @@
   --m3-surface-container-high: #36363D;    /* Headers / Table Headers / Active */
   --m3-surface-container-highest: #43434B; /* Popovers / Hover State / Secondary BTN */
 
-  /* Inverted Sidebar in Dark Mode (Lighter Gray Shade #303030) */
-  --sidebar-bg: #303030;
-  --sidebar-item-bg: #303030;
-  --sidebar-item-hover: #3D3D3D;
-  --sidebar-item-active: #454545;
-  --sidebar-icon-wrap-bg: #3D3D3D;
-  --sidebar-well: #252525;
+  /* Inverted Sidebar in Dark Mode (Deepened #2E2E2F, lifted hover/active for clearer selection) */
+  --sidebar-bg: #2E2E2F;
+  --sidebar-item-bg: #2E2E2F;
+  --sidebar-item-hover: #41414A;
+  --sidebar-item-active: #4D4D56;
+  --sidebar-icon-wrap-bg: #41414A;
+  --sidebar-well: #232326;
   --sidebar-on-surface: #FFFFFF;
   --sidebar-on-surface-variant: #D1D1D6;
   --sidebar-on-surface-muted: #9E9EA4;
@@ -104,13 +104,13 @@ body.light-theme,
   --m3-surface-container-high: #EEF0F4;    /* Headers / Table Headers / Active */
   --m3-surface-container-highest: #DCE1E9; /* Popovers / Hover State / Secondary BTN */
 
-  /* Inverted Sidebar in Light Mode (Executive Deep Dark #16171B) */
-  --sidebar-bg: #16171B;
-  --sidebar-item-bg: #16171B;
-  --sidebar-item-hover: #222329;
-  --sidebar-item-active: #2A2C34;
-  --sidebar-icon-wrap-bg: #222329;
-  --sidebar-well: #1E1F24;
+  /* Inverted Sidebar in Light Mode (Deepened #141519, lifted hover/active for clearer selection) */
+  --sidebar-bg: #141519;
+  --sidebar-item-bg: #141519;
+  --sidebar-item-hover: #26272F;
+  --sidebar-item-active: #31333C;
+  --sidebar-icon-wrap-bg: #26272F;
+  --sidebar-well: #1C1D23;
   --sidebar-on-surface: #FFFFFF;
   --sidebar-on-surface-variant: #C4C4C8;
   --sidebar-on-surface-muted: #888890;
