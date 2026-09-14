@@ -79,7 +79,7 @@
     for (g = 0; g <= 3; g++) {
       var gv = lo + ((hi - lo) * g) / 3, gy = y(gv);
       out += '<line x1="' + PAD_L + '" y1="' + gy.toFixed(1) + '" x2="' + (W - PAD_R) + '" y2="' + gy.toFixed(1) + '" stroke="var(--m3-surface-container-highest)" stroke-width="1"/>';
-      out += '<text x="' + (PAD_L - 6) + '" y="' + (gy + 3.5).toFixed(1) + '" text-anchor="end" font-size="10" fill="var(--m3-on-surface-muted)" font-family="\'JetBrains Mono\',monospace">' + esc(fmtVal(gv)) + '</text>';
+      out += '<text x="' + (PAD_L - 6) + '" y="' + (gy + 3.5).toFixed(1) + '" text-anchor="end" font-size="11" fill="var(--m3-on-surface-muted)" font-family="\'JetBrains Mono\',monospace">' + esc(fmtVal(gv)) + '</text>';
     }
 
     /* thresholds */
@@ -87,7 +87,7 @@
       var ty = y(th.v);
       if (ty < PAD_T || ty > PAD_T + ih) return;
       out += '<line x1="' + PAD_L + '" y1="' + ty.toFixed(1) + '" x2="' + (W - PAD_R) + '" y2="' + ty.toFixed(1) + '" stroke="' + th.color + '" stroke-width="1" stroke-dasharray="4 4" opacity="0.8"/>';
-      out += '<text x="' + (W - PAD_R - 2) + '" y="' + (ty - 4).toFixed(1) + '" text-anchor="end" font-size="9" fill="' + th.color + '">' + esc(th.label) + '</text>';
+      out += '<text x="' + (W - PAD_R - 2) + '" y="' + (ty - 4).toFixed(1) + '" text-anchor="end" font-size="11" fill="' + th.color + '">' + esc(th.label) + '</text>';
     });
 
     /* x labels: up to 5 ticks from the longest series */
@@ -98,7 +98,7 @@
     tickIdx.forEach(function (i) {
       if (seen[i]) return; seen[i] = 1;
       var p = ref[i]; if (!p) return;
-      out += '<text x="' + x(i, n).toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="9" fill="var(--m3-on-surface-muted)">' + esc(fmtDate(p.t)) + '</text>';
+      out += '<text x="' + x(i, n).toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="11" fill="var(--m3-on-surface-muted)">' + esc(fmtDate(p.t)) + '</text>';
     });
 
     /* series */
@@ -107,7 +107,7 @@
       out += '<polyline points="' + pts + '" fill="none" stroke="' + s.color + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"' + (s.dashed ? ' stroke-dasharray="5 4"' : '') + '/>';
       s.points.forEach(function (p, i) {
         var tip = s.label + ': ' + fmtVal(p.v) + ' — ' + fmtDateLong(p.t) + (p.id ? ' • سجل ' + shortId(p.id) : '');
-        out += '<circle cx="' + x(i, s.points.length).toFixed(1) + '" cy="' + y(p.v).toFixed(1) + '" r="3" fill="' + s.color + '"><title>' + esc(tip) + '</title></circle>';
+        out += '<circle class="sr-point" data-tip="' + esc(tip) + '" cx="' + x(i, s.points.length).toFixed(1) + '" cy="' + y(p.v).toFixed(1) + '" r="5" fill="transparent" stroke="' + s.color + '" stroke-width="2"><title>' + esc(tip) + '</title></circle>';
       });
     });
 
@@ -126,6 +126,7 @@
       + '<div class="sr-chart-head" dir="rtl"><strong>' + esc(title) + '</strong><span><span class="badge badge-warning" style="font-size:0.62rem; margin-inline-end:4px;">PATIENT</span><span class="stat-count">' + esc(latestChip) + '</span></span></div>'
       + '<div class="sr-chart-legend" dir="rtl">' + legend + '</div>'
       + svg
+      + '<div class="sr-tap-readout" dir="rtl" aria-live="polite">المس أي نقطة لعرض قيمتها وتاريخها</div>'
       + '<small class="sr-chart-note" dir="rtl">' + esc(provNote) + '</small>'
       + (extraNote ? '<small class="sr-chart-note" dir="rtl">' + esc(extraNote) + '</small>' : '')
       + '</div>';
@@ -211,6 +212,16 @@
       return;
     }
     el.innerHTML = '<div class="sr-charts-grid">' + html + '</div>';
+    if (!el.dataset.tapBound) {
+      el.dataset.tapBound = '1';
+      el.addEventListener('click', function (e) {
+        var dot = e.target && e.target.closest ? e.target.closest('.sr-point') : null;
+        if (!dot) return;
+        var card = dot.closest('.sr-chart');
+        var out = card ? card.querySelector('.sr-tap-readout') : null;
+        if (out && dot.getAttribute('data-tip')) out.textContent = dot.getAttribute('data-tip');
+      });
+    }
   }
 
   window.VitalsCharts = { render: render, buildChartSVG: buildChartSVG };

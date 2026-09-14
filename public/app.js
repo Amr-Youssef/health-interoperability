@@ -784,6 +784,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initActions();
   initGlobalPatientSelector();
   initFileDropzone();
+  initAuditorModals();
   // Enforce role-based default tab after all init; fixes refresh hijack to monitoring
   setTimeout(() => {
     if (appAuth.currentRole) {
@@ -1150,22 +1151,35 @@ function initMobileDrawer() {
   const btn = document.getElementById('mobile-menu-btn');
   const sidebar = document.getElementById('sidebar');
   const backdrop = document.getElementById('sidebar-backdrop');
+  const closeBtn = document.getElementById('drawer-close-btn');
+  const main = document.querySelector('.main-content');
   if (!btn || !sidebar || !backdrop) return;
-  const open = () => { sidebar.classList.add('open'); backdrop.classList.add('open'); btn.setAttribute('aria-expanded','true'); backdrop.setAttribute('aria-hidden','false'); sidebar.setAttribute('aria-hidden','false'); document.body.style.overflow = 'hidden'; const first = sidebar.querySelector('.nav-item'); if (first && window.innerWidth <= 1024) first.focus({ preventScroll: true }); };
-  const close = () => { if (!sidebar.classList.contains('open')) return; sidebar.classList.remove('open'); backdrop.classList.remove('open'); btn.setAttribute('aria-expanded','false'); backdrop.setAttribute('aria-hidden','true'); if (window.innerWidth <= 1024) sidebar.setAttribute('aria-hidden','true'); document.body.style.overflow = ''; if (sidebar.contains(document.activeElement)) btn.focus({ preventScroll: true }); };
+  const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+  const trapTab = (e) => {
+    if (e.key !== 'Tab' || !sidebar.classList.contains('open') || window.innerWidth > 1024) return;
+    const items = Array.from(sidebar.querySelectorAll(FOCUSABLE)).filter((el) => el.offsetParent !== null);
+    if (!items.length) return;
+    const first = items[0], last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus({ preventScroll: true }); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus({ preventScroll: true }); }
+  };
+  const open = () => { sidebar.classList.add('open'); backdrop.classList.add('open'); btn.setAttribute('aria-expanded','true'); backdrop.setAttribute('aria-hidden','false'); sidebar.setAttribute('aria-hidden','false'); document.body.style.overflow = 'hidden'; if (main) main.inert = true; const first = sidebar.querySelector('.nav-item'); if (first && window.innerWidth <= 1024) first.focus({ preventScroll: true }); };
+  const close = () => { if (!sidebar.classList.contains('open')) return; sidebar.classList.remove('open'); backdrop.classList.remove('open'); btn.setAttribute('aria-expanded','false'); backdrop.setAttribute('aria-hidden','true'); if (window.innerWidth <= 1024) sidebar.setAttribute('aria-hidden','true'); document.body.style.overflow = ''; if (main) main.inert = false; if (sidebar.contains(document.activeElement)) btn.focus({ preventScroll: true }); };
   btn.addEventListener('click', () => sidebar.classList.contains('open') ? close() : open());
+  if (closeBtn) closeBtn.addEventListener('click', close);
   backdrop.addEventListener('click', close);
   document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
-  window.addEventListener('resize', () => { if (window.innerWidth > 1024) { sidebar.classList.remove('open'); backdrop.classList.remove('open'); btn.setAttribute('aria-expanded','false'); document.body.style.overflow = ''; } });
+  document.addEventListener('keydown', trapTab, true);
+  window.addEventListener('resize', () => { if (window.innerWidth > 1024) { sidebar.classList.remove('open'); backdrop.classList.remove('open'); btn.setAttribute('aria-expanded','false'); document.body.style.overflow = ''; if (main) main.inert = false; } });
   document.querySelectorAll('.nav-item, .logout-btn').forEach(el => el.addEventListener('click', () => { if (window.innerWidth <= 1024) close(); }));
   let sx=0; sidebar.addEventListener('touchstart', e=> sx=e.touches[0].clientX, {passive:true});
   sidebar.addEventListener('touchend', e=> { if (e.changedTouches[0].clientX - sx < -50) close(); }, {passive:true});
-  /* RTL edge-swipe to open: touch starts within 24px of the right edge, swipes left */
+  /* RTL edge-swipe to open: touch starts within 48px of the right edge, swipes left */
   let ex=0, ey=0;
   document.addEventListener('touchstart', e=> {
     if (window.innerWidth > 1024 || sidebar.classList.contains('open')) return;
     const t = e.touches[0];
-    if (window.innerWidth - t.clientX <= 24) { ex = t.clientX; ey = t.clientY; }
+    if (window.innerWidth - t.clientX <= 48) { ex = t.clientX; ey = t.clientY; }
     else ex = 0;
   }, {passive:true});
   document.addEventListener('touchend', e=> {
@@ -2300,6 +2314,38 @@ async function loadAuditorQuarantine() {
       </tr>`).join('') || '<tr><td colspan="6" class="text-center py-4">لا توجد سجلات معزولة — جميع السجلات ناجحة أو قيد المعالجة</td></tr>';
   } catch (e) { tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4" style="color:var(--m3-error);">${_auditEsc(e.message)}</td></tr>`; }
 }
+/* Auditor modals: shared accessible open/close (Escape, backdrop, focus restore) */
+let _auditorOpener = null;
+function openAuditorModal(modal) {
+  if (!modal) return;
+  _auditorOpener = document.activeElement;
+  modal.style.display = 'flex';
+  const first = modal.querySelector('.btn, button');
+  if (first) first.focus({ preventScroll: true });
+}
+function closeAuditorModal(modal) {
+  if (!modal || modal.style.display === 'none') return;
+  modal.style.display = 'none';
+  if (_auditorOpener && document.contains(_auditorOpener)) _auditorOpener.focus({ preventScroll: true });
+  _auditorOpener = null;
+}
+function initAuditorModals() {
+  ['auditor-connector-modal', 'auditor-trace-modal'].forEach((id) => {
+    const modal = document.getElementById(id);
+    if (!modal || modal.dataset.a11yBound) return;
+    modal.dataset.a11yBound = '1';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeAuditorModal(modal); });
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    ['auditor-connector-modal', 'auditor-trace-modal'].forEach((id) => {
+      const modal = document.getElementById(id);
+      if (modal && modal.style.display !== 'none' && modal.style.display !== '') closeAuditorModal(modal);
+    });
+  });
+}
 async function openConnectorDetail(sysId) {
   const modal = document.getElementById('auditor-connector-modal');
   const body = document.getElementById('auditor-connector-body');
@@ -2309,7 +2355,7 @@ async function openConnectorDetail(sysId) {
   if (!c) return;
   if (title) title.textContent = 'تكامل: ' + (c.name || sysId);
   body.innerHTML = '<div style="padding:12px 14px;">' + skelLines() + '</div>';
-  modal.style.display = 'flex';
+  openAuditorModal(modal);
   try {
     const [errRes, okRes] = await Promise.all([
       fetch(`/api/audit/records?hospital=${encodeURIComponent(sysId)}&result=failed&limit=5&page=1`),
@@ -2339,7 +2385,7 @@ async function openConnectorDetail(sysId) {
       ${((okJ.items || []).map(e => `<div style="padding:6px 8px; border:1px solid var(--m3-outline-variant); margin-bottom:4px; font-size:0.78rem;"><code>${_auditEsc(e.id.substring(0,8))}</code> • ${_auditEsc(e.sourceEntityType)} • ${_auditResultBadge(e.processingStatus)} • ${_auditFmtTime(e.ingestedAt)}</div>`).join('') || '<p style="font-size:0.8rem; color:var(--m3-on-surface-muted);">لا عمليات حديثة</p>')}
       <p style="font-size:0.75rem; color:var(--m3-on-surface-muted); margin-top:10px;">جودة البيانات ونتائج Mapping/MPI التفصيلية: تُعرض لكل رسالة عبر «المسار». لا يملك المدقق أي تعديل على الإعدادات.</p>`;
   } catch (e) { body.innerHTML = `<p style="color:var(--m3-error);">${_auditEsc(e.message)}</p>`; }
-  document.getElementById('btn-auditor-connector-close').onclick = () => { modal.style.display = 'none'; };
+  document.getElementById('btn-auditor-connector-close').onclick = () => closeAuditorModal(modal);
 }
 async function openAuditorTrace(id) {
   const modal = document.getElementById('auditor-trace-modal');
@@ -2347,7 +2393,7 @@ async function openAuditorTrace(id) {
   if (!modal || !body) return;
   _auditConsole.lastTraceId = id;
   body.innerHTML = '<div style="padding:12px 14px;">' + skelLines() + '</div>';
-  modal.style.display = 'flex';
+  openAuditorModal(modal);
   try {
     const r = await fetch('/api/audit/records/' + encodeURIComponent(id) + '/trace');
     const j = await r.json();
@@ -2368,15 +2414,17 @@ async function openAuditorTrace(id) {
       <div style="display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-bottom:14px;">
         ${j.stages.map((s, i) => `${i > 0 ? '<span style="color:var(--m3-on-surface-muted);">→</span>' : ''}<span style="padding:6px 10px; background:var(--m3-surface-container-low); border:1px solid var(--m3-outline-variant); font-size:0.76rem;"><strong>${_auditEsc(s.stage)}</strong><br>${stageBadge(s)}</span>`).join('')}
       </div>
-      <table class="data-table"><thead><tr><th>المرحلة</th><th>النتيجة</th><th>التفاصيل</th></tr></thead><tbody>
+      <div class="table-responsive"><table class="data-table stack-table"><thead><tr><th>المرحلة</th><th>النتيجة</th><th>التفاصيل</th></tr></thead><tbody>
         ${j.stages.map(s => `<tr><td><strong>${_auditEsc(s.stage)}</strong></td><td>${stageBadge(s)}</td><td style="font-size:0.78rem;">${_auditEsc(s.detail || '—')}</td></tr>`).join('')}
-      </tbody></table>
-      <h4 style="font-size:0.88rem; margin:12px 0 6px;">Provenance (${(j.provenance || []).length})</h4>
-      ${((j.provenance || []).map(p => `<div style="padding:6px 8px; border:1px solid var(--m3-outline-variant); margin-bottom:4px; font-size:0.78rem; display:flex; justify-content:space-between; align-items:center; gap:8px;"><span>${_auditEsc(p.target_entity_type)}:<code>${_auditEsc(String(p.target_entity_id).substring(0, 12))}</code> • Mapping <code>${_auditEsc(p.mapping_version || '—')}</code> • Adapter <code>${_auditEsc(p.adapter_version || '—')}</code></span>${p.target_entity_type === 'CanonicalPatient' ? `<button type="button" class="btn btn-secondary btn-sm" onclick="openAuditPatientContext('${_auditEsc(p.target_entity_id)}')">فتح في سياق تدقيقي</button>` : ''}</div>`).join('') || '<p style="font-size:0.8rem; color:var(--m3-on-surface-muted);">لا يوجد Provenance — لم يصل السجل للتخزين الكنسي</p>')}
+      </tbody></table></div>
+      <details open style="margin:12px 0 6px;">
+        <summary style="font-size:0.88rem; font-weight:700; cursor:pointer;">Provenance (${(j.provenance || []).length})</summary>
+      ${((j.provenance || []).map(p => `<div style="padding:6px 8px; border:1px solid var(--m3-outline-variant); margin-bottom:4px; font-size:0.78rem; display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;"><span>${_auditEsc(p.target_entity_type)}:<code>${_auditEsc(String(p.target_entity_id).substring(0, 12))}</code> • Mapping <code>${_auditEsc(p.mapping_version || '—')}</code> • Adapter <code>${_auditEsc(p.adapter_version || '—')}</code></span>${p.target_entity_type === 'CanonicalPatient' ? `<button type="button" class="btn btn-secondary btn-sm" onclick="openAuditPatientContext('${_auditEsc(p.target_entity_id)}')">فتح في سياق تدقيقي</button>` : ''}</div>`).join('') || '<p style="font-size:0.8rem; color:var(--m3-on-surface-muted);">لا يوجد Provenance — لم يصل السجل للتخزين الكنسي</p>')}
+      </details>
       <h4 style="font-size:0.88rem; margin:12px 0 6px;">سجلات التدقيق المرتبطة (${(j.auditLogs || []).length})</h4>
       ${((j.auditLogs || []).map(a => `<div style="padding:6px 8px; border:1px solid var(--m3-outline-variant); margin-bottom:4px; font-size:0.78rem;"><code>${_auditFmtTime(a.created_at)}</code> • ${_auditEsc(a.action)} • ${_auditEsc(a.entity_type || '')} • ${_auditEsc(a.details || '')}</div>`).join('') || '<p style="font-size:0.8rem; color:var(--m3-on-surface-muted);">لا سجلات مرتبطة</p>')}`;
   } catch (e) { body.innerHTML = `<p style="color:var(--m3-error);">${_auditEsc(e.message)}</p>`; }
-  document.getElementById('btn-auditor-trace-close').onclick = () => { modal.style.display = 'none'; };
+  document.getElementById('btn-auditor-trace-close').onclick = () => closeAuditorModal(modal);
   document.getElementById('btn-auditor-evidence').onclick = () => { if (_auditConsole.lastTraceId) exportAuditorEvidence(_auditConsole.lastTraceId); };
 }
 function openAuditPatientContext(patientId) {
@@ -2922,15 +2970,15 @@ async function loadMpiIdentities() {
             `).join('')}
           </div>
 
-          <div class="source-details">
-            <strong style="font-size:0.84rem; margin-bottom:2px; display:block;">سجل قرارات المطابقة والتسوية:</strong>
+          <details class="source-details" open>
+            <summary style="font-size:0.84rem; font-weight:700; cursor:pointer; margin-bottom:2px;">سجل قرارات المطابقة والتسوية (${(id.matchHistory || []).length})</summary>
             ${id.matchHistory.map((m) => `
               <div class="detail-row">
                 <span>[${m.matchStrategy}] ${m.details}</span>
                 <span class="muted-note">${m.confidence * 100}% ثقة</span>
               </div>
             `).join('')}
-          </div>
+          </details>
         </div>
       `;
     }).join('');
@@ -3936,7 +3984,7 @@ async function showHospGlobalDetail(patientId) {
               <span class="stat-count">${meds.length} وصفة</span>
             </div>
             <div class="card-body p-0">
-              ${meds.length ? `<table class="data-table"><thead><tr><th>الدواء بالمصدر</th><th>المصدر</th><th>كود SFDA</th><th>ATC / RxNorm</th><th>الجرعة</th><th>الكمية</th><th>التاريخ</th></tr></thead><tbody>${meds.map(m=>`<tr><td><strong>${m.medication?.code?.sourceCode || '—'}</strong><br><small style="color:var(--m3-on-surface-muted);">${m.medication?.code?.sourceDisplay||''}</small></td><td><code>${m.provenance?.sourceSystemId||'—'}</code></td><td><code>${m.medication?.code?.sfdaCode||'—'}</code><br><small>${m.medication?.code?.sfdaDisplay||''}</small></td><td><code>${m.medication?.code?.atcCode||'—'}</code><br><small>RxNorm ${m.medication?.code?.rxnormCode||'—'}</small></td><td>${m.dosageInstruction?.[0]?.text||m.dosageInstruction?.[0]?.textAr||'—'}</td><td><strong>${m.dispenseRequest?.quantity?.value||'—'} ${m.dispenseRequest?.quantity?.unit||''}</strong></td><td><code>${m.authoredOn? new Date(m.authoredOn).toLocaleDateString('ar-SA'):'—'}</code></td></tr>`).join('')}</tbody></table>` : '<p class="text-center py-4" style="color:var(--m3-on-surface-muted);">لا توجد وصفات أدوية في السجل الموحد</p>'}
+              ${meds.length ? `<table class="data-table stack-table"><thead><tr><th>الدواء بالمصدر</th><th>المصدر</th><th>كود SFDA</th><th>ATC / RxNorm</th><th>الجرعة</th><th>الكمية</th><th>التاريخ</th></tr></thead><tbody>${meds.map(m=>`<tr><td><strong>${m.medication?.code?.sourceCode || '—'}</strong><br><small style="color:var(--m3-on-surface-muted);">${m.medication?.code?.sourceDisplay||''}</small></td><td><code>${m.provenance?.sourceSystemId||'—'}</code></td><td><code>${m.medication?.code?.sfdaCode||'—'}</code><br><small>${m.medication?.code?.sfdaDisplay||''}</small></td><td><code>${m.medication?.code?.atcCode||'—'}</code><br><small>RxNorm ${m.medication?.code?.rxnormCode||'—'}</small></td><td>${m.dosageInstruction?.[0]?.text||m.dosageInstruction?.[0]?.textAr||'—'}</td><td><strong>${m.dispenseRequest?.quantity?.value||'—'} ${m.dispenseRequest?.quantity?.unit||''}</strong></td><td><code>${m.authoredOn? new Date(m.authoredOn).toLocaleDateString('ar-SA'):'—'}</code></td></tr>`).join('')}</tbody></table>` : '<p class="text-center py-4" style="color:var(--m3-on-surface-muted);">لا توجد وصفات أدوية في السجل الموحد</p>'}
             </div>
           </div>
 
@@ -3947,7 +3995,7 @@ async function showHospGlobalDetail(patientId) {
               <span class="stat-count">${cond.length} تشخيص</span>
             </div>
             <div class="card-body p-0">
-              ${cond.length ? `<table class="data-table"><thead><tr><th>التشخيص بالمصدر</th><th>المصدر</th><th>SNOMED CT</th><th>ICD-10-AM</th><th>SBS</th><th>التاريخ</th></tr></thead><tbody>${cond.map(c=>`<tr><td><strong>${c.code?.sourceCode||'—'}</strong><br><small style="color:var(--m3-on-surface-muted);">${c.code?.sourceDisplay||''}</small></td><td><code>${c.provenance?.sourceSystemId||'—'}</code></td><td><code>${c.code?.snomedCode||'—'}</code><br><small>${c.code?.snomedDisplay||''}</small></td><td><code>${c.code?.icd10amCode||'—'}</code></td><td><code>${c.code?.sbsCode||'—'}</code></td><td><code>${c.recordedDate? new Date(c.recordedDate).toLocaleDateString('ar-SA'):'—'}</code></td></tr>`).join('')}</tbody></table>` : '<p class="text-center py-4" style="color:var(--m3-on-surface-muted);">لا توجد تشخيصات مسجلة</p>'}
+              ${cond.length ? `<table class="data-table stack-table"><thead><tr><th>التشخيص بالمصدر</th><th>المصدر</th><th>SNOMED CT</th><th>ICD-10-AM</th><th>SBS</th><th>التاريخ</th></tr></thead><tbody>${cond.map(c=>`<tr><td><strong>${c.code?.sourceCode||'—'}</strong><br><small style="color:var(--m3-on-surface-muted);">${c.code?.sourceDisplay||''}</small></td><td><code>${c.provenance?.sourceSystemId||'—'}</code></td><td><code>${c.code?.snomedCode||'—'}</code><br><small>${c.code?.snomedDisplay||''}</small></td><td><code>${c.code?.icd10amCode||'—'}</code></td><td><code>${c.code?.sbsCode||'—'}</code></td><td><code>${c.recordedDate? new Date(c.recordedDate).toLocaleDateString('ar-SA'):'—'}</code></td></tr>`).join('')}</tbody></table>` : '<p class="text-center py-4" style="color:var(--m3-on-surface-muted);">لا توجد تشخيصات مسجلة</p>'}
             </div>
           </div>
 
@@ -3958,7 +4006,7 @@ async function showHospGlobalDetail(patientId) {
               <span class="stat-count">${obs.length} نتيجة</span>
             </div>
             <div class="card-body p-0">
-              ${obs.length ? `<table class="data-table"><thead><tr><th>الفحص بالمصدر</th><th>المصدر</th><th>LOINC</th><th>النتيجة</th><th>المرجع</th><th>التاريخ</th></tr></thead><tbody>${obs.map(o=>`<tr><td><strong>${o.code?.sourceCode||'—'}</strong></td><td><code>${o.provenance?.sourceSystemId||'—'}</code></td><td><code>LOINC ${o.code?.loincCode||'—'}</code><br><small>${o.code?.loincDisplay||''}</small></td><td><strong style="color:var(--m3-on-primary-container);">${o.valueQuantity?.value ?? o.valueString ?? '—'} ${o.valueQuantity?.unit||''}</strong></td><td>${o.referenceRange?.text||'—'}</td><td><code>${o.effectiveDateTime? new Date(o.effectiveDateTime).toLocaleDateString('ar-SA'):'—'}</code></td></tr>`).join('')}</tbody></table>` : '<p class="text-center py-4" style="color:var(--m3-on-surface-muted);">لا توجد نتائج مخبرية</p>'}
+              ${obs.length ? `<table class="data-table stack-table"><thead><tr><th>الفحص بالمصدر</th><th>المصدر</th><th>LOINC</th><th>النتيجة</th><th>المرجع</th><th>التاريخ</th></tr></thead><tbody>${obs.map(o=>`<tr><td><strong>${o.code?.sourceCode||'—'}</strong></td><td><code>${o.provenance?.sourceSystemId||'—'}</code></td><td><code>LOINC ${o.code?.loincCode||'—'}</code><br><small>${o.code?.loincDisplay||''}</small></td><td><strong style="color:var(--m3-on-primary-container);">${o.valueQuantity?.value ?? o.valueString ?? '—'} ${o.valueQuantity?.unit||''}</strong></td><td>${o.referenceRange?.text||'—'}</td><td><code>${o.effectiveDateTime? new Date(o.effectiveDateTime).toLocaleDateString('ar-SA'):'—'}</code></td></tr>`).join('')}</tbody></table>` : '<p class="text-center py-4" style="color:var(--m3-on-surface-muted);">لا توجد نتائج مخبرية</p>'}
             </div>
           </div>
 
@@ -3969,7 +4017,7 @@ async function showHospGlobalDetail(patientId) {
               <span class="stat-count">${imm.length} تطعيم</span>
             </div>
             <div class="card-body p-0">
-              ${imm.length ? `<table class="data-table"><thead><tr><th>اللقاح بالمصدر</th><th>المصدر</th><th>MOH Code</th><th>CVX</th><th>التشغيلة</th><th>التاريخ</th><th>الموقع</th></tr></thead><tbody>${imm.map(i=>`<tr><td><strong>${i.vaccineCode?.sourceCode||'—'}</strong><br><small style="color:var(--m3-on-surface-muted);">${i.vaccineCode?.sourceDisplay||''}</small></td><td><code>${i.provenance?.sourceSystemId||'—'}</code></td><td><code>${i.vaccineCode?.sourceCode || '—'}</code></td><td><code>CVX ${i.vaccineCode?.cvxCode||'—'}</code></td><td><code>${i.lotNumber||'—'}</code></td><td><code>${i.occurrenceDateTime? new Date(i.occurrenceDateTime).toLocaleDateString('ar-SA'):'—'}</code></td><td>${i.site||'—'}</td></tr>`).join('')}</tbody></table>` : '<p class="text-center py-4" style="color:var(--m3-on-surface-muted);">لا توجد تطعيمات مسجلة</p>'}
+              ${imm.length ? `<table class="data-table stack-table"><thead><tr><th>اللقاح بالمصدر</th><th>المصدر</th><th>MOH Code</th><th>CVX</th><th>التشغيلة</th><th>التاريخ</th><th>الموقع</th></tr></thead><tbody>${imm.map(i=>`<tr><td><strong>${i.vaccineCode?.sourceCode||'—'}</strong><br><small style="color:var(--m3-on-surface-muted);">${i.vaccineCode?.sourceDisplay||''}</small></td><td><code>${i.provenance?.sourceSystemId||'—'}</code></td><td><code>${i.vaccineCode?.sourceCode || '—'}</code></td><td><code>CVX ${i.vaccineCode?.cvxCode||'—'}</code></td><td><code>${i.lotNumber||'—'}</code></td><td><code>${i.occurrenceDateTime? new Date(i.occurrenceDateTime).toLocaleDateString('ar-SA'):'—'}</code></td><td>${i.site||'—'}</td></tr>`).join('')}</tbody></table>` : '<p class="text-center py-4" style="color:var(--m3-on-surface-muted);">لا توجد تطعيمات مسجلة</p>'}
             </div>
           </div>
 
@@ -3980,7 +4028,7 @@ async function showHospGlobalDetail(patientId) {
               <span class="badge ${allergies.some(a=>a.criticality==='high')?'badge-warning':'badge-success'}">${allergies.length} حساسية</span>
             </div>
             <div class="card-body p-0">
-              ${allergies.length ? `<table class="data-table"><thead><tr><th>المادة المسببة</th><th>المصدر</th><th>SNOMED</th><th>الخطورة</th><th>التفاعل</th><th>التاريخ</th></tr></thead><tbody>${allergies.map(a=>`<tr><td><strong>${a.substanceTextAr||a.substanceText||'—'}</strong><br><small style="color:var(--m3-on-surface-muted);">${a.substanceText||''}</small></td><td><code>${a.provenance?.sourceSystemId||'—'}</code></td><td><code>SNOMED ${a.substanceCode?.snomedCode||'—'}</code></td><td><span class="badge ${a.criticality==='high'?'badge-warning':'badge-info'}">${a.criticality==='high'?'عالية':'منخفضة'}</span></td><td><strong style="color:var(--m3-error);">${a.reactions?.[0]?.manifestationTextAr || a.reactions?.[0]?.manifestationText || '—'}</strong></td><td><code>${a.recordedDate? new Date(a.recordedDate).toLocaleDateString('ar-SA'):'—'}</code></td></tr>`).join('')}</tbody></table>` : '<p class="text-center py-4" style="color:var(--m3-on-surface-muted);">لا توجد حساسيات مسجلة</p>'}
+              ${allergies.length ? `<table class="data-table stack-table"><thead><tr><th>المادة المسببة</th><th>المصدر</th><th>SNOMED</th><th>الخطورة</th><th>التفاعل</th><th>التاريخ</th></tr></thead><tbody>${allergies.map(a=>`<tr><td><strong>${a.substanceTextAr||a.substanceText||'—'}</strong><br><small style="color:var(--m3-on-surface-muted);">${a.substanceText||''}</small></td><td><code>${a.provenance?.sourceSystemId||'—'}</code></td><td><code>SNOMED ${a.substanceCode?.snomedCode||'—'}</code></td><td><span class="badge ${a.criticality==='high'?'badge-warning':'badge-info'}">${a.criticality==='high'?'عالية':'منخفضة'}</span></td><td><strong style="color:var(--m3-error);">${a.reactions?.[0]?.manifestationTextAr || a.reactions?.[0]?.manifestationText || '—'}</strong></td><td><code>${a.recordedDate? new Date(a.recordedDate).toLocaleDateString('ar-SA'):'—'}</code></td></tr>`).join('')}</tbody></table>` : '<p class="text-center py-4" style="color:var(--m3-on-surface-muted);">لا توجد حساسيات مسجلة</p>'}
             </div>
           </div>
 
@@ -3991,7 +4039,7 @@ async function showHospGlobalDetail(patientId) {
               <span class="stat-count">${diagnosticReports.length} تقرير</span>
             </div>
             <div class="card-body p-0">
-              ${diagnosticReports.length ? `<table class="data-table"><thead><tr><th>اسم التقرير</th><th>المصدر</th><th>LOINC</th><th>الحالة</th><th>الخلاصة</th><th>الإصدار</th></tr></thead><tbody>${diagnosticReports.map(d=>`<tr><td><strong>${d.code?.loincDisplay||d.code?.sourceDisplay||'تقرير تشخيصي'}</strong></td><td><code>${d.provenance?.sourceSystemId||'—'}</code></td><td><code>LOINC ${d.code?.loincCode||'—'}</code></td><td>${d.status||'final'}</td><td style="max-width:260px; font-size:0.82rem;">${d.conclusionAr||d.conclusion||'—'}</td><td><code>${d.issued? new Date(d.issued).toLocaleDateString('ar-SA'):'—'}</code></td></tr>`).join('')}</tbody></table>` : '<p class="text-center py-4" style="color:var(--m3-on-surface-muted);">لا توجد تقارير تشخيصية مجمعة</p>'}
+              ${diagnosticReports.length ? `<table class="data-table stack-table"><thead><tr><th>اسم التقرير</th><th>المصدر</th><th>LOINC</th><th>الحالة</th><th>الخلاصة</th><th>الإصدار</th></tr></thead><tbody>${diagnosticReports.map(d=>`<tr><td><strong>${d.code?.loincDisplay||d.code?.sourceDisplay||'تقرير تشخيصي'}</strong></td><td><code>${d.provenance?.sourceSystemId||'—'}</code></td><td><code>LOINC ${d.code?.loincCode||'—'}</code></td><td>${d.status||'final'}</td><td style="max-width:260px; font-size:0.82rem;">${d.conclusionAr||d.conclusion||'—'}</td><td><code>${d.issued? new Date(d.issued).toLocaleDateString('ar-SA'):'—'}</code></td></tr>`).join('')}</tbody></table>` : '<p class="text-center py-4" style="color:var(--m3-on-surface-muted);">لا توجد تقارير تشخيصية مجمعة</p>'}
             </div>
           </div>
 
@@ -4004,14 +4052,14 @@ async function showHospGlobalDetail(patientId) {
             <div class="card-body">
               <p style="font-size:0.78rem; color:var(--m3-on-surface-variant);">لا تدخل في العدادات السريرية ولا تغذي CDS ولا تصدر FHIR confirmed إلا بعد VERIFIED عبر verification-queue. محفوظة مع Provenance و Audit.</p>
               ${!sr || srCount === 0 ? '<p class="text-center py-4" style="color:var(--m3-on-surface-muted);">لا توجد بيانات ذاتية مبلغ عنها لهذا المريض</p>' : `
-              ${srMeds.length ? `<h4 style="margin:10px 0 6px;">أدوية مبلغ عنها (${srMeds.length})</h4><table class="data-table"><tbody>${srMeds.map(m=>`<tr><td><strong>${srName(m)}</strong><br><small>${m.dose||''} ${m.frequency||''}</small></td><td><span class="badge badge-warning">PATIENT</span></td><td>${srVerifyBtns('medication', m.id)}</td></tr>`).join('')}</tbody></table>` : ''}
-              ${srConds.length ? `<h4 style="margin:10px 0 6px;">حالات مبلغ عنها (${srConds.length})</h4><table class="data-table"><tbody>${srConds.map(c=>`<tr><td><strong>${srName(c)}</strong></td><td><span class="badge badge-warning">PATIENT</span></td><td>${srVerifyBtns('condition', c.id)}</td></tr>`).join('')}</tbody></table>` : ''}
-              ${srAll.length ? `<h4 style="margin:10px 0 6px;">حساسيات مبلغ عنها (${srAll.length})</h4><table class="data-table"><tbody>${srAll.map(a=>`<tr><td><strong>${srName(a)}</strong></td><td><span class="badge badge-warning">PATIENT</span></td><td>${srVerifyBtns('allergy', a.id)}</td></tr>`).join('')}</tbody></table>` : ''}
-              ${srProc.length ? `<h4 style="margin:10px 0 6px;">عمليات مبلغ عنها (${srProc.length})</h4><table class="data-table"><tbody>${srProc.map(x=>`<tr><td><strong>${srName(x)}</strong></td><td><span class="badge badge-warning">PATIENT</span></td><td>${srVerifyBtns('procedure', x.id)}</td></tr>`).join('')}</tbody></table>` : ''}
-              ${srVit.length ? `<h4 style="margin:10px 0 6px;">قياسات ذاتية (${srVit.length})</h4><table class="data-table"><tbody>${srVit.map(v=>`<tr><td><strong>${v.observation_type||v.observationType}</strong> ${(v.value_quantity ?? v.valueQuantity ?? '') + ' ' + (v.value_unit||v.valueUnit||'')}</td><td><span class="badge badge-warning">PATIENT</span></td><td>${srVerifyBtns('vital', v.id)}</td></tr>`).join('')}</tbody></table>` : ''}
-              ${srFam.length ? `<h4 style="margin:10px 0 6px;">تاريخ عائلي (${srFam.length})</h4><table class="data-table"><tbody>${srFam.map(f=>`<tr><td><strong>${f.condition_name||f.conditionName||''}</strong> (${f.relationship||''})</td><td><span class="badge badge-warning">PATIENT</span></td></tr>`).join('')}</tbody></table>` : ''}
+              ${srMeds.length ? `<h4 style="margin:10px 0 6px;">أدوية مبلغ عنها (${srMeds.length})</h4><table class="data-table stack-table"><tbody>${srMeds.map(m=>`<tr><td><strong>${srName(m)}</strong><br><small>${m.dose||''} ${m.frequency||''}</small></td><td><span class="badge badge-warning">PATIENT</span></td><td>${srVerifyBtns('medication', m.id)}</td></tr>`).join('')}</tbody></table>` : ''}
+              ${srConds.length ? `<h4 style="margin:10px 0 6px;">حالات مبلغ عنها (${srConds.length})</h4><table class="data-table stack-table"><tbody>${srConds.map(c=>`<tr><td><strong>${srName(c)}</strong></td><td><span class="badge badge-warning">PATIENT</span></td><td>${srVerifyBtns('condition', c.id)}</td></tr>`).join('')}</tbody></table>` : ''}
+              ${srAll.length ? `<h4 style="margin:10px 0 6px;">حساسيات مبلغ عنها (${srAll.length})</h4><table class="data-table stack-table"><tbody>${srAll.map(a=>`<tr><td><strong>${srName(a)}</strong></td><td><span class="badge badge-warning">PATIENT</span></td><td>${srVerifyBtns('allergy', a.id)}</td></tr>`).join('')}</tbody></table>` : ''}
+              ${srProc.length ? `<h4 style="margin:10px 0 6px;">عمليات مبلغ عنها (${srProc.length})</h4><table class="data-table stack-table"><tbody>${srProc.map(x=>`<tr><td><strong>${srName(x)}</strong></td><td><span class="badge badge-warning">PATIENT</span></td><td>${srVerifyBtns('procedure', x.id)}</td></tr>`).join('')}</tbody></table>` : ''}
+              ${srVit.length ? `<h4 style="margin:10px 0 6px;">قياسات ذاتية (${srVit.length})</h4><table class="data-table stack-table"><tbody>${srVit.map(v=>`<tr><td><strong>${v.observation_type||v.observationType}</strong> ${(v.value_quantity ?? v.valueQuantity ?? '') + ' ' + (v.value_unit||v.valueUnit||'')}</td><td><span class="badge badge-warning">PATIENT</span></td><td>${srVerifyBtns('vital', v.id)}</td></tr>`).join('')}</tbody></table>` : ''}
+              ${srFam.length ? `<h4 style="margin:10px 0 6px;">تاريخ عائلي (${srFam.length})</h4><table class="data-table stack-table"><tbody>${srFam.map(f=>`<tr><td><strong>${f.condition_name||f.conditionName||''}</strong> (${f.relationship||''})</td><td><span class="badge badge-warning">PATIENT</span></td></tr>`).join('')}</tbody></table>` : ''}
               ${srSoc && !srSoc.message ? `<h4 style="margin:10px 0 6px;">تاريخ اجتماعي</h4><p style="font-size:0.82rem;">تدخين: ${srSoc.smoking_status||srSoc.smokingStatus||'—'} • نشاط: ${srSoc.physical_activity||srSoc.physicalActivity||'—'} • مهنة: ${srSoc.occupation||'—'}</p>` : ''}
-              ${srDoc.length ? `<h4 style="margin:10px 0 6px;">مستندات (${srDoc.length})</h4><table class="data-table"><tbody>${srDoc.map(d=>`<tr><td><strong>${d.filename||''}</strong> (${d.document_category||d.documentCategory||''})</td><td><span class="badge badge-warning">PATIENT</span></td></tr>`).join('')}</tbody></table>` : ''}
+              ${srDoc.length ? `<h4 style="margin:10px 0 6px;">مستندات (${srDoc.length})</h4><table class="data-table stack-table"><tbody>${srDoc.map(d=>`<tr><td><strong>${d.filename||''}</strong> (${d.document_category||d.documentCategory||''})</td><td><span class="badge badge-warning">PATIENT</span></td></tr>`).join('')}</tbody></table>` : ''}
               `}
             </div>
           </div>
@@ -4021,13 +4069,13 @@ async function showHospGlobalDetail(patientId) {
             <div class="card" style="border:1px solid var(--m3-outline-variant);">
               <div class="card-header" style="background:var(--m3-surface-container-high);"><div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg><h3>وثائق التأمين (Coverage)</h3></div><span class="stat-count">${coverages.length}</span></div>
               <div class="card-body p-0">
-                ${coverages.length ? `<table class="data-table"><thead><tr><th>البوليصة</th><th>شركة التأمين</th><th>العضوية</th><th>الحالة</th></tr></thead><tbody>${coverages.map(c=>`<tr><td><code>${c.policyNumber||c.subscriberId||'—'}</code></td><td>${c.payerNameAr||c.payerName||c.payorId||'—'}</td><td><code>${c.memberId||c.beneficiaryId||'—'}</code></td><td>${c.status||'active'}</td></tr>`).join('')}</tbody></table>` : '<p class="text-center py-4" style="color:var(--m3-on-surface-muted); font-size:0.82rem;">لا توجد وثائق تأمين</p>'}
+                ${coverages.length ? `<table class="data-table stack-table"><thead><tr><th>البوليصة</th><th>شركة التأمين</th><th>العضوية</th><th>الحالة</th></tr></thead><tbody>${coverages.map(c=>`<tr><td><code>${c.policyNumber||c.subscriberId||'—'}</code></td><td>${c.payerNameAr||c.payerName||c.payorId||'—'}</td><td><code>${c.memberId||c.beneficiaryId||'—'}</code></td><td>${c.status||'active'}</td></tr>`).join('')}</tbody></table>` : '<p class="text-center py-4" style="color:var(--m3-on-surface-muted); font-size:0.82rem;">لا توجد وثائق تأمين</p>'}
               </div>
             </div>
             <div class="card" style="border:1px solid var(--m3-outline-variant);">
               <div class="card-header" style="background:var(--m3-surface-container-high);"><div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg><h3>المطالبات (نفيس)</h3></div><span class="stat-count">${claims.length}</span></div>
               <div class="card-body p-0">
-                ${claims.length ? `<table class="data-table"><thead><tr><th>رقم المطالبة</th><th>المبلغ</th><th>الحالة</th><th>التاريخ</th></tr></thead><tbody>${claims.map(cl=>`<tr><td><code>${(cl.internalId||'').substring(0,12)}...</code></td><td><strong>${cl.totalGrossSAR ?? cl.total?.value ?? 0} ر.س</strong></td><td>${cl.status||'submitted'}</td><td><code>${cl.submissionDate? new Date(cl.submissionDate).toLocaleDateString('ar-SA') : (cl.createdAt? new Date(cl.createdAt).toLocaleDateString('ar-SA'):'—')}</code></td></tr>`).join('')}</tbody></table>` : '<p class="text-center py-4" style="color:var(--m3-on-surface-muted); font-size:0.82rem;">لا توجد مطالبات</p>'}
+                ${claims.length ? `<table class="data-table stack-table"><thead><tr><th>رقم المطالبة</th><th>المبلغ</th><th>الحالة</th><th>التاريخ</th></tr></thead><tbody>${claims.map(cl=>`<tr><td><code>${(cl.internalId||'').substring(0,12)}...</code></td><td><strong>${cl.totalGrossSAR ?? cl.total?.value ?? 0} ر.س</strong></td><td>${cl.status||'submitted'}</td><td><code>${cl.submissionDate? new Date(cl.submissionDate).toLocaleDateString('ar-SA') : (cl.createdAt? new Date(cl.createdAt).toLocaleDateString('ar-SA'):'—')}</code></td></tr>`).join('')}</tbody></table>` : '<p class="text-center py-4" style="color:var(--m3-on-surface-muted); font-size:0.82rem;">لا توجد مطالبات</p>'}
               </div>
             </div>
           </div>

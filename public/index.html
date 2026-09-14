@@ -334,6 +334,9 @@
             <path d="M9 10l-2 2 2 2"/>
           </svg>
         </button>
+        <button class="drawer-close-btn" id="drawer-close-btn" aria-label="إغلاق القائمة" title="إغلاق القائمة">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
       </div>
 
       <div class="source-status-badge">
@@ -728,7 +731,7 @@
             </div>
           </div>
           <div class="card table-card">
-            <table class="data-table" id="audit-records-table">
+            <table class="data-table stack-table" id="audit-records-table">
               <thead>
                 <tr>
                   <th>الوقت</th>
@@ -760,7 +763,7 @@
             <span class="badge badge-error">بدون إعادة معالجة</span>
           </div>
           <div class="card table-card">
-            <table class="data-table" id="audit-quarantine-table">
+            <table class="data-table stack-table" id="audit-quarantine-table">
               <thead>
                 <tr>
                   <th>وقت الفشل</th>
@@ -811,7 +814,7 @@
           </div>
         </div>
         <div class="card table-card">
-          <table class="data-table" id="audit-table">
+          <table class="data-table stack-table" id="audit-table">
             <thead>
               <tr>
                 <th>الوقت</th>
@@ -1146,7 +1149,7 @@
             </div>
           </div>
           <div class="card-body p-0">
-            <table class="data-table">
+            <table class="data-table stack-table">
               <thead>
                 <tr>
                   <th>معرف المنشأة</th>
@@ -1284,7 +1287,7 @@
             </p>
 
             <div class="table-responsive mb-4">
-              <table class="data-table">
+              <table class="data-table stack-table">
                 <thead>
                   <tr>
                     <th>معرف البلاغ</th>
@@ -1941,9 +1944,9 @@
             <div id="patient-insurance-content" style="display:none;">
               <div id="patient-insurance-eligibility" style="margin-bottom:16px;"></div>
               <h4 style="margin:12px 0 8px;">الوثائق</h4>
-              <div class="table-wrap"><table class="data-table"><thead><tr><th>شركة التأمين</th><th>رقم الوثيقة</th><th>الفئة</th><th>الحالة</th></tr></thead><tbody id="patient-insurance-tbody"></tbody></table></div>
+              <div class="table-wrap"><table class="data-table stack-table"><thead><tr><th>شركة التأمين</th><th>رقم الوثيقة</th><th>الفئة</th><th>الحالة</th></tr></thead><tbody id="patient-insurance-tbody"></tbody></table></div>
               <h4 style="margin:16px 0 8px;">المطالبات</h4>
-              <div class="table-wrap"><table class="data-table"><thead><tr><th>رقم المطالبة</th><th>الإجمالي</th><th>تحملي</th><th>الحالة</th></tr></thead><tbody id="patient-claims-tbody"></tbody></table></div>
+              <div class="table-wrap"><table class="data-table stack-table"><thead><tr><th>رقم المطالبة</th><th>الإجمالي</th><th>تحملي</th><th>الحالة</th></tr></thead><tbody id="patient-claims-tbody"></tbody></table></div>
             </div>
           </div>
         </div>
@@ -2076,7 +2079,7 @@
               <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-hosp-imports"><svg class="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg><span>تحديث</span></button>
             </div>
             <div class="card-body p-0">
-              <table class="data-table">
+              <table class="data-table stack-table">
                 <thead><tr><th>الملف / النظام المصدر</th><th>النوع</th><th>الحالة</th><th>سجلات</th><th>التاريخ</th></tr></thead>
                 <tbody id="hosp-imports-tbody"><tr class="skel-row"><td colspan="5"><span class="skel" style="width:42%"></span><span class="skel" style="width:68%"></span></td></tr></tbody>
               </table>
@@ -2089,7 +2092,7 @@
               <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;"><input id="hosp-patients-search" class="form-input" placeholder="ابحث بالاسم/الهوية" style="flex:1; min-width:140px; padding:6px 10px; font-size:0.82rem;"><button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-hosp-patients"><svg class="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg><span>تحديث</span></button></div>
             </div>
             <div class="card-body p-0">
-              <table class="data-table">
+              <table class="data-table stack-table">
                 <thead><tr><th>الاسم</th><th>الهوية</th><th>الجنس</th><th>تاريخ الربط</th><th>إجراء</th></tr></thead>
                 <tbody id="hosp-patients-tbody"><tr class="skel-row"><td colspan="5"><span class="skel" style="width:52%"></span><span class="skel" style="width:76%"></span></td></tr></tbody>
               </table>
@@ -2233,7 +2236,7 @@
               <div style="display:flex; gap:8px; margin-bottom:12px;"><input id="hospital-new-password" placeholder="كلمة المرور 8+ حروف وأرقام" type="password" class="form-input" style="flex:1"><input id="hospital-new-email" placeholder="البريد (اختياري)" class="form-input" style="flex:1"><input id="hospital-new-phone" placeholder="جوال 05xxxxxxxx" class="form-input" style="flex:1"></div>
               <button class="btn btn-primary" onclick="createHospitalUser()">إنشاء مستخدم</button>
               <div id="hospital-users-status" style="margin-top:8px; font-size:0.8rem;"></div>
-              <div class="table-wrap" style="margin-top:12px; max-height:320px; overflow:auto;"><table class="data-table"><thead><tr><th>المستخدم</th><th>الدور</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody id="hospital-users-tbody"><tr class="skel-row"><td colspan="4"><span class="skel" style="width:48%"></span><span class="skel" style="width:72%"></span></td></tr></tbody></table></div>
+              <div class="table-wrap" style="margin-top:12px; max-height:320px; overflow:auto;"><table class="data-table stack-table"><thead><tr><th>المستخدم</th><th>الدور</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody id="hospital-users-tbody"><tr class="skel-row"><td colspan="4"><span class="skel" style="width:48%"></span><span class="skel" style="width:72%"></span></td></tr></tbody></table></div>
             </div>
           </div>
         </div>
@@ -2284,7 +2287,7 @@
             <div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><h3>جدول السجل العام (جميع المرضى)</h3></div>
           </div>
           <div class="card-body p-0">
-            <table class="data-table">
+            <table class="data-table stack-table">
               <thead><tr><th>المريض</th><th>الهوية</th><th>الجنس / الميلاد</th><th>مرتبط بمنشأتي؟</th><th>عرض</th></tr></thead>
               <tbody id="hosp-global-tbody"><tr class="skel-row"><td colspan="5"><span class="skel" style="width:55%"></span><span class="skel" style="width:78%"></span></td></tr></tbody>
             </table>
@@ -2314,7 +2317,7 @@
             </div>
           </div>
           <div class="card-body p-0">
-            <table class="data-table">
+            <table class="data-table stack-table">
               <thead>
                 <tr>
                   <th>المفهوم القياسي (Canonical Concept)</th>
@@ -2537,7 +2540,7 @@
           </div>
           <div class="card-body">
             <div class="table-card">
-              <table class="data-table">
+              <table class="data-table stack-table">
                 <thead>
                   <tr>
                     <th># الكتلة</th>

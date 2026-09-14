@@ -412,6 +412,11 @@ body.light-theme .sidebar,
   transition: transform var(--motion-base) ease;
 }
 
+/* Drawer close lives in the brand row but shows only inside the ≤1024px drawer */
+.drawer-close-btn {
+  display: none;
+}
+
 .source-status-badge {
   display: flex;
   align-items: center;
@@ -2178,6 +2183,22 @@ html {
   color: var(--m3-on-surface-muted);
 }
 
+/* Tap readout: touch-friendly value display under each chart */
+.sr-tap-readout {
+  margin-top: 6px;
+  padding: 6px 10px;
+  min-height: 30px;
+  background: var(--m3-surface-container-high);
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--m3-on-surface);
+}
+
+.sr-point {
+  cursor: pointer;
+}
+
 /* Keyboard trace inside dense tables and combobox lists */
 .data-table tbody tr:focus-within {
   outline: 2px solid var(--m3-primary);
@@ -2730,6 +2751,20 @@ pre, code, .mono-code, .json-display {
   .sidebar:focus-within::-webkit-scrollbar-thumb { background: var(--sidebar-item-hover); }
   /* Collapse toggle is desktop-only — meaningless inside the drawer */
   .sidebar-toggle-btn { display: none; }
+  /* Visible drawer close: 44px target, drawer-only */
+  .drawer-close-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    background: var(--sidebar-item-hover);
+    color: var(--sidebar-on-surface);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+  }
+  .drawer-close-btn svg { width: 20px; height: 20px; }
   /* Pin logout above the drawer bottom edge: always visible, never lost in the scroll */
   .logout-btn {
     position: sticky;
@@ -2868,7 +2903,7 @@ pre, code, .mono-code, .json-display {
   #btn-run-pipeline { order: 1; flex: 1 1 100%; }
   #btn-theme-toggle { order: 2; flex: 0 0 44px; }
   #btn-refresh { order: 3; flex: 0 0 44px; }
-  .header-actions .btn { min-height: 42px; font-size: 0.78rem; }
+  .header-actions .btn { min-height: 44px; font-size: 0.78rem; }
   /* Icon-only compact actions: icons are universal, truncated labels are not */
   #btn-theme-toggle, #btn-refresh { width: 44px; min-height: 44px; padding: 0; }
   #btn-theme-toggle span, #btn-refresh span { display: none; }
@@ -2925,6 +2960,17 @@ pre, code, .mono-code, .json-display {
   .rx-table td code { overflow-wrap: anywhere; }
   .rx-table td[colspan] { display: block; text-align: center; justify-content: center; }
   .rx-table td[colspan]::before { content: none; }
+  /* Generic stacked cards for wide tables WITHOUT data-labels (audit, NPHIES admin,
+     hospital migration, terminology, security): thead hides, first cell becomes the
+     card header band, remaining cells stack full-width. Applied via .stack-table. */
+  .stack-table { min-width: 0 !important; width: 100%; }
+  .stack-table thead { display: none; }
+  .stack-table, .stack-table tbody { display: block; width: 100%; }
+  .stack-table tr { display: block; width: 100%; background: var(--m3-surface-container); border-radius: var(--radius-md); padding: 6px 14px; margin-bottom: 10px; }
+  .stack-table td { display: block; width: 100%; padding: 7px 0; font-size: 0.82rem; background: transparent !important; text-align: right; }
+  .stack-table tbody td:first-child { position: static; box-shadow: none; background: var(--m3-surface-container-low) !important; margin: 2px -6px 6px; padding: 8px 10px; border-radius: var(--radius-sm); font-weight: 700; }
+  .stack-table td[colspan] { text-align: center; }
+  .stack-table td .btn { min-height: 44px; }
   /* Unified longitudinal record: patient picker is single column (no 280px blowout) */
   #longitudinal-results { grid-template-columns: 1fr !important; max-height: 60vh; max-height: 60dvh; }
   /* Print action is the primary mobile action — full width touch target */
@@ -2970,13 +3016,21 @@ pre, code, .mono-code, .json-display {
   .live-pill { justify-content: center; }
 }
 
-/* ---------- Coarse pointers: guaranteed touch targets ---------- */
+/* ---------- Coarse pointers: guaranteed 44px touch targets ---------- */
 @media (pointer: coarse) {
   .nav-item { min-height: 44px; }
-  .btn { min-height: 42px; }
-  .endpoint-btn, .combobox-item, .auth-tab-btn { min-height: 44px; }
+  .btn, .btn-sm { min-height: 44px; }
+  .btn-sm { padding: 8px 14px; font-size: 0.8rem; }
+  .endpoint-btn, .combobox-item, .auth-tab-btn, .auth-submit-btn { min-height: 44px; }
   .form-input, .form-select { min-height: 44px; }
-  input[type="checkbox"], input[type="radio"] { width: 20px; height: 20px; }
+  .combobox-clear { min-width: 44px; min-height: 44px; }
+  .combobox-load-more { min-height: 44px; }
+  .gov-row-actions .btn { min-height: 44px; }
+  /* Auth: roomy thumb-first targets */
+  .auth-submit-btn { min-height: 48px; }
+  .auth-input { min-height: 48px; }
+  .pwd-toggle { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+  input[type="checkbox"], input[type="radio"] { width: 22px; height: 22px; }
   /* Touch has no hover: keep a faint thumb always visible while scrolling */
   .nav-menu, .sidebar, .json-display { scrollbar-color: var(--sidebar-item-hover) transparent; }
   .nav-menu::-webkit-scrollbar-thumb,
@@ -4005,17 +4059,25 @@ body.sidebar-collapsed .logout-btn .label {
   position: sticky;
 }
 
-/* Safari: fix input zoom on focus (iOS) - ensure 16px minimum to prevent zoom */
+/* iOS Safari only: 16px minimum on every text entry at every viewport — no auto-zoom,
+   portrait or landscape. (The old min-width:560px revert reintroduced zoom on
+   landscape phones and tablets. Desktop keeps designed sizes.) */
 @supports (-webkit-touch-callout: none) {
   .auth-input,
-  .form-select {
+  .form-input,
+  .form-select,
+  #global-patient-search,
+  input[type="text"],
+  input[type="search"],
+  input[type="number"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="date"],
+  input[type="datetime-local"],
+  input[type="password"],
+  textarea,
+  select {
     font-size: 16px;
-  }
-  @media (min-width: 560px) {
-    .auth-input,
-    .form-select {
-      font-size: 0.9rem;
-    }
   }
 }
 
