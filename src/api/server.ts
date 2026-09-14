@@ -130,8 +130,10 @@ export function createPlatformApp() {
     origin: allowedOrigins && allowedOrigins.length > 0 ? allowedOrigins : true,
     credentials: true
   }));
-  app.use(express.json({ limit: '50mb' }));
-  app.use(express.urlencoded({ limit: '50mb', extended: true }));
+  // Keep ordinary API requests small; upload endpoints opt into the larger parser below.
+  app.use(['/api/hospitals/:id/ingest', '/api/ingest/file'], express.json({ limit: '50mb' }));
+  app.use(express.json({ limit: '2mb' }));
+  app.use(express.urlencoded({ limit: '1mb', extended: true }));
 
   const DISABLE_RATE_LIMIT = process.env.DISABLE_RATE_LIMIT === 'true' && process.env.NODE_ENV !== 'production';
   const authLimiter: any = DISABLE_RATE_LIMIT ? ((req: any, _res: any, next: any) => next()) : rateLimit({
@@ -168,26 +170,32 @@ export function createPlatformApp() {
   const fhirSerializer = new FhirR4Serializer();
 
   // Auto-boot middleware with timeout protection for Serverless Environments (Vercel)
-  let isBooted = false;
+  let bootState: 'pending' | 'ready' | 'failed' = 'pending';
   let bootPromise: Promise<void> | null = null;
+  app.locals.bootState = () => bootState;
+  app.locals.markBootReady = () => { bootState = 'ready'; };
   app.use(async (req, res, next) => {
     // Never block auth pages or health check
     if (req.path.startsWith('/auth') || req.path === '/api/health') {
       return next();
     }
-    if (!isBooted) {
+    if (bootState !== 'ready') {
       if (!bootPromise) {
         bootPromise = Promise.race([
           engine.boot(),
           new Promise((_, reject) => setTimeout(() => reject(new Error('Boot timeout (serverless)')), 2500))
         ]).then(() => {
-          isBooted = true;
+          bootState = 'ready';
         }).catch((err) => {
           console.warn('[BOOT WARNING]', err.message);
-          isBooted = true; // Avoid blocking further requests
+          bootState = 'failed';
+          bootPromise = null;
         });
       }
       await bootPromise;
+      if (bootState === 'failed') {
+        return res.status(503).json({ error: 'Service initialization failed', code: 'ENGINE_NOT_READY' });
+      }
     }
     next();
   });
@@ -206,7 +214,8 @@ export function createPlatformApp() {
       db = 'up';
     } catch { db = 'down'; }
     const { getDatabaseSource } = await import('../lib/prisma.js');
-    res.json({ ok: db === 'up', db, dbSource: getDatabaseSource(), dbMs: Date.now() - started, uptimeSec: Math.round(process.uptime()), time: new Date().toISOString() });
+    const ready = db === 'up' && bootState === 'ready';
+    res.status(ready ? 200 : 503).json({ ok: ready, ready, db, dbSource: getDatabaseSource(), dbMs: Date.now() - started, uptimeSec: Math.round(process.uptime()), time: new Date().toISOString() });
   });
 
   // Public routes (migrated to modules/public)
@@ -455,6 +464,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const MLLP_PORT = Number(process.env.HL7_MLLP_PORT || 2575);
 
   await engine.boot();
+  app.locals.markBootReady();
   app.listen(PORT, async () => {
     console.log(`\n========================================================================`);
     console.log(`🇸🇦 Saudi National Health Interoperability Platform`);

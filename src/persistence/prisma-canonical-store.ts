@@ -176,6 +176,40 @@ export class PrismaCanonicalStore implements ICanonicalStore {
     return patients.map(p => this.mapPatientToCanonical(p));
   }
 
+  async searchFhirResources(type: string, params: { patientId?: string; organizationId?: string; skip: number; take: number }): Promise<{ items: any[]; total: number }> {
+    const models: Record<string, { model: string; map: (row: any) => any; orderBy: any; hasOrganization: boolean }> = {
+      Encounter: { model: 'encounter', map: r => this.mapEncounterToCanonical(r), orderBy: { period_start: 'desc' }, hasOrganization: true },
+      Condition: { model: 'condition', map: r => this.mapConditionToCanonical(r), orderBy: { recorded_date: 'desc' }, hasOrganization: true },
+      Observation: { model: 'observation', map: r => this.mapObservationToCanonical(r), orderBy: { effective_date: 'desc' }, hasOrganization: true },
+      Coverage: { model: 'coverage', map: r => this.mapCoverageToCanonical(r), orderBy: { period_start: 'desc' }, hasOrganization: true },
+      Claim: { model: 'claim', map: r => this.mapClaimToCanonical(r), orderBy: { submission_date: 'desc' }, hasOrganization: true },
+      MedicationRequest: { model: 'medicationRequest', map: r => this.mapMedicationToCanonical(r), orderBy: { authored_on: 'desc' }, hasOrganization: true },
+      Immunization: { model: 'immunization', map: r => this.mapImmunizationToCanonical(r), orderBy: { occurrence_date: 'desc' }, hasOrganization: true },
+      AllergyIntolerance: { model: 'allergyIntolerance', map: r => this.mapAllergyToCanonical(r), orderBy: { recorded_date: 'desc' }, hasOrganization: false },
+      DiagnosticReport: { model: 'diagnosticReport', map: r => this.mapDiagnosticReportToCanonical(r), orderBy: { issued: 'desc' }, hasOrganization: false }
+    };
+    const definition = models[type];
+    if (!definition) throw new Error(`Unsupported FHIR resource type: ${type}`);
+    const where: any = {};
+    if (params.patientId) where.patient_id = params.patientId;
+    if (params.organizationId) {
+      const orgScope = {
+        OR: [
+          ...(definition.hasOrganization ? [{ organization_id: params.organizationId }] : []),
+          { patient: { source_system_id: params.organizationId } },
+          { patient: { organizations: { some: { organization_id: params.organizationId, active: true } } } }
+        ]
+      };
+      Object.assign(where, orgScope);
+    }
+    const delegate: any = (this.prisma as any)[definition.model];
+    const [total, rows] = await Promise.all([
+      delegate.count({ where }),
+      delegate.findMany({ where, orderBy: definition.orderBy, skip: params.skip, take: params.take })
+    ]);
+    return { items: rows.map(definition.map), total };
+  }
+
   async searchPatients(params: { q?: string; skip?: number; take?: number; sort?: string; organizationId?: string; cursor?: string }): Promise<{ items: CanonicalPatient[]; total: number; nextCursor?: string|null }> {
     const q = (params.q || '').trim();
     const take = Math.min(Math.max(params.take || 20, 1), 50);

@@ -251,6 +251,10 @@ model Encounter {
   corrected_at     DateTime?
   superseded_by    String?
 
+  @@index([patient_id, period_start])
+  @@index([organization_id, period_start])
+  @@index([source_system_id, created_at])
+
   conditions       Condition[]
   observations     Observation[]
   medication_requests MedicationRequest[]
@@ -294,6 +298,10 @@ model Condition {
   correction_reason String?
   corrected_by     String?
   corrected_at     DateTime?
+
+  @@index([patient_id, recorded_date])
+  @@index([organization_id, recorded_date])
+  @@index([source_system_id, created_at])
 }
 
 // 4.10 Observations
@@ -333,6 +341,10 @@ model Observation {
   correction_reason String?
   corrected_by     String?
   corrected_at     DateTime?
+
+  @@index([patient_id, effective_date])
+  @@index([organization_id, effective_date])
+  @@index([source_system_id, created_at])
 }
 
 // 4.11 MedicationRequests
@@ -371,6 +383,10 @@ model MedicationRequest {
   correction_reason String?
   corrected_by     String?
   corrected_at     DateTime?
+
+  @@index([patient_id, authored_on])
+  @@index([organization_id, authored_on])
+  @@index([source_system_id, created_at])
 }
 
 // 4.12 Immunizations
@@ -400,6 +416,10 @@ model Immunization {
   source_record_id String?
   
   created_at       DateTime     @default(now())
+
+  @@index([patient_id, occurrence_date])
+  @@index([organization_id, occurrence_date])
+  @@index([source_system_id, created_at])
 }
 
 // 4.13 Coverages
@@ -428,6 +448,10 @@ model Coverage {
   created_at       DateTime     @default(now())
 
   claims           Claim[]
+
+  @@index([patient_id, period_start])
+  @@index([organization_id, period_start])
+  @@index([source_system_id, created_at])
 }
 
 // 4.14 Claims
@@ -460,6 +484,10 @@ model Claim {
   created_at       DateTime     @default(now())
 
   claim_responses  ClaimResponse[]
+
+  @@index([patient_id, submission_date])
+  @@index([organization_id, submission_date])
+  @@index([source_system_id, created_at])
 }
 
 // ClaimResponse
@@ -502,6 +530,9 @@ model AllergyIntolerance {
   source_record_id String?
   
   created_at       DateTime     @default(now())
+
+  @@index([patient_id, recorded_date])
+  @@index([source_system_id, created_at])
 }
 
 // DiagnosticReport
@@ -529,6 +560,9 @@ model DiagnosticReport {
   source_record_id String?
   
   created_at       DateTime     @default(now())
+
+  @@index([patient_id, issued])
+  @@index([source_system_id, created_at])
 }
 
 // 4.15 Consents - Quad Appointment+Consent Model

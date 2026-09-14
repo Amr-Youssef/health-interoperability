@@ -10,6 +10,7 @@ WORKDIR /app
 
 # Install build dependencies
 COPY package*.json tsconfig.json ./
+COPY prisma/ ./prisma/
 RUN npm ci
 
 # Copy source code and static UI assets
@@ -29,7 +30,8 @@ ENV PORT=3000
 
 # Install production dependencies only
 COPY package*.json ./
-RUN npm ci --only=production && npm cache clean --force
+COPY prisma/ ./prisma/
+RUN npm ci --only=production && npx prisma generate && npm cache clean --force
 
 # Copy built application and static assets from builder
 COPY --from=builder /app/dist ./dist
