@@ -6,7 +6,8 @@
   "main": "dist/api/server.js",
   "scripts": {
     "dev": "tsx watch src/api/server.ts",
-    "build": "prisma generate && tsc",
+    "build": "prisma generate && tsc && npm run build:ui",
+    "build:ui": "esbuild public/app.js --minify --outfile=public/app.min.js && esbuild public/js/vitals-charts.js --minify --outfile=public/js/vitals-charts.min.js && esbuild public/js/patient-self-reported.js --minify --outfile=public/js/patient-self-reported.min.js && esbuild public/auth/auth.js --minify --outfile=public/auth/auth.min.js && esbuild public/style.css --minify --loader:.css=css --outfile=public/style.min.css && esbuild public/auth/auth.css --minify --loader:.css=css --outfile=public/auth/auth.min.css",
     "start": "node dist/api/server.js",
     "test": "vitest run",
     "demo": "tsx src/demo/run-demo.ts",

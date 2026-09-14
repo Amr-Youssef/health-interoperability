@@ -765,6 +765,15 @@ function showToast(title, message, type = 'success') {
   }, 4000);
 }
 
+// Shared skeleton placeholders for manual-refresh loading states (token-styled, no text flash)
+function skelTable(colspan, widths = ['45%', '70%']) {
+  return `<tr class="skel-row"><td colspan="${colspan}">` +
+    widths.map((w) => `<span class="skel" style="width:${w}"></span>`).join('') + `</td></tr>`;
+}
+function skelLines(widths = ['60%', '82%', '45%']) {
+  return widths.map((w) => `<span class="skel" style="width:${w}"></span>`).join('');
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   initThemeSwitcher();
   initSidebarToggle();
@@ -2216,7 +2225,7 @@ async function loadAuditorRecords() {
   const tbody = document.getElementById('audit-records-body');
   const pag = document.getElementById('audit-records-pagination');
   if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="10" class="text-center py-4">جاري التحميل...</td></tr>';
+  tbody.innerHTML = skelTable(10, ['38%', '72%', '55%']);
   try {
     const f = _auditConsole.filters;
     const qs = new URLSearchParams({ page: String(_auditConsole.page), limit: String(_auditConsole.limit) });
@@ -2299,7 +2308,7 @@ async function openConnectorDetail(sysId) {
   const c = (_auditConsole.connectors || []).find(x => x.systemId === sysId);
   if (!c) return;
   if (title) title.textContent = 'تكامل: ' + (c.name || sysId);
-  body.innerHTML = '<p class="text-center py-4">جاري التحميل...</p>';
+  body.innerHTML = '<div style="padding:12px 14px;">' + skelLines() + '</div>';
   modal.style.display = 'flex';
   try {
     const [errRes, okRes] = await Promise.all([
@@ -2337,7 +2346,7 @@ async function openAuditorTrace(id) {
   const body = document.getElementById('auditor-trace-body');
   if (!modal || !body) return;
   _auditConsole.lastTraceId = id;
-  body.innerHTML = '<p class="text-center py-4">جاري تحميل المسار...</p>';
+  body.innerHTML = '<div style="padding:12px 14px;">' + skelLines() + '</div>';
   modal.style.display = 'flex';
   try {
     const r = await fetch('/api/audit/records/' + encodeURIComponent(id) + '/trace');
@@ -3462,7 +3471,7 @@ async function loadHospitalProfileTab() {
 async function loadHospitalUsers(){
   const tbody=document.getElementById('hospital-users-tbody');
   if(!tbody) return;
-  tbody.innerHTML='<tr><td colspan="4" style="text-align:center; padding:12px;">جاري التحميل...</td></tr>';
+  tbody.innerHTML = skelTable(4);
   try{
     const r=await fetch('/api/hospital/users');
     const d=await r.json();
@@ -3619,7 +3628,7 @@ async function loadHospitalScopedStats() {
 async function loadHospitalImports() {
   const tbody = document.getElementById('hosp-imports-tbody');
   if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4">جاري التحميل...</td></tr>';
+  tbody.innerHTML = skelTable(5);
   try {
     const res = await fetch('/api/hospital/imports');
     const list = await res.json();
@@ -3647,7 +3656,7 @@ async function loadHospitalPatientsList(q='', page=1){
   const countEl=document.getElementById('hosp-patients-count');
   const pagEl=document.getElementById('hosp-patients-pagination');
   if(!tbody) return;
-  tbody.innerHTML='<tr><td colspan="5" class="text-center py-4">جاري التحميل...</td></tr>';
+  tbody.innerHTML = skelTable(5);
   try{
     const res=await fetch(`/api/hospital/patients?q=${encodeURIComponent(q)}&page=${page}&limit=8`);
     const data=await res.json();
@@ -3766,7 +3775,7 @@ async function loadHospitalGlobalRegistry() {
   const tbody = document.getElementById('hosp-global-tbody');
   const countEl = document.getElementById('hosp-global-count');
   const detailEl = document.getElementById('hosp-global-detail');
-  if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4">جاري تحميل السجل العام...</td></tr>';
+  if (tbody) tbody.innerHTML = skelTable(5, ['55%', '78%']);
   if (detailEl) detailEl.style.display='none';
   try {
     const qEl = document.getElementById('hosp-global-search');
@@ -3850,7 +3859,7 @@ async function showHospGlobalDetail(patientId) {
   const detailEl = document.getElementById('hosp-global-detail');
   if (!detailEl) return;
   detailEl.style.display='block';
-  detailEl.innerHTML = `<div class="card" style="padding:24px; text-align:center;"><p style="color:var(--m3-on-surface-variant);">جاري تحميل السجل الموحد للمريض <code>${patientId.substring(0,8)}…</code>...</p></div>`;
+  detailEl.innerHTML = `<div class="card" style="padding:24px;">` + skelLines(['35%', '70%', '55%', '80%']) + `</div>`;
   detailEl.scrollIntoView({behavior:'smooth', block:'start'});
   try {
     const res = await fetch('/api/hospital/patients/' + encodeURIComponent(patientId) + '/longitudinal');
@@ -4063,7 +4072,7 @@ async function loadLongitudinalRecord(patientId) {
     fetch(`/api/patients/${patientId}/longitudinal`).then(r=>r.json()).then(d=>{ if(d.patient){ longitudinalCache.set(patientId, d); renderLongitudinalContent(d, patientId); }}).catch(()=>{});
     return;
   }
-  container.innerHTML = `<div class="card" style="padding:24px; text-align:center; color:var(--m3-on-surface-muted);">${getSvgIcon('spinner','style="width:22px;height:22px;"')} جاري تحميل السجل الموحد...</div>`;
+  container.innerHTML = `<div class="card" style="padding:24px;">` + skelLines(['40%', '75%', '60%', '82%']) + `</div>`;
   try {
     const res = await fetch(`/api/patients/${patientId}/longitudinal`);
     const data = await res.json();
@@ -5493,7 +5502,7 @@ async function verifyItem(type,id,decision){ try{ const r=await fetch('/api/moh/
 async function loadOrgChangeRequests(){
   const el=document.getElementById('gov-org-changes-list');
   if(!el) return;
-  el.innerHTML='<div class="text-center py-3">جاري التحميل...</div>';
+  el.innerHTML = '<div style="padding:12px 14px;">' + skelLines() + '</div>';
   try{
     const params = new URLSearchParams({ page: String(governanceChangesState.page), limit: String(governanceChangesState.pageSize) });
     if (governanceChangesState.query) params.set('search', governanceChangesState.query);
@@ -5511,7 +5520,7 @@ async function rejectOrgChange(id){ try{ const r=await fetch('/api/moh/organizat
 async function loadVerificationQueue(){
   const el=document.getElementById('gov-verify-list');
   if(!el) return;
-  el.innerHTML='<div class="text-center py-3">جاري التحميل...</div>';
+  el.innerHTML = '<div style="padding:12px 14px;">' + skelLines() + '</div>';
   try {
     const params = new URLSearchParams({ page: String(governanceVerifyState.page), limit: String(governanceVerifyState.pageSize), type: governanceVerifyState.type });
     if (governanceVerifyState.query) params.set('search', governanceVerifyState.query);
@@ -5567,7 +5576,7 @@ async function loadAppointments(){
     });
   }
   if(!tbody) return;
-  tbody.innerHTML='<tr><td colspan="7" class="text-center py-4">جاري التحميل...</td></tr>';
+  tbody.innerHTML = skelTable(7);
   try{
     const url = appAuth.currentRole==='PATIENT' ? '/api/appointments/my' : '/api/appointments/organization';
     const r=await fetch(url);
@@ -5610,7 +5619,7 @@ async function loadPatientAccessLog(){
   const tbody = document.getElementById('patient-access-tbody');
   const countEl = document.getElementById('patient-access-count');
   if(!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4">جاري تحميل سجل الوصول...</td></tr>';
+  tbody.innerHTML = skelTable(4);
   const fmt = (v) => { try { return v ? new Date(v).toLocaleString('ar-SA') : '—'; } catch(e){ return '—'; } };
   const typeAr = (t) => ({ROUTINE:'روتيني',CHRONIC:'مزمن',REFERRAL:'تحويل',EMERGENCY:'طوارئ'})[t] || t || '—';
   try{
