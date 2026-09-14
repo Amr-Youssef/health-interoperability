@@ -2779,7 +2779,146 @@ pre, code, .mono-code, .json-display {
   }
 }
 
-/* ---------- Governance and dense admin surfaces on phones ---------- */
+/* =========================================
+   GOVERNANCE — unified national center
+   Mobile-first comfort: breathing room, soft rows, no squeeze
+   ========================================= */
+#pane-admin-governance .card-body {
+  line-height: 1.7;
+}
+
+#pane-admin-governance small {
+  line-height: 1.8;
+}
+
+/* Layout helpers (replace inline grids — same desktop look, responsive on phones) */
+.gov-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.gov-filters {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.gov-filters-4 {
+  grid-template-columns: minmax(180px, 2fr) repeat(3, minmax(110px, 1fr));
+}
+
+.gov-toolbar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.gov-toolbar .form-select {
+  min-height: 42px;
+}
+
+.gov-list {
+  overflow: auto;
+  border-radius: var(--radius-md);
+  scrollbar-width: thin;
+  scrollbar-color: var(--m3-surface-container-highest) transparent;
+  -webkit-overflow-scrolling: touch;
+}
+
+.gov-list-tall { max-height: 400px; }
+.gov-list-medium { max-height: 360px; }
+.gov-list-short { max-height: 300px; }
+
+.gov-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding-top: 10px;
+  font-size: 0.78rem;
+  color: var(--m3-on-surface-variant);
+}
+
+.gov-hint {
+  font-size: 0.8rem;
+  color: var(--m3-on-surface-variant);
+  margin-bottom: 8px;
+  line-height: 1.7;
+}
+
+.gov-summary {
+  font-size: 0.75rem;
+  color: var(--m3-on-surface-variant);
+  margin-bottom: 6px;
+  line-height: 1.7;
+}
+
+.gov-form-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* JS-rendered rows — desktop stays inline, phones become soft cards */
+.gov-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.gov-row + .gov-row {
+  border-top: 1px solid var(--m3-outline-variant);
+}
+
+.gov-row-main {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.gov-row-meta {
+  display: block;
+  margin-top: 2px;
+  color: var(--m3-on-surface-variant);
+  font-size: 0.78rem;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+
+.gov-row-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+.gov-row-actions .btn {
+  min-height: 36px;
+}
+
+.gov-card-row {
+  padding: 10px 12px;
+  border: 1px solid var(--m3-outline-variant);
+  border-radius: var(--radius-md);
+  margin-bottom: 8px;
+  background: var(--m3-surface);
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- Governance on tablets & phones ---------- */
+@media (max-width: 1024px) {
+  .gov-grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 768px) {
   /* Keep admin cards readable when two-column desktop layouts are inline-styled. */
   #pane-admin-governance > .card,
@@ -2790,37 +2929,148 @@ pre, code, .mono-code, .json-display {
 
   #pane-admin-governance .card-header {
     align-items: flex-start;
+    flex-wrap: wrap;
   }
 
   #pane-admin-governance .card-header > button {
     flex: 0 0 auto;
   }
 
+  /* Eye comfort: single-column metrics breathe better than squeezed pairs */
+  #pane-admin-governance .metrics-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px;
+  }
+
+  /* Legacy inline filter grids (4 columns) → two comfortable columns */
+  #pane-admin-governance div[style*="minmax(180px"],
+  #pane-admin-governance div[style*="minmax(220px"] {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .gov-filters-4 {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .gov-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .gov-toolbar .form-select {
+    flex: 1 1 140px;
+    min-width: 0;
+  }
+
+  .gov-toolbar input[type="search"] {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  /* Comfort reading: rows become stacked soft cards, no side squeeze */
+  .gov-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 12px 14px;
+    background: var(--m3-surface-container-low);
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    margin-bottom: 8px;
+  }
+
+  .gov-row + .gov-row {
+    border-top: 1px solid transparent;
+  }
+
+  .gov-row-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .gov-row-actions .btn {
+    flex: 1 1 calc(50% - 3px);
+    min-height: 44px;
+    font-size: 0.82rem;
+  }
+
+  .gov-card-row > div[style*="space-between"] {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+
+  .gov-card-row div[style*="min-width:90px"],
+  .gov-card-row div[style*="display:flex; gap:6px"] {
+    width: 100% !important;
+    min-width: 0 !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+  }
+
+  .gov-card-row .btn {
+    flex: 1 1 calc(50% - 3px);
+    min-height: 44px;
+  }
+
+  /* Any remaining legacy flex rows inside the lists */
   #gov-users-list > div,
   #gov-pending-list > div,
   #gov-org-changes-list > div,
-  #gov-verify-list > div {
+  #gov-verify-list > div,
+  #gov-patients-list > div {
     min-width: 0;
     overflow-wrap: anywhere;
   }
 
   #gov-users-list > div {
-    align-items: flex-start !important;
-    flex-wrap: wrap;
+    align-items: stretch !important;
+    flex-direction: column !important;
   }
 
   #gov-users-list > div > div:last-child {
     width: 100%;
-    justify-content: flex-start !important;
+    justify-content: stretch !important;
   }
 
   #gov-users-list > div > div:last-child .btn {
-    flex: 1 1 auto;
+    flex: 1 1 calc(50% - 3px);
+    min-height: 44px;
+  }
+
+  #gov-pending-list > div > div,
+  #gov-org-changes-list > div,
+  #gov-verify-list > div,
+  #gov-patients-list > div {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+
+  #gov-pending-list .btn,
+  #gov-org-changes-list .btn,
+  #gov-verify-list .btn {
+    flex: 1 1 calc(50% - 3px);
+    min-height: 44px;
+  }
+
+  /* No nested double-scroll on touch: the page scrolls once, calmly */
+  .gov-list,
+  .gov-list-tall,
+  .gov-list-medium,
+  .gov-list-short,
+  #gov-users-list,
+  #gov-pending-list,
+  #gov-org-changes-list,
+  #gov-verify-list,
+  #gov-patients-list {
+    max-height: none !important;
+    overflow: visible !important;
   }
 
   #gov-users-search,
   #gov-org-changes-search,
-  #gov-verify-search {
+  #gov-verify-search,
+  #gov-patients-search {
     min-width: 0;
     width: 100%;
   }
@@ -2828,7 +3078,9 @@ pre, code, .mono-code, .json-display {
   #gov-users-pagination,
   #gov-pending-pagination,
   #gov-org-changes-pagination,
-  #gov-verify-pagination {
+  #gov-verify-pagination,
+  #gov-patients-pagination,
+  .gov-pagination {
     flex-wrap: wrap;
     gap: 8px;
   }
@@ -2836,8 +3088,10 @@ pre, code, .mono-code, .json-display {
   #gov-users-pagination .btn,
   #gov-pending-pagination .btn,
   #gov-org-changes-pagination .btn,
-  #gov-verify-pagination .btn {
+  #gov-verify-pagination .btn,
+  #gov-patients-pagination .btn {
     flex: 1 1 110px;
+    min-height: 44px;
   }
 
   /* Horizontal data remains available without shrinking text to unreadable sizes. */
@@ -2845,6 +3099,51 @@ pre, code, .mono-code, .json-display {
   #pane-admin-governance .table-card {
     max-width: 100%;
     overflow-x: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  /* One calm column: metrics stop shouting side-by-side on phones */
+  #pane-admin-governance .metrics-grid {
+    grid-template-columns: 1fr !important;
+    gap: 8px;
+  }
+
+  #pane-admin-governance .metric-card {
+    padding: 14px;
+  }
+
+  #pane-admin-governance .metric-value {
+    font-size: 1.35rem;
+  }
+}
+
+@media (max-width: 560px) {
+  /* Filters become one full-width column — large, glare-free touch targets */
+  #pane-admin-governance div[style*="minmax(180px"],
+  #pane-admin-governance div[style*="minmax(220px"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  .gov-filters-4 {
+    grid-template-columns: 1fr;
+  }
+
+  .gov-toolbar .form-select {
+    flex: 1 1 100%;
+  }
+
+  .gov-row-actions .btn,
+  #gov-users-list > div > div:last-child .btn,
+  .gov-card-row .btn,
+  #gov-pending-list .btn,
+  #gov-org-changes-list .btn,
+  #gov-verify-list .btn {
+    flex: 1 1 100%;
+  }
+
+  #pane-admin-governance .banner-text p {
+    line-height: 1.8;
   }
 }
 
@@ -2876,8 +3175,13 @@ pre, code, .mono-code, .json-display {
     width: 100%;
   }
 
+  #pane-admin-governance .card-header > .btn,
+  #pane-admin-governance .card-header > button {
+    min-height: 44px;
+  }
+
   #gov-users-list > div > div:last-child .btn {
-    flex-basis: calc(50% - 4px);
+    flex: 1 1 100%;
   }
 
   .form-row,

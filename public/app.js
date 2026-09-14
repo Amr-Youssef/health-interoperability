@@ -5177,11 +5177,11 @@ async function loadGovernanceUsers() {
         const contact = governanceEscape([u.email, u.phone].filter(Boolean).join(' • ') || 'لا توجد بيانات اتصال');
         const pending = governancePendingOrgIds.has(u.organizationId);
         const roleClass = u.role === 'SYS_ADMIN' ? 'badge-error' : u.role === 'MOH_ADMIN' ? 'badge-info' : u.role === 'MOH_AUDITOR' ? 'badge-secondary' : u.role === 'HOSPITAL_ADMIN' ? 'badge-warning' : 'badge-success';
-        return `<div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px; border-bottom:1px solid var(--m3-outline-variant); ${pending ? 'background:var(--m3-warning-container);' : ''}">
-          <div><strong>${username}</strong> <span class="badge ${roleClass}">${role}</span> ${pending ? '<span class="badge badge-warning">منشأة معلقة</span>' : ''}
-          <br><small>${fullName} • ${org} • ${contact} • ${u.isActive ? 'نشط' : 'معطل'}</small>
+        return `<div class="gov-row" style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px; border-bottom:1px solid var(--m3-outline-variant); ${pending ? 'background:var(--m3-warning-container);' : ''}">
+          <div class="gov-row-main"><strong>${username}</strong> <span class="badge ${roleClass}">${role}</span> ${pending ? '<span class="badge badge-warning">منشأة معلقة</span>' : ''}
+          <br><small class="gov-row-meta">${fullName} • ${org} • ${contact} • ${u.isActive ? 'نشط' : 'معطل'}</small>
           ${pending ? '<br><small style="color:var(--m3-warning);">الوصول متوقف حتى اعتماد المنشأة</small>' : ''}</div>
-          <div style="display:flex; gap:4px; flex-wrap:wrap; justify-content:flex-end;">
+          <div class="gov-row-actions" style="display:flex; gap:4px; flex-wrap:wrap; justify-content:flex-end;">
             <button class="btn btn-secondary btn-sm" type="button" onclick="editGovernanceUser('${u.id}')">تعديل</button>
             <button class="btn btn-secondary btn-sm" type="button" onclick="changeGovernanceUserRole('${u.id}')">الدور</button>
             <button class="btn btn-secondary btn-sm" type="button" onclick="resetGovernanceUserPassword('${u.id}')">كلمة المرور</button>
@@ -5354,9 +5354,9 @@ async function loadNationalPatients() {
         const phone = governanceEscape(p.phone || '—');
         const identifier = governanceEscape(p.identifiers?.[0]?.value || p.internalId);
         const status = governanceEscape(p.status || 'ACTIVE');
-        return `<div style="padding:8px; border-bottom:1px solid var(--m3-outline-variant); display:flex; justify-content:space-between; align-items:center; gap:10px;">
-          <span><strong>${name}</strong><br><small>${internalId} • ${gender} • ${birthDate} • ${phone}</small></span>
-          <span><span class="badge badge-info">${identifier}</span> <span class="badge badge-secondary">${status}</span></span>
+        return `<div class="gov-row" style="padding:8px; border-bottom:1px solid var(--m3-outline-variant); display:flex; justify-content:space-between; align-items:center; gap:10px;">
+          <span class="gov-row-main"><strong>${name}</strong><br><small class="gov-row-meta">${internalId} • ${gender} • ${birthDate} • ${phone}</small></span>
+          <span class="gov-row-actions" style="display:flex; gap:4px; flex-wrap:wrap; justify-content:flex-end;"><span class="badge badge-info">${identifier}</span> <span class="badge badge-secondary">${status}</span></span>
         </div>`;
       }).join('');
     }
@@ -5435,7 +5435,7 @@ async function loadAdminGovernance() {
           const admin = o.admins?.[0];
           const adminHtml = admin ? `<div style="margin-top:6px; background:var(--m3-surface-container); border-radius:var(--radius-sharp); padding:6px 8px; font-size:0.78rem;"><strong>أدمن المنشأة:</strong> ${governanceEscape(admin.fullName)} (@${governanceEscape(admin.username)}) • ${governanceEscape(admin.email||'لا بريد')} • ${governanceEscape(admin.phone||'لا هاتف')} <span class="badge ${admin.isActive?'badge-success':'badge-warning'}">${admin.isActive?'نشط':'معلق'}</span> ${o.hasMapping?'<span class="badge badge-info">خرائط محفوظة</span>':''}</div>` : `<div style="margin-top:6px; font-size:0.75rem; color:var(--m3-error);">⚠️ لا يوجد أدمن مرتبط - المنشأة من تسجيل قديم</div>`;
           const dateStr = o.createdAt ? new Date(o.createdAt).toLocaleDateString('ar-SA') : '';
-          return `<div style="padding:10px; border:1px solid var(--m3-outline-variant); border-radius:var(--radius-sharp); margin-bottom:8px; background:var(--m3-surface);"><div style="display:flex; justify-content:space-between; align-items:flex-start;"><div><strong>${governanceEscape(o.organizationNameAr || o.organizationName)}</strong> <span class="badge badge-warning">PENDING</span><br><small>${governanceEscape(o.organizationName)} • ${governanceEscape(o.region)} • ${governanceEscape(o.organizationType)} • ${dateStr}</small>${adminHtml}</div><div style="display:flex; flex-direction:column; gap:6px; min-width:90px;"><button class="btn btn-primary btn-sm" onclick="approveHospital('${o.id}')">اعتماد وتفعيل</button><button class="btn btn-secondary btn-sm" onclick="rejectHospital('${o.id}')">رفض</button></div></div></div>`;
+          return `<div class="gov-card-row" style="padding:10px; border:1px solid var(--m3-outline-variant); border-radius:var(--radius-sharp); margin-bottom:8px; background:var(--m3-surface);"><div style="display:flex; justify-content:space-between; align-items:flex-start;"><div class="gov-row-main"><strong>${governanceEscape(o.organizationNameAr || o.organizationName)}</strong> <span class="badge badge-warning">PENDING</span><br><small class="gov-row-meta">${governanceEscape(o.organizationName)} • ${governanceEscape(o.region)} • ${governanceEscape(o.organizationType)} • ${dateStr}</small>${adminHtml}</div><div class="gov-row-actions" style="display:flex; flex-direction:column; gap:6px; min-width:90px;"><button class="btn btn-primary btn-sm" onclick="approveHospital('${o.id}')">اعتماد وتفعيل</button><button class="btn btn-secondary btn-sm" onclick="rejectHospital('${o.id}')">رفض</button></div></div></div>`;
         }).join('');
         renderGovernancePager(document.getElementById('gov-pending-pagination'), governancePendingState, pendingTotalPages, loadAdminGovernance);
       }
@@ -5476,7 +5476,7 @@ async function loadOrgChangeRequests(){
     if(!r.ok) throw new Error(data.error || `فشل تحميل الطلبات (${r.status})`);
     const list=data.items || [];
     if(!list.length) el.innerHTML='<div class="text-center py-3" style="color:var(--m3-on-surface-variant);">لا توجد طلبات تغيير معلقة</div>';
-    else el.innerHTML=list.map(o=>`<div style="padding:8px; border:1px solid var(--m3-outline-variant); border-radius:var(--radius-sharp); margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;"><div><strong>${governanceEscape(o.organizationNameAr||o.organizationName)}</strong> <span class="badge badge-warning">${governanceEscape(o.field)}</span><br><small>${governanceEscape(o.oldValue||'—')} → <strong>${governanceEscape(o.newValue)}</strong> • بواسطة ${governanceEscape(o.requestedBy)} • ${new Date(o.createdAt).toLocaleDateString('ar-SA')}</small></div><div style="display:flex; gap:6px;"><button class="btn btn-primary btn-sm" onclick="approveOrgChange('${o.id}')">اعتماد</button><button class="btn btn-secondary btn-sm" onclick="rejectOrgChange('${o.id}')">رفض</button></div></div>`).join('');
+    else el.innerHTML=list.map(o=>`<div class="gov-card-row" style="padding:8px; border:1px solid var(--m3-outline-variant); border-radius:var(--radius-sharp); margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;"><div class="gov-row-main"><strong>${governanceEscape(o.organizationNameAr||o.organizationName)}</strong> <span class="badge badge-warning">${governanceEscape(o.field)}</span><br><small class="gov-row-meta">${governanceEscape(o.oldValue||'—')} → <strong>${governanceEscape(o.newValue)}</strong> • بواسطة ${governanceEscape(o.requestedBy)} • ${new Date(o.createdAt).toLocaleDateString('ar-SA')}</small></div><div class="gov-row-actions" style="display:flex; gap:6px;"><button class="btn btn-primary btn-sm" onclick="approveOrgChange('${o.id}')">اعتماد</button><button class="btn btn-secondary btn-sm" onclick="rejectOrgChange('${o.id}')">رفض</button></div></div>`).join('');
     renderGovernancePager(document.getElementById('gov-org-changes-pagination'), governanceChangesState, data.totalPages || 1, loadOrgChangeRequests);
   }catch(e){ el.innerHTML=`<div style="color:var(--m3-error);">${governanceEscape(e.message)}</div>`; }
 }
@@ -5499,7 +5499,7 @@ async function loadVerificationQueue(){
     if (!list.length) el.innerHTML='<div class="text-center py-3" style="color:var(--m3-on-surface-variant);">لا توجد بلاغات بانتظار التحقق</div>';
     else el.innerHTML = list.map(item => {
       const value = item.medicationName || item.allergenName || item.conditionName || item.procedureName || item.relationship || item.preferredFirstName || item.observationName || item.code || 'بيانات مبلغة ذاتياً';
-      return `<div style="padding:6px; border:1px solid var(--m3-outline-variant); border-radius:var(--radius-sharp); margin-bottom:4px; display:flex; justify-content:space-between; align-items:center;"><span>${label}: ${governanceEscape(value)} <small>(${governanceEscape(item.patientInternalId || item.patientId || '')})</small></span><span><button class="btn btn-primary btn-sm" onclick="verifyItem('${actionType}','${item.id}','VERIFIED')">تحقق</button> <button class="btn btn-secondary btn-sm" onclick="verifyItem('${actionType}','${item.id}','REFUTED')">رفض</button></span></div>`;
+      return `<div class="gov-card-row gov-row" style="padding:6px; border:1px solid var(--m3-outline-variant); border-radius:var(--radius-sharp); margin-bottom:4px; display:flex; justify-content:space-between; align-items:center;"><span class="gov-row-main">${label}: ${governanceEscape(value)} <small class="gov-row-meta">(${governanceEscape(item.patientInternalId || item.patientId || '')})</small></span><span class="gov-row-actions"><button class="btn btn-primary btn-sm" onclick="verifyItem('${actionType}','${item.id}','VERIFIED')">تحقق</button> <button class="btn btn-secondary btn-sm" onclick="verifyItem('${actionType}','${item.id}','REFUTED')">رفض</button></span></div>`;
     }).join('');
     renderGovernancePager(document.getElementById('gov-verify-pagination'), governanceVerifyState, data.totalPages || 1, loadVerificationQueue);
   } catch (e) {

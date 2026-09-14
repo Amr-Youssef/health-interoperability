@@ -899,20 +899,20 @@
           <div class="metric-card"><div class="metric-icon bg-purple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div class="metric-info"><span class="metric-label">طابور التحقق (UNVERIFIED)</span><h3 class="metric-value" id="gov-verify-queue">--</h3><span class="metric-sub">كل البلاغات والملفات المبلغة ذاتياً</span></div></div>
           <div class="metric-card"><div class="metric-icon bg-emerald"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg></div><div class="metric-info"><span class="metric-label">المرضى الوطنيين</span><h3 class="metric-value" id="gov-patients-total">--</h3><span class="metric-sub">من نفس سجل المستشفى/المريض</span></div></div>
         </div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:16px;">
+        <div class="gov-grid-2">
           <div class="card">
             <div class="card-header"><div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l8-4v18"/></svg><h3>المنشآت بانتظار الاعتماد</h3></div><button class="btn btn-secondary btn-sm" onclick="loadAdminGovernance()">تحديث</button></div>
             <div class="card-body">
-              <div style="display:flex; gap:8px; margin-bottom:8px;"><input id="gov-pending-search" class="form-select" type="search" placeholder="بحث باسم المنشأة أو المنطقة"><select id="gov-pending-page-size" class="form-select" style="max-width:130px;"><option value="10">10 لكل صفحة</option><option value="50">50 لكل صفحة</option></select></div>
-              <div id="gov-pending-list" style="max-height:360px; overflow:auto;">جاري التحميل...</div>
-              <div id="gov-pending-pagination" style="display:flex; justify-content:space-between; align-items:center; padding-top:8px; font-size:0.78rem;"></div>
+              <div class="gov-toolbar"><input id="gov-pending-search" class="form-select" type="search" placeholder="بحث باسم المنشأة أو المنطقة"><select id="gov-pending-page-size" class="form-select" style="max-width:130px;"><option value="10">10 لكل صفحة</option><option value="50">50 لكل صفحة</option></select></div>
+              <div id="gov-pending-list" class="gov-list gov-list-medium">جاري التحميل...</div>
+              <div id="gov-pending-pagination" class="gov-pagination"></div>
             </div>
           </div>
           <div class="card" id="gov-create-admin-card">
             <div class="card-header"><div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><h3>إنشاء مستخدم</h3></div></div>
             <div class="card-body">
-              <p id="gov-create-hint" style="font-size:0.8rem; color:var(--m3-on-surface-variant); margin-bottom:8px;">SYS_ADMIN ينشئ جميع الأنواع • MOH_ADMIN ينشئ HOSPITAL/CLINICIAN/MOH_AUDITOR فقط</p>
-              <form id="form-create-moh-admin" style="display:flex; flex-direction:column; gap:8px;">
+              <p id="gov-create-hint" class="gov-hint">SYS_ADMIN ينشئ جميع الأنواع • MOH_ADMIN ينشئ HOSPITAL/CLINICIAN/MOH_AUDITOR فقط</p>
+              <form id="form-create-moh-admin" class="gov-form-stack">
                 <select id="moh-admin-role" class="form-select" required>
                   <option value="MOH_ADMIN">MOH_ADMIN - أدمن وطني</option>
                   <option value="SYS_ADMIN">SYS_ADMIN - مدير النظام</option>
@@ -936,50 +936,50 @@
             </div>
           </div>
         </div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:16px;">
+        <div class="gov-grid-2">
           <div class="card">
             <div class="card-header"><div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><h3>إدارة المستخدمين</h3></div><button class="btn btn-secondary btn-sm" type="button" onclick="loadGovernanceUsers()">تحديث</button></div>
             <div class="card-body">
-              <div style="display:grid; grid-template-columns:minmax(180px,2fr) repeat(3,minmax(110px,1fr)); gap:8px; margin-bottom:10px;">
+              <div class="gov-filters gov-filters-4">
                 <input id="gov-users-search" class="form-select" type="search" placeholder="بحث بالاسم أو المستخدم أو البريد أو الجوال" autocomplete="off">
                 <select id="gov-users-role" class="form-select"><option value="">كل الأدوار</option><option value="SYS_ADMIN">SYS_ADMIN</option><option value="MOH_ADMIN">MOH_ADMIN</option><option value="MOH_AUDITOR">MOH_AUDITOR</option><option value="HOSPITAL_ADMIN">HOSPITAL_ADMIN</option><option value="CLINICIAN">CLINICIAN</option><option value="PATIENT">PATIENT</option></select>
                 <select id="gov-users-status" class="form-select"><option value="">كل الحالات</option><option value="active">نشط</option><option value="inactive">معطل</option></select>
                 <select id="gov-users-page-size" class="form-select"><option value="20">20 لكل صفحة</option><option value="50">50 لكل صفحة</option></select>
               </div>
-              <div id="gov-users-summary" style="font-size:0.75rem; color:var(--m3-on-surface-variant); margin-bottom:6px;"></div>
-              <div id="gov-users-list" style="max-height:400px; overflow:auto;">جاري التحميل...</div>
-              <div id="gov-users-pagination" style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding-top:10px; font-size:0.78rem;"></div>
+              <div id="gov-users-summary" class="gov-summary"></div>
+              <div id="gov-users-list" class="gov-list gov-list-tall">جاري التحميل...</div>
+              <div id="gov-users-pagination" class="gov-pagination"></div>
             </div>
           </div>
           <div class="card">
             <div class="card-header"><div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l11 0"/><path d="M9 12l-3 3"/><path d="M9 12l-3 -3"/></svg><h3>طلبات تغيير بيانات المنشآت</h3></div><button class="btn btn-secondary btn-sm" onclick="loadOrgChangeRequests()">تحديث</button></div>
             <div class="card-body">
-              <div style="display:flex; gap:8px; margin-bottom:8px;"><input id="gov-org-changes-search" class="form-select" type="search" placeholder="بحث باسم المنشأة أو الحقل"><select id="gov-org-changes-page-size" class="form-select" style="max-width:130px;"><option value="20">20 لكل صفحة</option><option value="50">50 لكل صفحة</option></select></div>
-              <div id="gov-org-changes-list" style="max-height:300px; overflow:auto;">جاري التحميل...</div>
-              <div id="gov-org-changes-pagination" style="display:flex; justify-content:space-between; align-items:center; padding-top:8px; font-size:0.78rem;"></div>
+              <div class="gov-toolbar"><input id="gov-org-changes-search" class="form-select" type="search" placeholder="بحث باسم المنشأة أو الحقل"><select id="gov-org-changes-page-size" class="form-select" style="max-width:130px;"><option value="20">20 لكل صفحة</option><option value="50">50 لكل صفحة</option></select></div>
+              <div id="gov-org-changes-list" class="gov-list gov-list-short">جاري التحميل...</div>
+              <div id="gov-org-changes-pagination" class="gov-pagination"></div>
             </div>
           </div>
           <div class="card" style="grid-column:1/-1;">
             <div class="card-header"><div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><h3>طابور التحقق – بيانات المرضى المبلغة</h3></div><button class="btn btn-secondary btn-sm" onclick="loadVerificationQueue()">تحديث</button></div>
             <div class="card-body">
-              <div style="display:flex; gap:8px; margin-bottom:8px;"><input id="gov-verify-search" class="form-select" type="search" placeholder="بحث بالمعرف الداخلي للمريض"><select id="gov-verify-type" class="form-select"><option value="medications">الأدوية</option><option value="allergies">الحساسيات</option><option value="conditions">التشخيصات</option><option value="procedures">الإجراءات</option><option value="vitals">العلامات الحيوية</option><option value="family">التاريخ العائلي</option><option value="profiles">الملفات الشخصية</option></select><select id="gov-verify-page-size" class="form-select" style="max-width:130px;"><option value="20">20 لكل صفحة</option><option value="50">50 لكل صفحة</option></select></div>
-              <div id="gov-verify-list" style="max-height:400px; overflow:auto;">جاري التحميل...</div>
-              <div id="gov-verify-pagination" style="display:flex; justify-content:space-between; align-items:center; padding-top:8px; font-size:0.78rem;"></div>
+              <div class="gov-toolbar"><input id="gov-verify-search" class="form-select" type="search" placeholder="بحث بالمعرف الداخلي للمريض"><select id="gov-verify-type" class="form-select"><option value="medications">الأدوية</option><option value="allergies">الحساسيات</option><option value="conditions">التشخيصات</option><option value="procedures">الإجراءات</option><option value="vitals">العلامات الحيوية</option><option value="family">التاريخ العائلي</option><option value="profiles">الملفات الشخصية</option></select><select id="gov-verify-page-size" class="form-select" style="max-width:130px;"><option value="20">20 لكل صفحة</option><option value="50">50 لكل صفحة</option></select></div>
+              <div id="gov-verify-list" class="gov-list gov-list-tall">جاري التحميل...</div>
+              <div id="gov-verify-pagination" class="gov-pagination"></div>
             </div>
           </div>
         </div>
         <div class="card" style="margin-top:16px;">
           <div class="card-header"><div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><h3>السجل الوطني للمرضى</h3></div><button class="btn btn-secondary btn-sm" type="button" onclick="loadNationalPatients()">تحديث</button></div>
           <div class="card-body">
-            <div style="display:grid; grid-template-columns:minmax(220px,2fr) repeat(3,minmax(110px,1fr)); gap:8px; margin-bottom:10px;">
+            <div class="gov-filters gov-filters-4">
               <input id="gov-patients-search" class="form-select" type="search" placeholder="بحث بالمعرف الوطني أو الاسم أو الجوال" autocomplete="off">
               <select id="gov-patients-status" class="form-select"><option value="">كل الحالات</option><option value="ACTIVE">ACTIVE</option><option value="INACTIVE">INACTIVE</option><option value="MERGED">MERGED</option></select>
               <select id="gov-patients-gender" class="form-select"><option value="">كل الأجناس</option><option value="male">ذكر</option><option value="female">أنثى</option></select>
               <select id="gov-patients-page-size" class="form-select"><option value="20">20 لكل صفحة</option><option value="50">50 لكل صفحة</option></select>
             </div>
-            <div id="gov-patients-summary" style="font-size:0.75rem; color:var(--m3-on-surface-variant); margin-bottom:6px;"></div>
-            <div id="gov-patients-list" style="max-height:360px; overflow:auto;">جاري التحميل...</div>
-            <div id="gov-patients-pagination" style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding-top:10px; font-size:0.78rem;"></div>
+            <div id="gov-patients-summary" class="gov-summary"></div>
+            <div id="gov-patients-list" class="gov-list gov-list-medium">جاري التحميل...</div>
+            <div id="gov-patients-pagination" class="gov-pagination"></div>
           </div>
         </div>
       </section>
