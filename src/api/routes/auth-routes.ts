@@ -7,6 +7,22 @@ import { JWT_SECRET, JWT_EXPIRES_IN } from '../../config/jwt.js';
 
 const router = Router();
 
+router.get('/demo-accounts', (req: Request, res: Response) => {
+  if (process.env.NODE_ENV === 'production' || process.env.ENABLE_DEMO_QUICK_LOGIN !== 'true') {
+    return res.status(404).json({ error: 'Not found' });
+  }
+  return res.json({
+    accounts: [
+      { label: 'النظام SYS_ADMIN', username: 'admin', password: 'admin123' },
+      { label: 'الوزارة MOH_ADMIN', username: 'moh_admin', password: 'moh123456' },
+      { label: 'المدقق MOH_AUDITOR', username: 'moh_auditor', password: 'auditor123' },
+      { label: 'المستشفى HOSPITAL_ADMIN', username: 'hospital_a', password: 'pass123' },
+      { label: 'الطبيب CLINICIAN', username: 'clinician', password: 'clinician123' },
+      { label: 'المريض PATIENT', username: 'patient', password: 'patient123' }
+    ]
+  });
+});
+
 function setAuthCookie(res: Response, token: string) {
   const isProd = process.env.NODE_ENV === 'production';
   res.cookie('shiep_token', token, {
@@ -43,6 +59,9 @@ function normalizeGender(g: string): 'male' | 'female' | null {
 // Short-circuit so warm instances skip re-seeding for 5 minutes (single cheap lookup).
 let seedHealthyUntil = 0;
 async function ensureDefaultAccounts() {
+  if (process.env.NODE_ENV === 'production' || process.env.ENABLE_DEMO_DATA !== 'true') {
+    throw new Error('Demo account provisioning is disabled. Use the approved identity provisioning workflow.');
+  }
   const now = Date.now();
   if (now < seedHealthyUntil) return;
   // Fast path: if the sentinel SYS_ADMIN exists and is active, the seed is healthy —
@@ -680,18 +699,15 @@ async function withDbRetry<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 router.post('/login', async (req: Request, res: Response) => {
-  // Stage tracker: returned as `stage` on 500 so the next failure is instantly localizable.
-  let stage = 'seed';
+  // Login must never create users, organizations, or patient data.
+  let stage = 'lookup';
   try {
-    await withDbRetry(() => ensureDefaultAccounts());
-
     const { username, password } = req.body;
 
     if (!username || !password) {
       return res.status(400).json({ error: 'Username and password required' });
     }
 
-    stage = 'lookup';
     const user = await withDbRetry(() => prisma.user.findUnique({
       where: { username },
       include: { role: true, organization: true }
@@ -758,4 +774,3 @@ router.get('/me', verifyToken, (req: Request, res: Response) => {
 });
 
 export const authRoutes = router;
-

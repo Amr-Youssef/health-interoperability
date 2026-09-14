@@ -5,6 +5,9 @@ import { v4 as uuidv4 } from 'uuid';
 const prisma = new PrismaClient();
 
 async function main() {
+  if (process.env.NODE_ENV === 'production' || process.env.ENABLE_DEMO_DATA !== 'true') {
+    throw new Error('Refusing demo seed. Set NODE_ENV=development and ENABLE_DEMO_DATA=true only for local development.');
+  }
   console.log('Seeding database with default data...');
 
   // 1. Roles

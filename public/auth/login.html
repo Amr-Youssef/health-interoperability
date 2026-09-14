@@ -49,16 +49,9 @@ try{document.documentElement.setAttribute('data-theme',localStorage.getItem('app
       </div>
       <div id="login-error" class="auth-error-box" style="display:none"><span id="login-error-text"></span></div>
       <button type="submit" id="btn-login" class="auth-submit-btn" style="margin-top:4px; padding:13px; font-weight:700; letter-spacing:0.01em;">تسجيل الدخول الآمن</button>
-      <div class="auth-demo-links" style="margin-top:6px; padding-top:14px; border-top:1px solid var(--m3-outline-variant);">
-        <div style="font-size:0.72rem; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:var(--m3-on-surface-muted); margin-bottom:8px;">بيئة التطوير — دخول سريع</div>
-        <div class="auth-demo-buttons" style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-          <button type="button" data-fill="sys_admin" class="btn btn-secondary" style="justify-content:center; padding:8px; font-size:0.78rem; font-weight:600;">النظام</button>
-          <button type="button" data-fill="moh_admin" class="btn btn-secondary" style="justify-content:center; padding:8px; font-size:0.78rem; font-weight:600;">الوزارة</button>
-          <button type="button" data-fill="moh_auditor" class="btn btn-secondary" style="justify-content:center; padding:8px; font-size:0.78rem; font-weight:600;">المدقق</button>
-          <button type="button" data-fill="hospital_a" class="btn btn-secondary" style="justify-content:center; padding:8px; font-size:0.78rem; font-weight:600;">المستشفى</button>
-          <button type="button" data-fill="clinician" class="btn btn-secondary" style="justify-content:center; padding:8px; font-size:0.78rem; font-weight:600;">الطبيب</button>
-          <button type="button" data-fill="patient" class="btn btn-secondary" style="justify-content:center; padding:8px; font-size:0.78rem; font-weight:600;">المريض</button>
-        </div>
+      <div id="demo-quick-login" class="auth-demo-links" style="display:none; margin-top:0; padding-top:14px; border-top:1px solid var(--m3-outline-variant);">
+        <span>دخول سريع للتطوير المحلي فقط:</span>
+        <div id="demo-quick-login-buttons" class="auth-demo-buttons"></div>
       </div>
     </form>
     <p class="auth-footer-notice">جميع المحاولات مسجلة في سجل التدقيق المشفر. عند النجاح سيتم تحويلك تلقائياً للمنصة.</p>

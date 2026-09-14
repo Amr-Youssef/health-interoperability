@@ -186,7 +186,11 @@ model Patient {
   @@index([phone])
   @@index([created_at])
   @@index([first_name])
+  @@index([last_name])
   @@index([first_name_ar])
+  @@index([last_name_ar])
+  @@index([status])
+  @@index([gender])
 }
 
 // Patient Identifiers (NID, Iqama, MRN)
@@ -1164,4 +1168,3 @@ model OrganizationChangeRequest {
   @@index([organization_id, status])
   @@index([status])
 }
-
