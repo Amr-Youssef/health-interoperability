@@ -14,6 +14,7 @@
 | **Borderless مسطح** | لا حدود ملونة للكروت، `border:1px solid var(--m3-outline-variant)` وهو `transparent` في الثيمين، الاعتماد على التدرج اللوني للخلفيات فقط | `public/style.css:32-34` و `107-109` |
 | **تباين معكوس للشريط الجانبي** | دارك: شريط `#333338` (نبرة `secondary-container` — مميز عن الكروت `#2B2B30` وعائم فوق `#0C0C0E`) / فاتح: شريط داكن `#141519` على خلفية `#D9DEE7` | `public/style.css:4-5` |
 | **تدرج لين متدرج** | الأسطح `12px`، الآبار `8px`، التحكم `6px`، الشارات حبوب، الشريط الجانبي عائم `16px` (ودرج كامل على الجوال) | سلم `--radius-*` في `public/style.css` |
+| **إيقاع متباين لا شبكة متماثلة** | لوحة المراقبة: 3 مؤشرات قيادية (`metrics-lead` بقيمة `2.1rem` وعين `eyebrow`) + شريط ثانوي مدمج (`metrics-compact` بآبار `container-low` وقيمة `1.1rem`) — لا شبكة بطاقات متطابقة | `public/index.html:627-675` و `public/style.css:1087-1184` |
 | **تدرج خلفيات** | `surface` → `surface-dim` → `surface-container-low` → `container` → `container-high` → `container-highest` | `public/style.css:13-18` و `88-93` |
 | **حالات كاملة** | كل عنصر تفاعلي يجيب عن hover وfocus وpress وdisabled — لا أزرار ميتة الإحساس | كتلة COMPLETE STATES في `public/style.css` |
 | **حركة صادقة** | سلم زمني واحد `--motion-*`، خصائص انتقال صريحة فقط (ممنوع `all`)، لا حركة لخصائص التخطيط، واحترام كامل لـ `prefers-reduced-motion` | توكنات `--motion-*` في `public/style.css` |
@@ -67,7 +68,7 @@
 | `--m3-error-container` | `#3D1C1C` | `#FEE2E2` | خلفية خطر |
 | `--m3-on-surface` | `#FFFFFF` | `#111827` | نص أساسي |
 | `--m3-on-surface-variant` | `#A3A3A3` | `#4B5563` | نص ثانوي |
-| `--m3-on-surface-muted` | `#737373` | `#6B7280` | نص خافت |
+| `--m3-on-surface-muted` | `#8E8E93` (رُفع من `#737373` لتباين مقروء على الكروت) | `#6B7280` | نص خافت |
 
 **ممنوع:** `#0ea5e9`, `#0284c7`, `#0c4a6e`, `#6366f1`, `#B45309`, `#B91C1C`, `#E0F2FE`, `#F0F9FF`, `rgba(14,165,233,0.06)` — كلها استبدلت بـ `var(--m3-secondary/tertiary/...)` في `public/index.html:123,1575,1852` و `public/app.js:1736,2845`.
 
@@ -90,7 +91,7 @@
 |---|---|---|---|
 | نص عربي أساسي | `IBM Plex Sans Arabic` → `Tajawal` | 400-800 | `public/style.css:164` و `public/index.html:11` |
 | كود / أرقام | `JetBrains Mono` | 400-700 | `public/style.css:195` |
-| عناوين | `1.55rem/800` للصفحة، `1.05rem/700` للكروت | - | `public/style.css:596,946` |
+| عناوين | `1.75rem/800` للصفحة، `1.15rem/700` للأقسام، `1.05rem/700` للكروت | - | `public/style.css:742,1207,1362` |
 | تقرير PDF (استثناء) | `Cairo` | - | `public/style.css:1798` — فقط للطباعة الرسمية |
 
 ---
@@ -134,13 +135,12 @@
 ### Banner Info
 ```css
 .banner-info { background: var(--m3-surface-container); }
-.banner-info::before { background: var(--m3-secondary); } /* الشريط الجانبي الوحيد */
-.banner-info.banner-primary::before { background: var(--m3-primary); } /* الحوكمة */
-.banner-info.banner-tertiary::before { background: var(--m3-tertiary); } /* الوطني */
 .banner-icon { background: var(--m3-surface-container-high); color: var(--m3-on-surface-variant); }
+.banner-info.banner-primary .banner-icon { background: var(--m3-primary-container); color: var(--m3-on-primary-container); }
+.banner-info.banner-tertiary .banner-icon { background: var(--m3-tertiary-container); color: var(--m3-on-tertiary-container); }
 ```
-- ممنوع `border-right` مضمّن مع `::before` (شريط مضاعف 8px) — اللون عبر المعـدِّل فقط.
-- لا تستخدم `background:var(--m3-primary-container)` أو `linear-gradient` — كانت شاذة في `public/index.html:1575`
+- ممنوع أي شريط جانبي `::before` بعرض `4px` (أُزيل من `banner-info` وشريط سياق المريض — التمييز عبر بئر الأيقونة الملوّنة فقط).
+- لا تستخدم `background:var(--m3-primary-container)` أو `linear-gradient` لكامل البانر — كانت شاذة في `public/index.html:1575`
 
 ### Page Chrome (شريط العنوان العام يملك العنوان — لا عناوين `h1/h2` داخل الصفحات)
 - `.actions-group`: صف إجراءات `{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px; }` أعلى الصفحة عند الحاجة.
@@ -210,6 +210,11 @@ npm run build # يجب أن ينجح
 - `.nav-group-label`: عنوان قسم باهت `0.66rem/700` بلون `var(--m3-on-surface-muted)` — `public/style.css` (كتلة CALM CHROME)، يُخفى تلقائياً عبر `syncNavGroups()` في `public/app.js` عندما لا يملك الدور الحالي أي زر ظاهر تحته.
 
 ## 10. سجل التوحيد الأخير (Changelog)
+
+- **2026-09-14 (المرحلة A — كسر الرتابة):** لوحة المراقبة من 8 بطاقات متماثلة إلى 3 قيادية (`metric-lead` بقيم `2.1rem` وعين `eyebrow`) + شريط ثانوي مدمج من 5 آبار (`metric-compact` بخلفية `container-low`) — نفس الـIDs الثمانية محفوظة فلا كسر في `app.js:1984-1991`. إزالة الشريط الجانبي `::before` من `banner-info` وشريط المريض (التمييز عبر بئر الأيقونة الملوّنة)، وتعميم قاعدة البطاقة بلا أيقونة خارج `#pane-security`.
+- **2026-09-14 (تعميم + B + C):** تعميم النمط على الحوكمة (2 قيادية إجراء + 2 مدمجة) وCDS (2 + 2) والمنشأة (2 + 2) والأمن (2 + 2) والمدقق (شريط مدمج 7) — كل الـIDs محفوظة. سلم عناوين `1.75/1.15/1.05`. رفع `on-surface-muted` الداكن `#737373`→`#8E8E93` للتباين، وخلايا الجداول الفارغة بلمسة هادئة (`td.text-center` باهتة ومريحة)، وتتبع لوحة مفاتيح داخل الجداول والقوائم.
+- **2026-09-14 (مخططات العلامات الحيوية):** وحدة `public/js/vitals-charts.js` — مخططات SVG زمنية بلا مكتبات (ضغط مزدوج مع عتبة `140/90`، سكر، وزن) داخل بطاقة العلامات بصفحة المريض، بآبار `sr-chart` من `container-low` وألوان التوكنز فقط، مع `aria-label` ملخص و`title` لكل نقطة وحالة إرشادية عند غياب قياسين. تُرسم تلقائياً من نفس بيانات `health-profile` (تدعم `snake_case` و`camelCase`).
+- **2026-09-14 (بيانات حقيقية مثبتة):** كل مخطط يعرض سطر مصدر (عدد القياسات الحقيقية + الفترة الفعلية + شارة `PATIENT`) وكل نقطة تحمل معرف سجلها (`سجل <id>`) للمطابقة مع القائمة — لا نقاط مصنّعة أبداً. أزرار العينات الخيالية (`btn-sample-file`/`btn-hosp-sample` في `app.js`) تتطلب تأكيداً صريحاً يوضح دخولها السجل الحقيقي، ونصوصها تعلن أنها خيالية. ملاحظة: وسم العينات في الباكند (`isSample`) مقترح لاحق.
 
 - **2026-09-13 (ثيم الدخول/التسجيل):** صفحتا `login.html` و`register.html` تقرآن الثيم المشترك `app_theme` (سكربت مبكر بلا ومضة + مزامنة كلاس `body`) مع زر تبديل `#auth-theme-toggle` بنفس لغة زر المنصة (أيقوني ≤640px) — كانتا داكنتين دائماً بلا تبديل.
 - **2026-09-13 (تناسق الشريط الداكن):** مواءمة خلفية الشريط مع الواجهة (`#2E2E2F`→`#333338` بنبرة `secondary-container` — مميزة عن الكروت `#2B2B30` وعائمة فوق `#0C0C0E`) مع رفع التحويم/النشط ولفافات الأيقونات (`#41414A`→`#45454E` و `#4D4D56`→`#54545E`)، وعناوين الأقسام إلى `sidebar-on-surface-muted` (كانت `m3-on-surface-muted` باهتة/غير مقروءة على الشريط الداكن دائماً)، والشعار إلى `error-bright` بلغة الخروج نفسها (كان `error` الكامد).

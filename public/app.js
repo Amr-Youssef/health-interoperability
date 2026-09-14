@@ -986,9 +986,10 @@ function initFileDropzone() {
     }
   });
 
-  // Sample File Loaders
+  // Sample File Loaders — fictional demo data; explicit consent before touching the real registry
   document.querySelectorAll('.btn-sample-file').forEach(btn => {
     btn.addEventListener('click', () => {
+      if (!confirm('ملف تجريبي ببيانات خيالية (مريض وهمي) — سيُدخل السجل الوطني الحقيقي ويُحتسب في الإحصائيات والتدقيق. متابعة؟')) return;
       const sampleType = btn.getAttribute('data-sample');
       loadAndProcessSample(sampleType);
     });
@@ -3701,6 +3702,7 @@ function initHospitalMigrationDropzone() {
   });
   document.querySelectorAll('.btn-hosp-sample').forEach(btn=>{
     btn.addEventListener('click', ()=>{
+      if (!confirm('عينة تجريبية ببيانات خيالية — ستُرحّل لمنشأتك وتدخل السجل الوطني الحقيقي وتُحتسب في الإحصائيات. متابعة؟')) return;
       const t = btn.getAttribute('data-sample');
       loadHospSample(t);
     });

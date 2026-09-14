@@ -115,19 +115,18 @@ export function createFhirRoutes(canonicalStore, fhirSerializer, engine) {
             const patient = ownId ? await canonicalStore.getPatient(ownId) : null;
             return res.json({ resourceType: 'Bundle', type: 'searchset', total: patient ? 1 : 0, entry: patient ? [{ fullUrl: `/fhir/Patient/${patient.internalId}`, resource: fhirSerializer.serializePatient(patient) }] : [] });
         }
-        let patients = await canonicalStore.getAllPatients();
-        if (['HOSPITAL_ADMIN', 'CLINICIAN'].includes(user?.role?.role_code)) {
-            const orgId = user.organization_id;
-            const links = await prisma.patientOrganization.findMany({ where: { organization_id: orgId, active: true }, select: { patient_id: true } });
-            const linkedIds = new Set(links.map(l => l.patient_id));
-            const direct = await prisma.patient.findMany({ where: { source_system_id: orgId }, select: { id: true } });
-            direct.forEach(d => linkedIds.add(d.id));
-            patients = patients.filter((p) => linkedIds.has(p.id) || p.sourceSystemId === orgId);
-        }
+        const count = Math.min(Math.max(parseInt(String(req.query._count || '20'), 10) || 20, 1), 50);
+        const offset = Math.max(parseInt(String(req.query._offset || '0'), 10) || 0, 0);
+        const result = canonicalStore.searchPatients
+            ? await canonicalStore.searchPatients({ q: identifier, skip: offset, take: count, sort: 'recent', organizationId: ['HOSPITAL_ADMIN', 'CLINICIAN'].includes(user?.role?.role_code) ? user.organization_id : undefined })
+            : await (async () => {
+                const all = await canonicalStore.getAllPatients();
+                const filtered = identifier ? all.filter((p) => p.identifiers?.some((id) => id.value.includes(identifier))) : all;
+                return { items: filtered.slice(offset, offset + count), total: filtered.length };
+            })();
+        let patients = result.items;
         const mask = ['HOSPITAL_ADMIN', 'CLINICIAN'].includes(user?.role?.role_code);
-        if (identifier)
-            patients = patients.filter((p) => p.identifiers.some((id) => id.value.includes(identifier)));
-        res.json({ resourceType: 'Bundle', type: 'searchset', total: patients.length, entry: patients.map((p) => ({ fullUrl: `/fhir/Patient/${p.internalId}`, resource: fhirSerializer.serializePatient(p, { maskNid: mask }) })) });
+        res.json({ resourceType: 'Bundle', type: 'searchset', total: result.total, entry: patients.map((p) => ({ fullUrl: `/fhir/Patient/${p.internalId}`, resource: fhirSerializer.serializePatient(p, { maskNid: mask }) })) });
     });
     router.get('/Patient/:id', verifyToken, requirePermission('FHIR_READ_SELF', 'FHIR_READ_ORG', 'FHIR_READ_ALL'), async (req, res) => {
         const patientId = req.params.id;
@@ -176,20 +175,15 @@ export function createFhirRoutes(canonicalStore, fhirSerializer, engine) {
             const patientId = getQueryString(req.query.patient);
             const count = Math.min(parseInt(String(req.query._count || '20'), 10) || 20, 50);
             const offset = Math.max(parseInt(String(req.query._offset || '0'), 10) || 0, 0);
-            let list = await canonicalStore[getter]();
-            if (patientId)
-                list = list.filter((e) => e.patientId === patientId);
-            if (['HOSPITAL_ADMIN', 'CLINICIAN'].includes(user?.role?.role_code)) {
-                const allPatients = await canonicalStore.getAllPatients();
-                const orgId = user.organization_id;
-                const links = await prisma.patientOrganization.findMany({ where: { organization_id: orgId, active: true }, select: { patient_id: true } });
-                const linkedIds = new Set(links.map(l => l.patient_id));
-                const direct = await prisma.patient.findMany({ where: { source_system_id: orgId }, select: { id: true, internal_id: true } });
-                const allowedInternalIds = new Set([...Array.from(linkedIds).map(id => allPatients.find(p => p.id === id)?.internalId).filter(Boolean), ...direct.map(d => d.internal_id)]);
-                list = list.filter((e) => allowedInternalIds.has(e.patientId));
-            }
-            const total = list.length;
-            const paged = list.slice(offset, offset + count);
+            const result = canonicalStore.searchFhirResources
+                ? await canonicalStore.searchFhirResources(type, { patientId, skip: offset, take: count, organizationId: ['HOSPITAL_ADMIN', 'CLINICIAN'].includes(user?.role?.role_code) ? user.organization_id : undefined })
+                : await (async () => {
+                    const all = await canonicalStore[getter]();
+                    const filtered = patientId ? all.filter((e) => e.patientId === patientId) : all;
+                    return { items: filtered.slice(offset, offset + count), total: filtered.length };
+                })();
+            const paged = result.items;
+            const total = result.total;
             const base = `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`;
             const link = [{ relation: 'self', url: `${base}?_count=${count}&_offset=${offset}${patientId ? `&patient=${patientId}` : ''}` }];
             if (offset + count < total)

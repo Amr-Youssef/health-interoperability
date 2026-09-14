@@ -22,6 +22,15 @@ export declare class PrismaCanonicalStore implements ICanonicalStore {
     findPatientByIdentifier(value: string, sourceSystemId?: string): Promise<CanonicalPatient | null>;
     findPatientBySourceRecordId(sourceSystemId: string, sourceRecordId: string): Promise<CanonicalPatient | null>;
     getAllPatients(): Promise<CanonicalPatient[]>;
+    searchFhirResources(type: string, params: {
+        patientId?: string;
+        organizationId?: string;
+        skip: number;
+        take: number;
+    }): Promise<{
+        items: any[];
+        total: number;
+    }>;
     searchPatients(params: {
         q?: string;
         skip?: number;

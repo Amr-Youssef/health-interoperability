@@ -326,7 +326,7 @@ The following components were listed as "not yet started" on Aug 30 — most now
 5. **Procedure History** - ✅ موجود
 6. **Family History Editor** - ✅ موجود
 7. **Social History Form** - ✅ موجود
-8. **Vital Measurements** - ✅ موجود (عرض؛ الرسوم البيانية الزمنية مقترح لاحق)
+8. **Vital Measurements** - ✅ موجود (عرض + رسوم زمنية SVG: ضغط/سكر/وزن عبر `public/js/vitals-charts.js`)
 9. **Document Upload** - ✅ موجود (رفع + بيانات وصفية)
 10. **Health Profile Export** - 🔶 جزئي (تسلسل FHIR جاهز؛ زر تصدير الحزم مقترح)
 

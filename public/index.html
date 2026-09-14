@@ -624,110 +624,53 @@
           <strong id="auditor-integrity-status">جاري التحقق...</strong>
           <button type="button" class="btn btn-secondary btn-sm" id="btn-auditor-export-audit">تصدير سجل التدقيق (CSV)</button>
         </div>
-        <!-- Metric Cards -->
-        <div class="metrics-grid">
-          <div class="metric-card">
-            <div class="metric-icon bg-blue">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
-              </svg>
-            </div>
-            <div class="metric-info">
-              <span class="metric-label">السجلات الخام المستوعبة</span>
-              <h3 class="metric-value" id="stat-raw-records">--</h3>
-              <span class="metric-sub"><span class="trend-tag">عبر المنظومة الصحية</span></span>
-            </div>
+        <!-- Lead indicators (3) + compact secondary strip (5): varied rhythm, no identical grid -->
+        <div class="metrics-lead">
+          <div class="metric-lead">
+            <span class="metric-eyebrow">استيعاب وطني</span>
+            <h3 class="metric-value metric-value-lg" id="stat-raw-records">--</h3>
+            <span class="metric-label">السجلات الخام المستوعبة</span>
+            <span class="metric-sub">عبر المنظومة الصحية</span>
           </div>
-
-          <div class="metric-card">
-            <div class="metric-icon bg-emerald">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/>
-              </svg>
-            </div>
-            <div class="metric-info">
-              <span class="metric-label">المرضى الموحدين (MPI)</span>
-              <h3 class="metric-value" id="stat-canonical-patients">--</h3>
-              <span class="metric-sub"><span class="trend-tag success">تطابق هوية 100%</span></span>
-            </div>
+          <div class="metric-lead">
+            <span class="metric-eyebrow">هوية موحدة</span>
+            <h3 class="metric-value metric-value-lg" id="stat-canonical-patients">--</h3>
+            <span class="metric-label">المرضى الموحدين (MPI)</span>
+            <span class="metric-sub"><span class="trend-tag success">تطابق هوية 100%</span></span>
           </div>
-
-          <div class="metric-card">
-            <div class="metric-icon bg-cyan">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M3 21h18M5 21V7l8-4v18M13 11h4M13 15h4M13 19h4M9 9h.01M9 13h.01M9 17h.01"/>
-              </svg>
-            </div>
-            <div class="metric-info">
-              <span class="metric-label">الزيارات السريرية الموحدة</span>
-              <h3 class="metric-value" id="stat-canonical-encounters">--</h3>
-              <span class="metric-sub">طوارئ • عيادات • جراحة</span>
-            </div>
+          <div class="metric-lead">
+            <span class="metric-eyebrow">رعاية موحدة</span>
+            <h3 class="metric-value metric-value-lg" id="stat-canonical-encounters">--</h3>
+            <span class="metric-label">الزيارات السريرية الموحدة</span>
+            <span class="metric-sub">طوارئ • عيادات • جراحة</span>
           </div>
+        </div>
 
-          <div class="metric-card">
-            <div class="metric-icon bg-purple">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"/><path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"/><circle cx="20" cy="10" r="2"/>
-              </svg>
-            </div>
-            <div class="metric-info">
-              <span class="metric-label">التشخيصات المعيارية</span>
-              <h3 class="metric-value" id="stat-canonical-conditions">--</h3>
-              <span class="metric-sub">SNOMED + ICD-10-AM + SBS</span>
-            </div>
+        <div class="metrics-compact">
+          <div class="metric-compact">
+            <span class="metric-label">التشخيصات المعيارية</span>
+            <h3 class="metric-value" id="stat-canonical-conditions">--</h3>
+            <span class="metric-sub">SNOMED + ICD-10-AM + SBS</span>
           </div>
-
-          <div class="metric-card">
-            <div class="metric-icon bg-amber">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M6 18h8M3 22h18M14 22a7 7 0 1 0-14 0"/><path d="M9 14h.01M9 10h.01M12 6h.01M12 2h.01M15 10a4 4 0 0 0 4-4V2h-4v4a4 4 0 0 0 4 4"/>
-              </svg>
-            </div>
-            <div class="metric-info">
-              <span class="metric-label">النتائج المخبرية المعيارية</span>
-              <h3 class="metric-value" id="stat-canonical-observations">--</h3>
-              <span class="metric-sub">مرمزة بمعيار LOINC الدولي</span>
-            </div>
+          <div class="metric-compact">
+            <span class="metric-label">النتائج المخبرية المعيارية</span>
+            <h3 class="metric-value" id="stat-canonical-observations">--</h3>
+            <span class="metric-sub">مرمزة بمعيار LOINC الدولي</span>
           </div>
-
-          <div class="metric-card">
-            <div class="metric-icon bg-emerald">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><path d="M6 15h2M10 15h6"/>
-              </svg>
-            </div>
-            <div class="metric-info">
-              <span class="metric-label">مطالبات تأمين نفيس (eClaims)</span>
-              <h3 class="metric-value" id="stat-canonical-claims">--</h3>
-              <span class="metric-sub"><span class="trend-tag success">تسوية فورية NPHIES</span></span>
-            </div>
+          <div class="metric-compact">
+            <span class="metric-label">مطالبات تأمين نفيس (eClaims)</span>
+            <h3 class="metric-value" id="stat-canonical-claims">--</h3>
+            <span class="metric-sub"><span class="trend-tag success">تسوية فورية NPHIES</span></span>
           </div>
-
-          <div class="metric-card">
-            <div class="metric-icon bg-blue">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/>
-              </svg>
-            </div>
-            <div class="metric-info">
-              <span class="metric-label">الوصفات الطبية (SFDA SDC)</span>
-              <h3 class="metric-value" id="stat-canonical-medications">--</h3>
-              <span class="metric-sub">كود الدواء السعودي + ATC</span>
-            </div>
+          <div class="metric-compact">
+            <span class="metric-label">الوصفات الطبية (SFDA SDC)</span>
+            <h3 class="metric-value" id="stat-canonical-medications">--</h3>
+            <span class="metric-sub">كود الدواء السعودي + ATC</span>
           </div>
-
-          <div class="metric-card">
-            <div class="metric-icon bg-cyan">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="m18 2 4 4-4 4"/><path d="m17 7 3-3"/><path d="M19 9 8.7 19.3c-1 1-2.5 1-3.4 0l-.6-.6c-1-1-1-2.5 0-3.4L15 5"/><path d="m9 11 4 4"/><path d="m5 19-3 3"/>
-              </svg>
-            </div>
-            <div class="metric-info">
-              <span class="metric-label">التطعيمات واللقاحات</span>
-              <h3 class="metric-value" id="stat-canonical-immunizations">--</h3>
-              <span class="metric-sub">جدول تطعيمات وزارة الصحة</span>
-            </div>
+          <div class="metric-compact">
+            <span class="metric-label">التطعيمات واللقاحات</span>
+            <h3 class="metric-value" id="stat-canonical-immunizations">--</h3>
+            <span class="metric-sub">جدول تطعيمات وزارة الصحة</span>
           </div>
         </div>
 
@@ -750,14 +693,14 @@
               <h3>نظرة رقابية وطنية</h3>
             </div>
           </div>
-          <div class="metrics-grid" id="auditor-overview-grid">
-            <div class="metric-card"><div class="metric-info"><span class="metric-label">السجلات المستقبلة</span><h3 class="metric-value" id="audit-ov-received">--</h3></div></div>
-            <div class="metric-card"><div class="metric-info"><span class="metric-label">السجلات الناجحة</span><h3 class="metric-value" id="audit-ov-success">--</h3></div></div>
-            <div class="metric-card"><div class="metric-info"><span class="metric-label">السجلات الفاشلة</span><h3 class="metric-value" id="audit-ov-failed">--</h3></div></div>
-            <div class="metric-card"><div class="metric-info"><span class="metric-label">معدل الفشل</span><h3 class="metric-value" id="audit-ov-rate">--</h3></div></div>
-            <div class="metric-card"><div class="metric-info"><span class="metric-label">المعزولة (Quarantine)</span><h3 class="metric-value" id="audit-ov-quarantine">--</h3></div></div>
-            <div class="metric-card"><div class="metric-info"><span class="metric-label">متوسط زمن الاستجابة</span><h3 class="metric-value" id="audit-ov-latency">--</h3></div></div>
-            <div class="metric-card"><div class="metric-info"><span class="metric-label">آخر استيعاب ناجح</span><h3 class="metric-value" id="audit-ov-last" style="font-size:0.95rem;">--</h3></div></div>
+          <div class="metrics-compact" id="auditor-overview-grid">
+            <div class="metric-compact"><span class="metric-label">السجلات المستقبلة</span><h3 class="metric-value" id="audit-ov-received">--</h3></div>
+            <div class="metric-compact"><span class="metric-label">السجلات الناجحة</span><h3 class="metric-value" id="audit-ov-success">--</h3></div>
+            <div class="metric-compact"><span class="metric-label">السجلات الفاشلة</span><h3 class="metric-value" id="audit-ov-failed">--</h3></div>
+            <div class="metric-compact"><span class="metric-label">معدل الفشل</span><h3 class="metric-value" id="audit-ov-rate">--</h3></div>
+            <div class="metric-compact"><span class="metric-label">المعزولة (Quarantine)</span><h3 class="metric-value" id="audit-ov-quarantine">--</h3></div>
+            <div class="metric-compact"><span class="metric-label">متوسط زمن الاستجابة</span><h3 class="metric-value" id="audit-ov-latency">--</h3></div>
+            <div class="metric-compact"><span class="metric-label">آخر استيعاب ناجح</span><h3 class="metric-value" id="audit-ov-last" style="font-size:0.95rem;">--</h3></div>
           </div>
         </div>
 
@@ -893,11 +836,31 @@
             <p>اعتماد المنشآت المعلقة، إدارة المستخدمين، طابور التحقق للبيانات المبلغة ذاتياً، وسجل المرضى الوطني — من قاعدة بيانات موحدة.</p>
           </div>
         </div>
-        <div class="metrics-grid" id="admin-governance-metrics">
-          <div class="metric-card"><div class="metric-icon bg-amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l8-4v18"/></svg></div><div class="metric-info"><span class="metric-label">منشآت بانتظار الاعتماد</span><h3 class="metric-value" id="gov-pending-hosp">--</h3><span class="metric-sub">PENDING_APPROVAL</span></div></div>
-          <div class="metric-card"><div class="metric-icon bg-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><div class="metric-info"><span class="metric-label">إجمالي المستخدمين</span><h3 class="metric-value" id="gov-users-total">--</h3><span class="metric-sub">مرضى + مستشفيات + أدمن</span></div></div>
-          <div class="metric-card"><div class="metric-icon bg-purple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div class="metric-info"><span class="metric-label">طابور التحقق (UNVERIFIED)</span><h3 class="metric-value" id="gov-verify-queue">--</h3><span class="metric-sub">كل البلاغات والملفات المبلغة ذاتياً</span></div></div>
-          <div class="metric-card"><div class="metric-icon bg-emerald"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg></div><div class="metric-info"><span class="metric-label">المرضى الوطنيين</span><h3 class="metric-value" id="gov-patients-total">--</h3><span class="metric-sub">من نفس سجل المستشفى/المريض</span></div></div>
+        <div class="metrics-lead" id="admin-governance-metrics">
+          <div class="metric-lead">
+            <span class="metric-eyebrow">يتطلب إجراء</span>
+            <h3 class="metric-value metric-value-lg" id="gov-pending-hosp">--</h3>
+            <span class="metric-label">منشآت بانتظار الاعتماد</span>
+            <span class="metric-sub">PENDING_APPROVAL</span>
+          </div>
+          <div class="metric-lead">
+            <span class="metric-eyebrow">يتطلب إجراء</span>
+            <h3 class="metric-value metric-value-lg" id="gov-verify-queue">--</h3>
+            <span class="metric-label">طابور التحقق (UNVERIFIED)</span>
+            <span class="metric-sub">كل البلاغات والملفات المبلغة ذاتياً</span>
+          </div>
+        </div>
+        <div class="metrics-compact">
+          <div class="metric-compact">
+            <span class="metric-label">إجمالي المستخدمين</span>
+            <h3 class="metric-value" id="gov-users-total">--</h3>
+            <span class="metric-sub">مرضى + مستشفيات + أدمن</span>
+          </div>
+          <div class="metric-compact">
+            <span class="metric-label">المرضى الوطنيين</span>
+            <h3 class="metric-value" id="gov-patients-total">--</h3>
+            <span class="metric-sub">من نفس سجل المستشفى/المريض</span>
+          </div>
         </div>
         <div class="gov-grid-2">
           <div class="card">
@@ -1151,7 +1114,7 @@
 
             <!-- Quick Load Sample Files -->
             <div style="margin-top:16px;">
-              <span style="font-size:0.78rem; font-weight:700; color:var(--m3-on-surface-muted); display:block; margin-bottom:8px;">أو جرّب بيانات تجريبية:</span>
+              <span style="font-size:0.78rem; font-weight:700; color:var(--m3-on-surface-muted); display:block; margin-bottom:8px;">أو جرّب ملفاً تجريبياً <span class="badge badge-warning" style="font-size:0.62rem;">بيانات خيالية تدخل السجل الحقيقي</span></span>
               <div style="display:flex; gap:8px; flex-wrap:wrap;">
                 <button type="button" class="btn btn-secondary btn-sm btn-sample-file" data-sample="hl7">
                   <svg class="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
@@ -1216,50 +1179,31 @@
           </div>
         </div>
 
-        <!-- Population Health Summary KPIs -->
-        <div class="metrics-grid">
-          <div class="metric-card">
-            <div class="metric-icon bg-blue">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24"/><path d="m14.83 9.17 4.24-4.24"/><path d="m14.83 14.83 4.24 4.24"/><path d="m9.17 14.83-4.24 4.24"/></svg>
-            </div>
-            <div class="metric-info">
-              <span class="metric-label">مؤشر التشغيل البيني عبر المستشفيات</span>
-              <h3 class="metric-value" id="kpi-interop-index">--</h3>
-              <span class="metric-sub">مرضى بملفات في أكثر من مستشفى</span>
-            </div>
+        <!-- Population Health Summary KPIs: headline + compact strip -->
+        <div class="metrics-lead">
+          <div class="metric-lead">
+            <span class="metric-eyebrow">صحة سكانية</span>
+            <h3 class="metric-value metric-value-lg" id="kpi-interop-index">--</h3>
+            <span class="metric-label">مؤشر التشغيل البيني عبر المستشفيات</span>
+            <span class="metric-sub">مرضى بملفات في أكثر من مستشفى</span>
           </div>
-
-          <div class="metric-card">
-            <div class="metric-icon bg-purple">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-            </div>
-            <div class="metric-info">
-              <span class="metric-label">نسبة انتشار السكري (Type 2 DM)</span>
-              <h3 class="metric-value" id="kpi-diabetes-prevalence">--</h3>
-              <span class="metric-sub">بناءً على تشخيصات SNOMED/ICD</span>
-            </div>
+          <div class="metric-lead">
+            <span class="metric-eyebrow">تسوية وطنية</span>
+            <h3 class="metric-value metric-value-lg" id="kpi-settlement-speed">--</h3>
+            <span class="metric-label">معدل سرعة تسوية نفيس (eClaims)</span>
+            <span class="metric-sub">من قاعدة المطالبات الحقيقية</span>
           </div>
-
-          <div class="metric-card">
-            <div class="metric-icon bg-emerald">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m18 2 4 4-4 4"/><path d="M19 9 8.7 19.3c-1 1-2.5 1-3.4 0l-.6-.6c-1-1-1-2.5 0-3.4L15 5"/></svg>
-            </div>
-            <div class="metric-info">
-              <span class="metric-label">نسبة التغطية بلقاح الإنفلونزا</span>
-              <h3 class="metric-value" id="kpi-vax-coverage">--</h3>
-              <span class="metric-sub">لأصحاب الأمراض المزمنة (MOH)</span>
-            </div>
+        </div>
+        <div class="metrics-compact">
+          <div class="metric-compact">
+            <span class="metric-label">نسبة انتشار السكري (Type 2 DM)</span>
+            <h3 class="metric-value" id="kpi-diabetes-prevalence">--</h3>
+            <span class="metric-sub">بناءً على تشخيصات SNOMED/ICD</span>
           </div>
-
-          <div class="metric-card">
-            <div class="metric-icon bg-amber">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            </div>
-            <div class="metric-info">
-              <span class="metric-label">معدل سرعة تسوية نفيس (eClaims)</span>
-              <h3 class="metric-value" id="kpi-settlement-speed">--</h3>
-              <span class="metric-sub">من قاعدة المطالبات الحقيقية</span>
-            </div>
+          <div class="metric-compact">
+            <span class="metric-label">نسبة التغطية بلقاح الإنفلونزا</span>
+            <h3 class="metric-value" id="kpi-vax-coverage">--</h3>
+            <span class="metric-sub">لأصحاب الأمراض المزمنة (MOH)</span>
           </div>
         </div>
 
@@ -2055,23 +1999,31 @@
         </div>
         <div id="hosp-quality-report" class="card" style="padding:10px 14px; background:var(--m3-surface-container-high); border:1px solid var(--m3-outline-variant); margin-bottom:12px; font-size:0.82rem;"></div>
 
-        <!-- HMS Stats Grid (scoped) -->
-        <div class="metrics-grid" id="hosp-stats-grid">
-          <div class="metric-card">
-            <div class="metric-icon bg-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
-            <div class="metric-info"><span class="metric-label">مرضى المنشأة المرتبطون</span><h3 class="metric-value" id="hosp-stat-patients">—</h3><span class="metric-sub">مرتبطون بمنشأتك فقط</span></div>
+        <!-- HMS Stats (scoped): 2 lead + 2 compact -->
+        <div class="metrics-lead" id="hosp-stats-grid">
+          <div class="metric-lead">
+            <span class="metric-eyebrow">منشأتي</span>
+            <h3 class="metric-value metric-value-lg" id="hosp-stat-patients">—</h3>
+            <span class="metric-label">مرضى المنشأة المرتبطون</span>
+            <span class="metric-sub">مرتبطون بمنشأتك فقط</span>
           </div>
-          <div class="metric-card">
-            <div class="metric-icon bg-cyan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l8-4v18"/></svg></div>
-            <div class="metric-info"><span class="metric-label">الزيارات المرحّلة</span><h3 class="metric-value" id="hosp-stat-encounters">—</h3><span class="metric-sub">من الأنظمة القديمة + الحالي</span></div>
+          <div class="metric-lead">
+            <span class="metric-eyebrow">منشأتي</span>
+            <h3 class="metric-value metric-value-lg" id="hosp-stat-encounters">—</h3>
+            <span class="metric-label">الزيارات المرحّلة</span>
+            <span class="metric-sub">من الأنظمة القديمة + الحالي</span>
           </div>
-          <div class="metric-card">
-            <div class="metric-icon bg-purple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"/><path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"/><circle cx="20" cy="10" r="2"/></svg></div>
-            <div class="metric-info"><span class="metric-label">السجلات الخام المرفوعة</span><h3 class="metric-value" id="hosp-stat-raw">—</h3><span class="metric-sub">قبل التطبيع والتحويل</span></div>
+        </div>
+        <div class="metrics-compact">
+          <div class="metric-compact">
+            <span class="metric-label">السجلات الخام المرفوعة</span>
+            <h3 class="metric-value" id="hosp-stat-raw">—</h3>
+            <span class="metric-sub">قبل التطبيع والتحويل</span>
           </div>
-          <div class="metric-card">
-            <div class="metric-icon bg-emerald"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></div>
-            <div class="metric-info"><span class="metric-label">مطالبات نفيس للمنشأة</span><h3 class="metric-value" id="hosp-stat-claims">—</h3><span class="metric-sub">محصور بمنشأتك</span></div>
+          <div class="metric-compact">
+            <span class="metric-label">مطالبات نفيس للمنشأة</span>
+            <h3 class="metric-value" id="hosp-stat-claims">—</h3>
+            <span class="metric-sub">محصور بمنشأتك</span>
           </div>
         </div>
 
@@ -2100,7 +2052,7 @@
             </div>
 
             <div style="margin-top:16px;">
-              <span style="font-size:0.78rem; font-weight:700; color:var(--m3-on-surface-muted); display:block; margin-bottom:8px;">جرّب بنقرة واحدة (سيُنسب لمنشأتك تلقائياً):</span>
+              <span style="font-size:0.78rem; font-weight:700; color:var(--m3-on-surface-muted); display:block; margin-bottom:8px;">جرّب عينة خيالية بنقرة واحدة (ستُرحّل لمنشأتك وتدخل السجل الحقيقي):</span>
               <div style="display:flex; gap:8px; flex-wrap:wrap;">
                 <button type="button" class="btn btn-secondary btn-sm btn-hosp-sample" data-sample="hl7"><span>HL7 v2.5 (ADT^A01)</span></button>
                 <button type="button" class="btn btn-secondary btn-sm btn-hosp-sample" data-sample="fhir"><span>FHIR R4 Bundle</span></button>
@@ -2558,22 +2510,26 @@
             </button>
           </div>
 
-        <div class="metrics-grid">
-          <div class="metric-card">
-            <div class="metric-value" id="audit-chain-status" style="color:var(--m3-primary);">جاري التحقق...</div>
-            <div class="metric-label">حالة النزاهة التشفيرية (NCA Integrity)</div>
+        <div class="metrics-lead">
+          <div class="metric-lead">
+            <span class="metric-eyebrow">نزاهة تشفيرية</span>
+            <div class="metric-value metric-value-lg" id="audit-chain-status" style="color:var(--m3-primary); font-size:1.4rem;">جاري التحقق...</div>
+            <span class="metric-label">حالة النزاهة التشفيرية (NCA Integrity)</span>
           </div>
-          <div class="metric-card">
-            <div class="metric-value" id="audit-total-blocks">0</div>
-            <div class="metric-label">إجمالي كتل التدقيق المشفرة</div>
+          <div class="metric-lead">
+            <span class="metric-eyebrow">سلسلة الكتل</span>
+            <div class="metric-value metric-value-lg" id="audit-total-blocks">0</div>
+            <span class="metric-label">إجمالي كتل التدقيق المشفرة</span>
           </div>
-          <div class="metric-card">
+        </div>
+        <div class="metrics-compact">
+          <div class="metric-compact">
+            <span class="metric-label">معيار التجزئة وسلسلة الكتل</span>
             <div class="metric-value">SHA-256</div>
-            <div class="metric-label">معيار التجزئة وسلسلة الكتل</div>
           </div>
-          <div class="metric-card">
+          <div class="metric-compact">
+            <span class="metric-label">معايير الامتثال الوطنية</span>
             <div class="metric-value" style="color:var(--m3-tertiary);">PDPL & NCA</div>
-            <div class="metric-label">معايير الامتثال الوطنية</div>
           </div>
         </div>
 
@@ -2644,6 +2600,7 @@
   </div>
 
   <script src="app.js"></script>
+  <script src="js/vitals-charts.js"></script>
   <script src="js/patient-self-reported.js"></script>
 </body>
 </html>

@@ -33,10 +33,10 @@
   --m3-outline-variant: transparent;
   --m3-outline-focus: transparent;
 
-  /* Crisp Formal Typography Colors */
+  /* Crisp Formal Typography Colors (muted lifted for contrast on tonal cards) */
   --m3-on-surface: #FFFFFF;
   --m3-on-surface-variant: #A3A3A3;
-  --m3-on-surface-muted: #737373;
+  --m3-on-surface-muted: #8E8E93;
 
   /* Executive Accents (Formal Forest Green) */
   --m3-primary: #059669;
@@ -740,7 +740,7 @@ body.sidebar-collapsed .main-content {
 }
 
 .header-title-wrap h1 {
-  font-size: 1.55rem;
+  font-size: 1.75rem;
   font-weight: 800;
   letter-spacing: -0.3px;
   color: var(--m3-on-surface);
@@ -812,15 +812,20 @@ body.sidebar-collapsed .main-content {
 }
 
 .active-patient-bar::before {
-  content: '';
-  position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  background: var(--m3-primary);
-  border-start-start-radius: var(--radius-lg);
-  border-end-start-radius: var(--radius-lg);
+  content: none;
+}
+
+.patient-bar-icon {
+  background: var(--m3-primary-container);
+  color: var(--m3-on-primary-container);
+  border-radius: var(--radius-sm);
+  padding: 6px;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .patient-bar-info {
@@ -829,11 +834,9 @@ body.sidebar-collapsed .main-content {
   gap: 10px;
 }
 
-.patient-bar-icon {
-  width: 22px;
-  height: 22px;
-  color: var(--m3-primary-light);
-  flex-shrink: 0;
+.patient-bar-icon svg {
+  width: 20px;
+  height: 20px;
 }
 
 .patient-bar-details {
@@ -1084,6 +1087,101 @@ body.light-theme .btn-secondary:hover,
   font-weight: 700;
 }
 
+/* Lead indicators: prominent stacked stats (value-first hierarchy, 1-3 items) */
+.metrics-lead {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.metric-lead {
+  background: var(--m3-surface-container);
+  border-radius: var(--radius-lg);
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  transition: background-color var(--motion-fast) ease;
+}
+
+.metric-lead:hover {
+  background: var(--m3-surface-container-high);
+}
+
+.metric-eyebrow {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--m3-on-surface-muted);
+}
+
+.metric-value-lg {
+  font-size: 2.1rem;
+  line-height: 1.1;
+}
+
+/* Compact secondary strip: dense recessed wells, inline rhythm distinct from lead */
+.metrics-compact {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.metric-compact {
+  background: var(--m3-surface-container-low);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  transition: background-color var(--motion-fast) ease;
+}
+
+.metric-compact:hover {
+  background: var(--m3-surface-container-high);
+}
+
+.metric-compact .metric-label {
+  font-size: 0.72rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.metric-compact .metric-value {
+  font-size: 1.1rem;
+  letter-spacing: -0.3px;
+}
+
+.metric-compact .metric-sub {
+  font-size: 0.66rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Icon-less stat variant (generalized): value stacked over label, no icon well needed */
+.metric-card:has(> .metric-info),
+.metric-card:has(.metric-info) {
+  align-items: flex-start;
+}
+
+@media (max-width: 1024px) {
+  .metrics-compact { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 768px) {
+  .metrics-lead { grid-template-columns: 1fr; }
+  .metric-value-lg { font-size: 1.8rem; }
+}
+
+@media (max-width: 480px) {
+  .metrics-compact { grid-template-columns: 1fr 1fr; }
+}
+
 /* =========================================
    SECTION TITLES
    ========================================= */
@@ -1107,7 +1205,7 @@ body.light-theme .btn-secondary:hover,
 }
 
 .section-title h3 {
-  font-size: 1.05rem;
+  font-size: 1.15rem;
   font-weight: 700;
   color: var(--m3-on-surface);
 }
@@ -1262,7 +1360,7 @@ body.light-theme .btn-secondary:hover,
 }
 
 .card-header h3 {
-  font-size: 1rem;
+  font-size: 1.05rem;
   font-weight: 700;
   color: var(--m3-on-surface);
 }
@@ -1392,15 +1490,18 @@ tr[style*="background:var(--m3-tertiary-container)"] > td { background: var(--m3
 }
 
 .banner-info::before {
-  content: '';
-  position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  background: var(--m3-secondary);
-  border-start-start-radius: var(--radius-lg);
-  border-end-start-radius: var(--radius-lg);
+  content: none;
+}
+
+/* Banner accent via tinted icon well (no side-stripe): calm tonal language */
+.banner-info.banner-primary .banner-icon {
+  background: var(--m3-primary-container);
+  color: var(--m3-on-primary-container);
+}
+
+.banner-info.banner-tertiary .banner-icon {
+  background: var(--m3-tertiary-container);
+  color: var(--m3-on-tertiary-container);
 }
 
 .banner-icon {
@@ -1432,9 +1533,6 @@ tr[style*="background:var(--m3-tertiary-container)"] > td { background: var(--m3
   font-size: 0.84rem;
   line-height: 1.5;
 }
-/* Banner accent modifiers — single stripe, no double-border hacks */
-.banner-info.banner-primary::before { background: var(--m3-primary); }
-.banner-info.banner-tertiary::before { background: var(--m3-tertiary); }
 
 /* =========================================
    MPI (MASTER PATIENT INDEX)
@@ -1968,6 +2066,81 @@ body.light-theme .toast,
 .mt-6 { margin-top: 18px; }
 .mb-6 { margin-bottom: 18px; }
 .text-center { text-align: center; }
+
+/* Calm table empty/loading cells: muted tone with breathing room */
+.data-table td.text-center {
+  color: var(--m3-on-surface-variant);
+  padding: 18px 12px;
+}
+
+/* Patient vitals charts: calm wells, token-colored SVG, responsive stack */
+.sr-charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 10px;
+}
+
+.sr-chart {
+  background: var(--m3-surface-container-low);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+}
+
+.sr-chart-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.sr-chart-head strong {
+  font-size: 0.85rem;
+  color: var(--m3-on-surface);
+}
+
+.sr-chart-legend {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+  font-size: 0.7rem;
+  color: var(--m3-on-surface-variant);
+}
+
+.sr-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.sr-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.sr-chart-note {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.68rem;
+  color: var(--m3-on-surface-muted);
+}
+
+/* Keyboard trace inside dense tables and combobox lists */
+.data-table tbody tr:focus-within {
+  outline: 2px solid var(--m3-primary);
+  outline-offset: -2px;
+}
+
+.combobox-item:focus-visible {
+  background: var(--m3-surface-container-highest);
+  outline: 2px solid var(--m3-primary);
+  outline-offset: -2px;
+}
 
 /* =========================================
    OFFICIAL SAUDI MEDICAL REPORT & PDF STYLES

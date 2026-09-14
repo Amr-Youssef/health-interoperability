@@ -22,6 +22,15 @@ export interface ICanonicalStore {
         items: CanonicalPatient[];
         total: number;
     }>;
+    searchFhirResources?(type: string, params: {
+        patientId?: string;
+        organizationId?: string;
+        skip: number;
+        take: number;
+    }): Promise<{
+        items: any[];
+        total: number;
+    }>;
     getLongitudinalRecord(patientId: string): Promise<LongitudinalRecord | null>;
     getAllEncounters(): Promise<CanonicalEncounter[]>;
     getEncountersByPatient(patientId: string): Promise<CanonicalEncounter[]>;
