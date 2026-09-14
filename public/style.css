@@ -341,10 +341,12 @@ body.light-theme .sidebar,
   overflow: hidden;
 }
 
+/* Brand mark rests in a tonal well — same icon-well language as banners */
 .brand-logo {
-  width: auto;
-  height: auto;
-  background: transparent !important;
+  width: 40px;
+  height: 40px;
+  background: var(--sidebar-item-hover);
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -515,9 +517,10 @@ body.light-theme .sidebar,
   color: var(--sidebar-on-surface);
 }
 
-/* Active item speaks the interface accent: primary-tinted track + solid primary icon (btn-primary language) */
+/* Active item speaks the interface accent: primary-tinted track + solid primary icon (btn-primary language) + hairline ring */
 .nav-item.active {
   background: color-mix(in srgb, var(--m3-primary) 24%, var(--sidebar-item-active));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--m3-primary) 38%, transparent);
   color: var(--sidebar-on-surface);
   font-weight: 600;
 }
@@ -531,6 +534,7 @@ body.light-theme .sidebar,
   padding-top: 14px;
   margin-top: 10px;
   background: var(--sidebar-bg);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .version-tag {
@@ -589,7 +593,14 @@ body.light-theme .sidebar,
 }
 /* NOTE: .session-card is permanently hidden (identity lives in the header chip) — sub-rules removed. */
 .header-session-chip { display:flex; align-items:center; gap:8px; background:var(--m3-surface-container); padding:6px 10px; min-width:0; max-width:320px; border-radius: var(--radius-pill); }
-.header-avatar { width:28px; height:28px; border-radius:50%; background:var(--m3-surface-container-high); display:flex; align-items:center; justify-content:center; color:var(--m3-on-surface-variant); flex-shrink:0; }
+.header-avatar { width:28px; height:28px; border-radius:50%; background:var(--m3-surface-container-high); display:flex; align-items:center; justify-content:center; color:var(--m3-on-surface-variant); flex-shrink:0; transition: background-color var(--motion-fast) ease, color var(--motion-fast) ease; }
+/* Role-tinted identity: avatar well speaks the role (admin=primary, auditor=secondary, hospital=warning, clinician=primary, patient=tertiary) */
+.header-session-chip[data-role="SYS_ADMIN"] .header-avatar,
+.header-session-chip[data-role="MOH_ADMIN"] .header-avatar,
+.header-session-chip[data-role="CLINICIAN"] .header-avatar { background: var(--m3-primary-container); color: var(--m3-on-primary-container); }
+.header-session-chip[data-role="MOH_AUDITOR"] .header-avatar { background: var(--m3-secondary-container); color: var(--m3-on-secondary-container); }
+.header-session-chip[data-role="HOSPITAL_ADMIN"] .header-avatar { background: var(--m3-warning-container); color: var(--m3-on-warning-container); }
+.header-session-chip[data-role="PATIENT"] .header-avatar { background: var(--m3-tertiary-container); color: var(--m3-on-tertiary-container); }
 .header-avatar svg { width:14px; height:14px; }
 .header-session-text { display:flex; flex-direction:column; min-width:0; line-height:1.2; }
 .header-session-text strong { font-size:0.82rem; color:var(--m3-on-surface); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px; }
@@ -604,9 +615,9 @@ body.light-theme .sidebar,
   font-weight: 700;
   color: var(--sidebar-on-surface-muted);
   font-family: 'JetBrains Mono', 'IBM Plex Sans Arabic', monospace;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.08em;
   padding: 0 14px;
-  margin: 14px 0 4px;
+  margin: 16px 0 6px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -695,12 +706,19 @@ body.sidebar-collapsed .main-content {
   transition: margin-right var(--motion-base) var(--motion-standard), max-width var(--motion-base) var(--motion-standard);
 }
 
+/* Sticky chrome: title + actions stay visible over long clinical tables.
+   Degrades gracefully to static where sticky is unsupported. */
 .top-header {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  background: var(--m3-surface);
   margin-bottom: 26px;
+  padding-top: 14px;
   padding-bottom: 16px;
   gap: 16px;
 }
@@ -719,10 +737,12 @@ body.sidebar-collapsed .main-content {
   gap: 8px;
 }
 
+/* Crescent rests in a tonal well (banner-icon language) instead of floating bare */
 .header-crescent-badge {
-  width: auto;
-  height: auto;
-  background: transparent !important;
+  width: 36px;
+  height: 36px;
+  background: var(--m3-surface-container);
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -733,10 +753,10 @@ body.sidebar-collapsed .main-content {
 }
 
 .header-crescent-svg {
-  width: 22px;
-  height: 22px;
-  min-width: 22px;
-  min-height: 22px;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  min-height: 20px;
   color: var(--m3-error);
   fill: currentColor;
   flex-shrink: 0;
@@ -776,10 +796,16 @@ body.sidebar-collapsed .main-content {
 }
 
 .live-pill-dot {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background-color: var(--m3-primary-light);
+  animation: livePulse 2s ease-in-out infinite;
+}
+
+@keyframes livePulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.8); }
 }
 
 .live-pill-label {
@@ -2199,6 +2225,56 @@ html {
   cursor: pointer;
 }
 
+/* Booking steps: numbered flow, same grid on desktop, stacked flow on phones */
+.book-step {
+  border: none;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+.book-step + .book-step {
+  border-top: 1px solid var(--m3-outline-variant);
+  padding-top: 14px;
+}
+
+.book-step legend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--m3-on-surface);
+  padding: 0;
+  margin-bottom: 10px;
+}
+
+.book-step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--m3-primary-container);
+  color: var(--m3-on-primary-container);
+  font-size: 0.75rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.book-step-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+@media (max-width: 768px) {
+  .book-step-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Keyboard trace inside dense tables and combobox lists */
 .data-table tbody tr:focus-within {
   outline: 2px solid var(--m3-primary);
@@ -2765,6 +2841,7 @@ pre, code, .mono-code, .json-display {
     border-radius: var(--radius-sm);
   }
   .drawer-close-btn svg { width: 20px; height: 20px; }
+  .drawer-close-btn:hover { background: var(--sidebar-item-active); }
   /* Pin logout above the drawer bottom edge: always visible, never lost in the scroll */
   .logout-btn {
     position: sticky;
@@ -2895,19 +2972,23 @@ pre, code, .mono-code, .json-display {
   #header-session-chip { padding: 4px 8px; gap: 6px; }
   #header-session-chip .header-session-text small,
   #header-session-role { display: none; }
-  /* Dissolved actions wrapper: everything flows in the header row order,
-     icon pair clusters at the row start — no stray grid gaps */
-  .header-actions { display: contents; }
-  .header-title-container { flex: 1 1 auto; }
-  #header-session-chip { flex: 1 1 100%; }
-  #btn-run-pipeline { order: 1; flex: 1 1 100%; }
-  #btn-theme-toggle { order: 2; flex: 0 0 44px; }
-  #btn-refresh { order: 3; flex: 0 0 44px; }
-  .header-actions .btn { min-height: 44px; font-size: 0.78rem; }
-  /* Icon-only compact actions: icons are universal, truncated labels are not */
-  #btn-theme-toggle, #btn-refresh { width: 44px; min-height: 44px; padding: 0; }
-  #btn-theme-toggle span, #btn-refresh span { display: none; }
-  #btn-theme-toggle .btn-svg-icon, #btn-refresh .btn-svg-icon { width: 18px; height: 18px; }
+  /* Phone header: title row first, then a smooth horizontal action strip.
+     Labels stay intact (no icon-only loss), DOM/focus order preserved —
+     the old display:contents dissolved the wrapper and broke focus grouping. */
+  .header-title-container { flex: 1 1 auto; min-width: 0; }
+  .header-actions {
+    display: flex;
+    flex: 1 1 100%;
+    overflow-x: auto;
+    gap: 8px;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .header-actions::-webkit-scrollbar { display: none; }
+  .header-actions .btn { flex: 0 0 auto; width: auto; min-height: 44px; font-size: 0.78rem; }
+  #header-session-chip { flex: 1 1 100%; order: -1; }
+  #btn-run-pipeline { order: 0; }
   .live-pill { font-size: 0.68rem; }
   .metric-card { flex-direction: row; }
   .metric-icon { width: 36px; height: 36px; }
@@ -2985,7 +3066,8 @@ pre, code, .mono-code, .json-display {
   #btn-check-eligibility { flex: 1 1 100%; min-height: 44px; }
   #self-reported-health-card div[style*="space-between"] { flex-wrap: wrap; }
   .rx-table .rx-actions { display: flex; flex: 1 1 auto; min-width: 0; }
-  /* Certified report preview: paper grids halve, paper tables scroll */
+  /* Certified report preview: paper grids halve, paper tables scroll, airy sheet on phones */
+  .report-preview-sheet { padding: 20px 16px; min-height: auto; }
   .pdf-patient-grid, .pdf-kpi-bar { grid-template-columns: repeat(2, 1fr); }
   .pdf-doc-header, .pdf-section-header { flex-wrap: wrap; gap: 8px; }
   .pdf-section { overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -2998,11 +3080,16 @@ pre, code, .mono-code, .json-display {
   .metric-card { padding: 10px; }
   .metric-value { font-size: 1.1rem; }
   .metric-label { font-size: 0.7rem; }
+  .pdf-patient-grid, .pdf-kpi-bar { grid-template-columns: 1fr; }
   .header-title-wrap h1 { font-size: 1rem; }
   /* Smallest phones: title carries the context alone */
   #page-subtitle { display: none; }
   .card-header h3 { font-size: 0.9rem; }
   .banner-text h4 { font-size: 0.9rem; }
+  /* Smallest phones: tighter drawer rhythm, targets stay 44px via coarse-pointer */
+  .nav-item { padding: 9px 12px; gap: 10px; }
+  .nav-menu { gap: 0; }
+  .brand { margin-bottom: 12px; }
   .banner-text p { font-size: 0.78rem; }
   .auth-modal { padding: 22px 16px 18px; }
   .quick-chips-grid { grid-template-columns: 1fr; }

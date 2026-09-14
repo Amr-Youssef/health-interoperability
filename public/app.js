@@ -513,7 +513,7 @@ function updateSessionUI() {
   const headName = document.getElementById('header-session-name');
   const headSub = document.getElementById('header-session-sub');
   const headRole = document.getElementById('header-session-role');
-  if (headChip) headChip.style.display = 'flex';
+  if (headChip) { headChip.style.display = 'flex'; headChip.dataset.role = role; }
   if (headName) headName.textContent = name;
   if (headSub) headSub.textContent = org || roleAr;
   if (headRole) { headRole.textContent = roleAr; headRole.className = 'badge ' + roleBadgeClass; }
