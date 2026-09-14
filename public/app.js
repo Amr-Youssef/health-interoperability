@@ -765,6 +765,14 @@ function showToast(title, message, type = 'success') {
   }, 4000);
 }
 
+/* PWA: app-shell offline only — registration is safe anywhere (same-origin, HTTPS/localhost) */
+function initServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}
+
 // Shared skeleton placeholders for manual-refresh loading states (token-styled, no text flash)
 function skelTable(colspan, widths = ['45%', '70%']) {
   return `<tr class="skel-row"><td colspan="${colspan}">` +
@@ -785,6 +793,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initGlobalPatientSelector();
   initFileDropzone();
   initAuditorModals();
+  initServiceWorker();
   // Enforce role-based default tab after all init; fixes refresh hijack to monitoring
   setTimeout(() => {
     if (appAuth.currentRole) {

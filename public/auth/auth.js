@@ -31,6 +31,34 @@
     });
   })();
 
+  // ---------- PWA (login page only): SW + one-time install button ----------
+  (function initPwa(){
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+      });
+    }
+    if (!location.pathname.startsWith('/auth/login')) return;
+    let deferred = null;
+    const btn = document.getElementById('btn-install-app');
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferred = e;
+      if (btn) btn.style.display = 'flex';
+    });
+    if (btn) btn.addEventListener('click', async () => {
+      if (!deferred) return;
+      deferred.prompt();
+      try { await deferred.userChoice; } catch (e) {}
+      deferred = null;
+      btn.style.display = 'none';
+    });
+    window.addEventListener('appinstalled', () => {
+      deferred = null;
+      if (btn) btn.style.display = 'none';
+    });
+  })();
+
   const $ = (s) => document.querySelector(s);
   const errBox = (msg) => {
     const box = $('#register-error'), txt = $('#register-error-text');
