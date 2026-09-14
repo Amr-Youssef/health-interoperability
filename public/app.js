@@ -5178,52 +5178,6 @@ async function loadGovernanceUsers() {
       }).join('');
     }
 
-    async function editGovernanceUser(id) {
-      const user = governanceUsersById.get(id);
-      if (!user) return;
-      const fullName = window.prompt('الاسم الكامل:', user.fullName || '');
-      if (fullName === null) return;
-      const email = window.prompt('البريد الإلكتروني (اتركه فارغاً للمسح):', user.email || '');
-      if (email === null) return;
-      const phone = window.prompt('رقم الجوال (اتركه فارغاً للمسح):', user.phone || '');
-      if (phone === null) return;
-      try {
-        const r = await fetch('/api/moh/users/' + encodeURIComponent(id), { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ full_name: fullName, email, phone }) });
-        const data = await r.json();
-        if (!r.ok) throw new Error(data.error || 'فشل تعديل المستخدم');
-        showToast('تم التعديل', 'تم تحديث بيانات المستخدم', 'success');
-        loadGovernanceUsers();
-      } catch (e) { showToast('خطأ', e.message, 'error'); }
-    }
-
-    async function changeGovernanceUserRole(id) {
-      const user = governanceUsersById.get(id);
-      if (!user) return;
-      const roles = ['SYS_ADMIN', 'MOH_ADMIN', 'MOH_AUDITOR', 'HOSPITAL_ADMIN', 'CLINICIAN', 'PATIENT'];
-      const role = window.prompt(`الدور الجديد (${roles.join('، ')}):`, user.role || '');
-      if (role === null || role === user.role) return;
-      if (!roles.includes(role.trim())) return showToast('بيانات غير صالحة', 'اختر دوراً من الأدوار المسموحة', 'error');
-      try {
-        const r = await fetch('/api/moh/users/' + encodeURIComponent(id) + '/role', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role_code: role.trim() }) });
-        const data = await r.json();
-        if (!r.ok) throw new Error(data.error || 'فشل تغيير الدور');
-        showToast('تم التعديل', 'تم تغيير دور المستخدم', 'success');
-        loadGovernanceUsers();
-      } catch (e) { showToast('خطأ', e.message, 'error'); }
-    }
-
-    async function resetGovernanceUserPassword(id) {
-      const user = governanceUsersById.get(id);
-      if (!user) return;
-      const password = window.prompt(`كلمة المرور الجديدة للمستخدم ${user.username} (8 أحرف مع حروف وأرقام):`);
-      if (password === null) return;
-      try {
-        const r = await fetch('/api/moh/users/' + encodeURIComponent(id) + '/password', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) });
-        const data = await r.json();
-        if (!r.ok) throw new Error(data.error || 'فشل إعادة ضبط كلمة المرور');
-        showToast('تم التحديث', 'تمت إعادة ضبط كلمة المرور', 'success');
-      } catch (e) { showToast('خطأ', e.message, 'error'); }
-    }
     if (paginationEl) {
       paginationEl.innerHTML = '';
       const previous = document.createElement('button');
@@ -5245,6 +5199,53 @@ async function loadGovernanceUsers() {
     if (summaryEl) summaryEl.textContent = '';
     if (paginationEl) paginationEl.textContent = '';
   }
+}
+
+async function editGovernanceUser(id) {
+  const user = governanceUsersById.get(id);
+  if (!user) return;
+  const fullName = window.prompt('الاسم الكامل:', user.fullName || '');
+  if (fullName === null) return;
+  const email = window.prompt('البريد الإلكتروني (اتركه فارغاً للمسح):', user.email || '');
+  if (email === null) return;
+  const phone = window.prompt('رقم الجوال (اتركه فارغاً للمسح):', user.phone || '');
+  if (phone === null) return;
+  try {
+    const r = await fetch('/api/moh/users/' + encodeURIComponent(id), { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ full_name: fullName, email, phone }) });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'فشل تعديل المستخدم');
+    showToast('تم التعديل', 'تم تحديث بيانات المستخدم', 'success');
+    loadGovernanceUsers();
+  } catch (e) { showToast('خطأ', e.message, 'error'); }
+}
+
+async function changeGovernanceUserRole(id) {
+  const user = governanceUsersById.get(id);
+  if (!user) return;
+  const roles = ['SYS_ADMIN', 'MOH_ADMIN', 'MOH_AUDITOR', 'HOSPITAL_ADMIN', 'CLINICIAN', 'PATIENT'];
+  const role = window.prompt(`الدور الجديد (${roles.join('، ')}):`, user.role || '');
+  if (role === null || role === user.role) return;
+  if (!roles.includes(role.trim())) return showToast('بيانات غير صالحة', 'اختر دوراً من الأدوار المسموحة', 'error');
+  try {
+    const r = await fetch('/api/moh/users/' + encodeURIComponent(id) + '/role', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role_code: role.trim() }) });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'فشل تغيير الدور');
+    showToast('تم التعديل', 'تم تغيير دور المستخدم', 'success');
+    loadGovernanceUsers();
+  } catch (e) { showToast('خطأ', e.message, 'error'); }
+}
+
+async function resetGovernanceUserPassword(id) {
+  const user = governanceUsersById.get(id);
+  if (!user) return;
+  const password = window.prompt(`كلمة المرور الجديدة للمستخدم ${user.username} (8 أحرف مع حروف وأرقام):`);
+  if (password === null) return;
+  try {
+    const r = await fetch('/api/moh/users/' + encodeURIComponent(id) + '/password', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'فشل إعادة ضبط كلمة المرور');
+    showToast('تم التحديث', 'تمت إعادة ضبط كلمة المرور', 'success');
+  } catch (e) { showToast('خطأ', e.message, 'error'); }
 }
 
 function setupGovernanceUsersFilters() {
