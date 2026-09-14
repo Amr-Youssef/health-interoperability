@@ -54,27 +54,33 @@
     input.classList.toggle('valid', !isErr && input.value.trim().length>0);
   };
 
-  const existingToken = localStorage.getItem('shiep_token');
-  if (existingToken) {
-    fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + existingToken }, credentials: 'include' }).then(r=>{
+  if (location.pathname.startsWith('/auth/login')) {
+    fetch('/api/auth/me', { credentials: 'include' }).then(r=>{
       if(r.ok) location.replace('/');
-      else { localStorage.removeItem('shiep_token'); localStorage.removeItem('shiep_role'); localStorage.removeItem('shiep_user'); }
+      else { localStorage.removeItem('shiep_role'); localStorage.removeItem('shiep_user'); }
+    }).catch(()=>{});
+
+    fetch('/api/auth/demo-accounts', { credentials: 'same-origin' }).then(async r => {
+      if (!r.ok) return;
+      const data = await r.json();
+      const container = document.getElementById('demo-quick-login');
+      const buttons = document.getElementById('demo-quick-login-buttons');
+      if (!container || !buttons || !Array.isArray(data.accounts)) return;
+      for (const account of data.accounts) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'btn btn-secondary';
+        button.textContent = account.label;
+        button.addEventListener('click', () => {
+          $('#login-username').value = account.username;
+          $('#login-password').value = account.password;
+          $('#login-form').requestSubmit();
+        });
+        buttons.appendChild(button);
+      }
+      container.style.display = 'block';
     }).catch(()=>{});
   }
-
-  document.querySelectorAll('[data-fill]').forEach(b=>{
-    b.addEventListener('click', ()=>{
-      const v=b.getAttribute('data-fill');
-      const map={sys_admin:['admin','admin123'],admin:['admin','admin123'],moh_admin:['moh_admin','moh123456'],moh_auditor:['moh_auditor','auditor123'],hospital_a:['hospital_a','pass123'],clinician:['clinician','clinician123'],patient:['patient','patient123']};
-      const c=map[v]; if(!c) return;
-      const u=$('#login-username'), p=$('#login-password');
-      if(u) u.value=c[0]; if(p) p.value=c[1];
-      const form=$('#login-form');
-      if(!form) return;
-      if(typeof form.requestSubmit==='function') try{ form.requestSubmit(); return; }catch{}
-      form.dispatchEvent(new Event('submit', {cancelable:true, bubbles:true}));
-    });
-  });
 
   const loginForm=$('#login-form');
   if(loginForm){
@@ -90,10 +96,10 @@
         const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({username,password})});
         const d=await r.json();
         if(!r.ok){ if(box){box.style.display='flex'; if(txt) txt.textContent=(d.error||'فشل تسجيل الدخول')+(d.stage?' (رمز التشخيص: '+d.stage+')':'');} return; }
-        localStorage.setItem('shiep_token', d.token);
         localStorage.setItem('shiep_role', d.user.role);
         localStorage.setItem('shiep_user', JSON.stringify(d.user));
-        const next=new URLSearchParams(location.search).get('next')||'/';
+        const requestedNext=new URLSearchParams(location.search).get('next')||'/';
+        const next=requestedNext.startsWith('/') && !requestedNext.startsWith('//') ? requestedNext : '/';
         location.replace(next);
       }catch{ if(box){box.style.display='flex'; if(txt) txt.textContent='انقطع الاتصال بالخادم';} }
       finally{ if(btn) btn.disabled=false; }
@@ -429,7 +435,6 @@
           if(msg.includes('المنشأة')) { setFieldErr('err-org',msg); setFieldErr('err-org-ar',msg); }
           return;
         }
-        localStorage.setItem('shiep_token', d.token);
         localStorage.setItem('shiep_role', d.user.role);
         localStorage.setItem('shiep_user', JSON.stringify(d.user));
         // stepper done

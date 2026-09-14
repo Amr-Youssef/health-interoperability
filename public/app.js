@@ -13,20 +13,24 @@ let cachedPatientCanonical = null; // Full canonical patient data for active pat
 // === AUTHENTICATION LOGIC ===
 const appAuth = {
   currentRole: localStorage.getItem('shiep_role') || null,
-  token: localStorage.getItem('shiep_token') || null,
-  user: JSON.parse(localStorage.getItem('shiep_user') || 'null'),
+  token: null,
+  user: (() => { try { return JSON.parse(localStorage.getItem('shiep_user') || 'null'); } catch { return null; } })(),
 
   init() {
-    if (!this.token) {
-      const onAuthPage = location.pathname.startsWith('/auth/');
-      if (!onAuthPage) { location.replace('/auth/login.html'); return; }
-    } else {
-      fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + this.token }, credentials: 'include' }).then(async r=>{
-        if(!r.ok){ await this.logout(); return; }
-        try { const fresh = await r.json(); if (fresh && fresh.fullName) { this.user = fresh; localStorage.setItem('shiep_user', JSON.stringify(fresh)); updateSessionUI(); } } catch(e){}
-      }).catch(()=>{});
-    }
-    this.updateUI();
+    fetch('/api/auth/me', { credentials: 'include' }).then(async r=>{
+      if(!r.ok){ await this.logout(); return; }
+      try {
+        const fresh = await r.json();
+        if (fresh && fresh.fullName) {
+          this.user = fresh;
+          this.currentRole = fresh.role;
+          localStorage.setItem('shiep_role', fresh.role);
+          localStorage.setItem('shiep_user', JSON.stringify(fresh));
+          updateSessionUI();
+        }
+      } catch(e){}
+      this.updateUI();
+    }).catch(()=>{ location.replace('/auth/login.html'); });
     setTimeout(() => {
       try { this.toggleRegisterRole(); } catch(e) {}
     }, 0);
@@ -256,10 +260,9 @@ const appAuth = {
         return;
       }
       this.currentRole = data.user.role;
-      this.token = data.token;
+      this.token = null;
       this.user = data.user;
       localStorage.setItem('shiep_role', this.currentRole);
-      localStorage.setItem('shiep_token', this.token);
       localStorage.setItem('shiep_user', JSON.stringify(this.user));
       this.updateUI();
       fetchAndCachePatients().then(() => {
@@ -305,10 +308,9 @@ const appAuth = {
         return;
       }
       this.currentRole = data.user.role;
-      this.token = data.token;
+      this.token = null;
       this.user = data.user;
       localStorage.setItem('shiep_role', this.currentRole);
-      localStorage.setItem('shiep_token', this.token);
       localStorage.setItem('shiep_user', JSON.stringify(this.user));
       this.updateUI();
       fetchAndCachePatients().then(() => {
@@ -330,7 +332,6 @@ const appAuth = {
     window._auditPatientContext = null;
     window._auditPatientId = null;
     localStorage.removeItem('shiep_role');
-    localStorage.removeItem('shiep_token');
     localStorage.removeItem('shiep_user');
     document.cookie = 'shiep_token=; Max-Age=0; path=/; SameSite=Strict';
     location.replace('/auth/login.html');
@@ -521,29 +522,18 @@ function updateSessionUI() {
   }
 }
 
-// === FETCH INTERCEPTOR FOR JWT AUTHENTICATION ===
+// API requests use the HttpOnly authentication cookie set by the backend.
 const originalFetch = window.fetch;
 window.fetch = function(url, options = {}) {
-  options = options || {};
   if (typeof url === 'string' && (url.startsWith('/api') || url.startsWith('/fhir'))) {
-    options.credentials = options.credentials || 'include';
-    if (appAuth.token) {
-      if (!options.headers) options.headers = {};
-      if (options.headers instanceof Headers) {
-        if (!options.headers.has('Authorization')) options.headers.set('Authorization', `Bearer ${appAuth.token}`);
-      } else if (Array.isArray(options.headers)) {
-        options.headers.push(['Authorization', `Bearer ${appAuth.token}`]);
-      } else {
-        if (!options.headers['Authorization']) options.headers['Authorization'] = `Bearer ${appAuth.token}`;
-      }
-    }
+    options = { ...options, credentials: options.credentials || 'include' };
   }
-  return originalFetch(url, options).then(res=>{
-    if((res.status===401||res.status===403) && typeof url==='string' && (url.startsWith('/api')||url.startsWith('/fhir'))){
-      const isAuthCall = url.includes('/api/auth/');
-      if(!isAuthCall && appAuth.token){
-        try{ const ct=res.headers.get('content-type')||''; if(ct.includes('json')) res.clone().json().then(j=>{ if(j.error&&j.error.includes('Invalid')) appAuth.logout(); }).catch(()=>{}); } catch(e){}
-      }
+  return originalFetch(url, options).then(res => {
+    if (res.status === 401 &&
+        typeof url === 'string' &&
+        (url.startsWith('/api') || url.startsWith('/fhir')) &&
+        !url.includes('/api/auth/')) {
+      appAuth.logout();
     }
     return res;
   });
@@ -3260,7 +3250,7 @@ async function loadPatientProfileTab() {
     console.error('Failed to load patient profile', err);
     loadingEl.innerHTML = `<div class="card" style="border:1px solid var(--m3-error); background:var(--m3-error-container); padding:16px; text-align:center;">
       <p style="color:var(--m3-error); font-weight:700;">تعذر تحميل بياناتك الشخصية</p>
-      <p style="font-size:0.82rem; color:var(--m3-on-surface-variant); margin-top:6px;">${err.message || 'حدث خطأ في الاتصال'}</p>
+      <p style="font-size:0.82rem; color:var(--m3-on-surface-variant); margin-top:6px;">${_auditEsc(err.message || 'حدث خطأ في الاتصال')}</p>
       <button type="button" class="btn btn-secondary btn-sm" style="margin-top:10px;" onclick="loadPatientProfileTab()">إعادة المحاولة</button>
     </div>`;
   }
@@ -3396,7 +3386,7 @@ async function savePatientProfile() {
     setTimeout(() => { loadPatientProfileTab(); }, 900);
   } catch (err) {
     statusEl.style.display = 'block';
-    statusEl.innerHTML = `<div style="background:var(--m3-error-container); border:1px solid var(--m3-error); color:var(--m3-error); padding:10px 14px; border-radius:var(--radius-sharp); font-size:0.85rem;">${err.message}</div>`;
+    statusEl.innerHTML = `<div style="background:var(--m3-error-container); border:1px solid var(--m3-error); color:var(--m3-error); padding:10px 14px; border-radius:var(--radius-sharp); font-size:0.85rem;">${_auditEsc(err.message || 'حدث خطأ في الاتصال')}</div>`;
     showToast('خطأ في الحفظ', err.message, 'error');
   } finally {
     btn.disabled = false;
@@ -5128,6 +5118,277 @@ document.getElementById('btn-copy-bulk-ndjson')?.addEventListener('click', () =>
   }
 });
 
+const governanceUsersState = { page: 1, pageSize: 20, query: '', role: '', status: '' };
+let governancePendingOrgIds = new Set();
+const governanceUsersById = new Map();
+
+function governanceEscape(value) {
+  const div = document.createElement('div');
+  div.textContent = value == null ? '' : String(value);
+  return div.innerHTML;
+}
+
+async function loadGovernanceUsers() {
+  const usersEl = document.getElementById('gov-users-list');
+  const summaryEl = document.getElementById('gov-users-summary');
+  const paginationEl = document.getElementById('gov-users-pagination');
+  if (!usersEl) return;
+  usersEl.innerHTML = '<div class="text-center py-3">جاري تحميل الصفحة...</div>';
+  const params = new URLSearchParams({
+    page: String(governanceUsersState.page),
+    limit: String(governanceUsersState.pageSize)
+  });
+  if (governanceUsersState.query) params.set('q', governanceUsersState.query);
+  if (governanceUsersState.role) params.set('role', governanceUsersState.role);
+  if (governanceUsersState.status) params.set('status', governanceUsersState.status);
+  try {
+    const response = await fetch('/api/moh/users?' + params.toString());
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || `فشل تحميل المستخدمين (${response.status})`);
+    const users = Array.isArray(data) ? data : (data.items || []);
+    const total = Array.isArray(data) ? users.length : (data.total || 0);
+    const totalPages = Array.isArray(data) ? 1 : (data.totalPages || 1);
+    const first = total === 0 ? 0 : ((governanceUsersState.page - 1) * governanceUsersState.pageSize) + 1;
+    const last = Math.min(governanceUsersState.page * governanceUsersState.pageSize, total);
+    if (summaryEl) summaryEl.textContent = `عرض ${first}–${last} من أصل ${total} مستخدم`;
+    if (!users.length) {
+      usersEl.innerHTML = '<div class="text-center py-3" style="color:var(--m3-on-surface-variant);">لا توجد نتائج مطابقة</div>';
+    } else {
+      governanceUsersById.clear();
+      usersEl.innerHTML = users.map((u) => {
+        governanceUsersById.set(u.id, u);
+        const username = governanceEscape(u.username);
+        const role = governanceEscape(u.role);
+        const fullName = governanceEscape(u.fullName);
+        const org = governanceEscape(u.organizationNameAr || u.organizationName || '');
+        const contact = governanceEscape([u.email, u.phone].filter(Boolean).join(' • ') || 'لا توجد بيانات اتصال');
+        const pending = governancePendingOrgIds.has(u.organizationId);
+        const roleClass = u.role === 'SYS_ADMIN' ? 'badge-error' : u.role === 'MOH_ADMIN' ? 'badge-info' : u.role === 'MOH_AUDITOR' ? 'badge-secondary' : u.role === 'HOSPITAL_ADMIN' ? 'badge-warning' : 'badge-success';
+        return `<div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px; border-bottom:1px solid var(--m3-outline-variant); ${pending ? 'background:var(--m3-warning-container);' : ''}">
+          <div><strong>${username}</strong> <span class="badge ${roleClass}">${role}</span> ${pending ? '<span class="badge badge-warning">منشأة معلقة</span>' : ''}
+          <br><small>${fullName} • ${org} • ${contact} • ${u.isActive ? 'نشط' : 'معطل'}</small>
+          ${pending ? '<br><small style="color:var(--m3-warning);">الوصول متوقف حتى اعتماد المنشأة</small>' : ''}</div>
+          <div style="display:flex; gap:4px; flex-wrap:wrap; justify-content:flex-end;">
+            <button class="btn btn-secondary btn-sm" type="button" onclick="editGovernanceUser('${u.id}')">تعديل</button>
+            <button class="btn btn-secondary btn-sm" type="button" onclick="changeGovernanceUserRole('${u.id}')">الدور</button>
+            <button class="btn btn-secondary btn-sm" type="button" onclick="resetGovernanceUserPassword('${u.id}')">كلمة المرور</button>
+            <button class="btn btn-secondary btn-sm" type="button" onclick="toggleUserStatus('${u.id}', ${u.isActive})">${u.isActive ? 'تعطيل' : 'تفعيل'}</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    async function editGovernanceUser(id) {
+      const user = governanceUsersById.get(id);
+      if (!user) return;
+      const fullName = window.prompt('الاسم الكامل:', user.fullName || '');
+      if (fullName === null) return;
+      const email = window.prompt('البريد الإلكتروني (اتركه فارغاً للمسح):', user.email || '');
+      if (email === null) return;
+      const phone = window.prompt('رقم الجوال (اتركه فارغاً للمسح):', user.phone || '');
+      if (phone === null) return;
+      try {
+        const r = await fetch('/api/moh/users/' + encodeURIComponent(id), { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ full_name: fullName, email, phone }) });
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.error || 'فشل تعديل المستخدم');
+        showToast('تم التعديل', 'تم تحديث بيانات المستخدم', 'success');
+        loadGovernanceUsers();
+      } catch (e) { showToast('خطأ', e.message, 'error'); }
+    }
+
+    async function changeGovernanceUserRole(id) {
+      const user = governanceUsersById.get(id);
+      if (!user) return;
+      const roles = ['SYS_ADMIN', 'MOH_ADMIN', 'MOH_AUDITOR', 'HOSPITAL_ADMIN', 'CLINICIAN', 'PATIENT'];
+      const role = window.prompt(`الدور الجديد (${roles.join('، ')}):`, user.role || '');
+      if (role === null || role === user.role) return;
+      if (!roles.includes(role.trim())) return showToast('بيانات غير صالحة', 'اختر دوراً من الأدوار المسموحة', 'error');
+      try {
+        const r = await fetch('/api/moh/users/' + encodeURIComponent(id) + '/role', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role_code: role.trim() }) });
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.error || 'فشل تغيير الدور');
+        showToast('تم التعديل', 'تم تغيير دور المستخدم', 'success');
+        loadGovernanceUsers();
+      } catch (e) { showToast('خطأ', e.message, 'error'); }
+    }
+
+    async function resetGovernanceUserPassword(id) {
+      const user = governanceUsersById.get(id);
+      if (!user) return;
+      const password = window.prompt(`كلمة المرور الجديدة للمستخدم ${user.username} (8 أحرف مع حروف وأرقام):`);
+      if (password === null) return;
+      try {
+        const r = await fetch('/api/moh/users/' + encodeURIComponent(id) + '/password', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) });
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.error || 'فشل إعادة ضبط كلمة المرور');
+        showToast('تم التحديث', 'تمت إعادة ضبط كلمة المرور', 'success');
+      } catch (e) { showToast('خطأ', e.message, 'error'); }
+    }
+    if (paginationEl) {
+      paginationEl.innerHTML = '';
+      const previous = document.createElement('button');
+      previous.className = 'btn btn-secondary btn-sm';
+      previous.textContent = 'السابق';
+      previous.disabled = governanceUsersState.page <= 1;
+      previous.onclick = () => { governanceUsersState.page--; loadGovernanceUsers(); };
+      const next = document.createElement('button');
+      next.className = 'btn btn-secondary btn-sm';
+      next.textContent = 'التالي';
+      next.disabled = governanceUsersState.page >= totalPages;
+      next.onclick = () => { governanceUsersState.page++; loadGovernanceUsers(); };
+      const label = document.createElement('span');
+      label.textContent = `صفحة ${governanceUsersState.page} من ${totalPages}`;
+      paginationEl.append(previous, label, next);
+    }
+  } catch (error) {
+    usersEl.innerHTML = `<div style="color:var(--m3-error);">${governanceEscape(error.message)}</div>`;
+    if (summaryEl) summaryEl.textContent = '';
+    if (paginationEl) paginationEl.textContent = '';
+  }
+}
+
+function setupGovernanceUsersFilters() {
+  const search = document.getElementById('gov-users-search');
+  const role = document.getElementById('gov-users-role');
+  const status = document.getElementById('gov-users-status');
+  const pageSize = document.getElementById('gov-users-page-size');
+  let timer;
+  search?.addEventListener('input', () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      governanceUsersState.query = search.value.trim();
+      governanceUsersState.page = 1;
+      loadGovernanceUsers();
+    }, 250);
+  });
+  role?.addEventListener('change', () => { governanceUsersState.role = role.value; governanceUsersState.page = 1; loadGovernanceUsers(); });
+  status?.addEventListener('change', () => { governanceUsersState.status = status.value; governanceUsersState.page = 1; loadGovernanceUsers(); });
+  pageSize?.addEventListener('change', () => { governanceUsersState.pageSize = Number(pageSize.value) || 20; governanceUsersState.page = 1; loadGovernanceUsers(); });
+}
+setupGovernanceUsersFilters();
+
+const nationalPatientsState = { page: 1, pageSize: 20, query: '', status: '', gender: '' };
+const governancePendingState = { page: 1, pageSize: 10, query: '' };
+const governanceChangesState = { page: 1, pageSize: 20, query: '' };
+const governanceVerifyState = { page: 1, pageSize: 20, query: '', type: 'medications' };
+
+function renderGovernancePager(element, state, totalPages, onChange) {
+  if (!element) return;
+  element.innerHTML = '';
+  const previous = document.createElement('button');
+  previous.className = 'btn btn-secondary btn-sm';
+  previous.textContent = 'السابق';
+  previous.disabled = state.page <= 1;
+  previous.onclick = () => { state.page--; onChange(); };
+  const next = document.createElement('button');
+  next.className = 'btn btn-secondary btn-sm';
+  next.textContent = 'التالي';
+  next.disabled = state.page >= totalPages;
+  next.onclick = () => { state.page++; onChange(); };
+  const label = document.createElement('span');
+  label.textContent = `صفحة ${state.page} من ${totalPages}`;
+  element.append(previous, label, next);
+}
+
+function setupGovernanceQueueFilters() {
+  const bindSearch = (id, state, load) => {
+    const input = document.getElementById(id);
+    let timer;
+    input?.addEventListener('input', () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => { state.query = input.value.trim(); state.page = 1; load(); }, 250);
+    });
+  };
+  bindSearch('gov-pending-search', governancePendingState, loadAdminGovernance);
+  bindSearch('gov-org-changes-search', governanceChangesState, loadOrgChangeRequests);
+  bindSearch('gov-verify-search', governanceVerifyState, loadVerificationQueue);
+  document.getElementById('gov-pending-page-size')?.addEventListener('change', (e) => { governancePendingState.pageSize = Number(e.target.value) || 10; governancePendingState.page = 1; loadAdminGovernance(); });
+  document.getElementById('gov-org-changes-page-size')?.addEventListener('change', (e) => { governanceChangesState.pageSize = Number(e.target.value) || 20; governanceChangesState.page = 1; loadOrgChangeRequests(); });
+  document.getElementById('gov-verify-type')?.addEventListener('change', (e) => { governanceVerifyState.type = e.target.value; governanceVerifyState.page = 1; loadVerificationQueue(); });
+  document.getElementById('gov-verify-page-size')?.addEventListener('change', (e) => { governanceVerifyState.pageSize = Number(e.target.value) || 20; governanceVerifyState.page = 1; loadVerificationQueue(); });
+}
+setupGovernanceQueueFilters();
+
+async function loadNationalPatients() {
+  const listEl = document.getElementById('gov-patients-list');
+  const summaryEl = document.getElementById('gov-patients-summary');
+  const paginationEl = document.getElementById('gov-patients-pagination');
+  if (!listEl) return;
+  listEl.innerHTML = '<div class="text-center py-3">جاري تحميل الصفحة...</div>';
+  const params = new URLSearchParams({ page: String(nationalPatientsState.page), limit: String(nationalPatientsState.pageSize) });
+  if (nationalPatientsState.query) params.set('search', nationalPatientsState.query);
+  if (nationalPatientsState.status) params.set('status', nationalPatientsState.status);
+  if (nationalPatientsState.gender) params.set('gender', nationalPatientsState.gender);
+  try {
+    const response = await fetch('/api/moh/patients?' + params.toString());
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || `فشل تحميل المرضى (${response.status})`);
+    const patients = data.items || [];
+    const total = data.total || 0;
+    const totalPages = data.totalPages || 1;
+    const first = total === 0 ? 0 : ((nationalPatientsState.page - 1) * nationalPatientsState.pageSize) + 1;
+    const last = Math.min(nationalPatientsState.page * nationalPatientsState.pageSize, total);
+    if (summaryEl) summaryEl.textContent = `عرض ${first}–${last} من أصل ${total} مريض في السجل الوطني`;
+    if (!patients.length) {
+      listEl.innerHTML = '<div class="text-center py-3" style="color:var(--m3-on-surface-variant);">لا توجد نتائج مطابقة</div>';
+    } else {
+      listEl.innerHTML = patients.map((p) => {
+        const name = governanceEscape(`${p.firstNameAr || p.firstName || ''} ${p.lastNameAr || p.lastName || ''}`.trim() || 'بدون اسم');
+        const internalId = governanceEscape(p.internalId);
+        const gender = governanceEscape(p.gender || '—');
+        const birthDate = governanceEscape(p.birthDate || '—');
+        const phone = governanceEscape(p.phone || '—');
+        const identifier = governanceEscape(p.identifiers?.[0]?.value || p.internalId);
+        const status = governanceEscape(p.status || 'ACTIVE');
+        return `<div style="padding:8px; border-bottom:1px solid var(--m3-outline-variant); display:flex; justify-content:space-between; align-items:center; gap:10px;">
+          <span><strong>${name}</strong><br><small>${internalId} • ${gender} • ${birthDate} • ${phone}</small></span>
+          <span><span class="badge badge-info">${identifier}</span> <span class="badge badge-secondary">${status}</span></span>
+        </div>`;
+      }).join('');
+    }
+    if (paginationEl) {
+      paginationEl.innerHTML = '';
+      const previous = document.createElement('button');
+      previous.className = 'btn btn-secondary btn-sm';
+      previous.textContent = 'السابق';
+      previous.disabled = nationalPatientsState.page <= 1;
+      previous.onclick = () => { nationalPatientsState.page--; loadNationalPatients(); };
+      const next = document.createElement('button');
+      next.className = 'btn btn-secondary btn-sm';
+      next.textContent = 'التالي';
+      next.disabled = nationalPatientsState.page >= totalPages;
+      next.onclick = () => { nationalPatientsState.page++; loadNationalPatients(); };
+      const label = document.createElement('span');
+      label.textContent = `صفحة ${nationalPatientsState.page} من ${totalPages}`;
+      paginationEl.append(previous, label, next);
+    }
+  } catch (error) {
+    listEl.innerHTML = `<div style="color:var(--m3-error);">${governanceEscape(error.message)}</div>`;
+    if (summaryEl) summaryEl.textContent = '';
+    if (paginationEl) paginationEl.textContent = '';
+  }
+}
+
+function setupNationalPatientsFilters() {
+  const search = document.getElementById('gov-patients-search');
+  const status = document.getElementById('gov-patients-status');
+  const gender = document.getElementById('gov-patients-gender');
+  const pageSize = document.getElementById('gov-patients-page-size');
+  let timer;
+  search?.addEventListener('input', () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      nationalPatientsState.query = search.value.trim();
+      nationalPatientsState.page = 1;
+      loadNationalPatients();
+    }, 250);
+  });
+  status?.addEventListener('change', () => { nationalPatientsState.status = status.value; nationalPatientsState.page = 1; loadNationalPatients(); });
+  gender?.addEventListener('change', () => { nationalPatientsState.gender = gender.value; nationalPatientsState.page = 1; loadNationalPatients(); });
+  pageSize?.addEventListener('change', () => { nationalPatientsState.pageSize = Number(pageSize.value) || 20; nationalPatientsState.page = 1; loadNationalPatients(); });
+}
+setupNationalPatientsFilters();
+
 async function loadAdminGovernance() {
   const pendingEl = document.getElementById('gov-pending-list');
   const usersEl = document.getElementById('gov-users-list');
@@ -5135,10 +5396,14 @@ async function loadAdminGovernance() {
   const patientsEl = document.getElementById('gov-patients-list');
   let dashData = null;
   try {
-    const dashRes = await fetch('/api/moh/dashboard');
+    const dashboardParams = new URLSearchParams({ page: String(governancePendingState.page), limit: String(governancePendingState.pageSize) });
+    if (governancePendingState.query) dashboardParams.set('search', governancePendingState.query);
+    const dashRes = await fetch('/api/moh/dashboard?' + dashboardParams.toString());
     if (dashRes.ok) {
       dashData = await dashRes.json();
       const d = dashData;
+      const pendingHospitalsData = d.pendingHospitalsList || [];
+      governancePendingOrgIds = new Set((Array.isArray(pendingHospitalsData) ? pendingHospitalsData : (pendingHospitalsData.items || [])).map(o => o.id));
       const gh = document.getElementById('gov-pending-hosp');
       const gu = document.getElementById('gov-users-total');
       const gv = document.getElementById('gov-verify-queue');
@@ -5148,68 +5413,32 @@ async function loadAdminGovernance() {
       if (gv) gv.textContent = d.verificationQueue.total;
       if (gp) gp.textContent = d.nationalCounts.patientsTotal;
       if (pendingEl) {
-        const list = d.pendingHospitalsList || [];
+        const pendingData = d.pendingHospitalsList || [];
+        const list = Array.isArray(pendingData) ? pendingData : (pendingData.items || []);
+        const pendingTotalPages = Array.isArray(pendingData) ? 1 : (pendingData.totalPages || 1);
         if (list.length === 0) pendingEl.innerHTML = '<div class="text-center py-3" style="color:var(--m3-on-surface-variant);">لا توجد منشآت بانتظار الاعتماد — جميع المنشآت معتمدة ونشطة</div>';
         else pendingEl.innerHTML = list.map((o) => {
           const admin = o.admins?.[0];
-          const adminHtml = admin ? `<div style="margin-top:6px; background:var(--m3-surface-container); border-radius:var(--radius-sharp); padding:6px 8px; font-size:0.78rem;"><strong>أدمن المنشأة:</strong> ${admin.fullName} (@${admin.username}) • ${admin.email||'لا بريد'} • ${admin.phone||'لا هاتف'} <span class="badge ${admin.isActive?'badge-success':'badge-warning'}">${admin.isActive?'نشط':'معلق'}</span> ${o.hasMapping?'<span class="badge badge-info">خرائط محفوظة</span>':''}</div>` : `<div style="margin-top:6px; font-size:0.75rem; color:var(--m3-error);">⚠️ لا يوجد أدمن مرتبط - المنشأة من تسجيل قديم</div>`;
+          const adminHtml = admin ? `<div style="margin-top:6px; background:var(--m3-surface-container); border-radius:var(--radius-sharp); padding:6px 8px; font-size:0.78rem;"><strong>أدمن المنشأة:</strong> ${governanceEscape(admin.fullName)} (@${governanceEscape(admin.username)}) • ${governanceEscape(admin.email||'لا بريد')} • ${governanceEscape(admin.phone||'لا هاتف')} <span class="badge ${admin.isActive?'badge-success':'badge-warning'}">${admin.isActive?'نشط':'معلق'}</span> ${o.hasMapping?'<span class="badge badge-info">خرائط محفوظة</span>':''}</div>` : `<div style="margin-top:6px; font-size:0.75rem; color:var(--m3-error);">⚠️ لا يوجد أدمن مرتبط - المنشأة من تسجيل قديم</div>`;
           const dateStr = o.createdAt ? new Date(o.createdAt).toLocaleDateString('ar-SA') : '';
-          return `<div style="padding:10px; border:1px solid var(--m3-outline-variant); border-radius:var(--radius-sharp); margin-bottom:8px; background:var(--m3-surface);"><div style="display:flex; justify-content:space-between; align-items:flex-start;"><div><strong>${o.organizationNameAr || o.organizationName}</strong> <span class="badge badge-warning">PENDING</span><br><small>${o.organizationName} • ${o.region} • ${o.organizationType} • ${dateStr}</small>${adminHtml}</div><div style="display:flex; flex-direction:column; gap:6px; min-width:90px;"><button class="btn btn-primary btn-sm" onclick="approveHospital('${o.id}')">اعتماد وتفعيل</button><button class="btn btn-secondary btn-sm" onclick="rejectHospital('${o.id}')">رفض</button></div></div></div>`;
+          return `<div style="padding:10px; border:1px solid var(--m3-outline-variant); border-radius:var(--radius-sharp); margin-bottom:8px; background:var(--m3-surface);"><div style="display:flex; justify-content:space-between; align-items:flex-start;"><div><strong>${governanceEscape(o.organizationNameAr || o.organizationName)}</strong> <span class="badge badge-warning">PENDING</span><br><small>${governanceEscape(o.organizationName)} • ${governanceEscape(o.region)} • ${governanceEscape(o.organizationType)} • ${dateStr}</small>${adminHtml}</div><div style="display:flex; flex-direction:column; gap:6px; min-width:90px;"><button class="btn btn-primary btn-sm" onclick="approveHospital('${o.id}')">اعتماد وتفعيل</button><button class="btn btn-secondary btn-sm" onclick="rejectHospital('${o.id}')">رفض</button></div></div></div>`;
         }).join('');
+        renderGovernancePager(document.getElementById('gov-pending-pagination'), governancePendingState, pendingTotalPages, loadAdminGovernance);
       }
     } else {
       if (pendingEl) pendingEl.innerHTML = `<div class="text-center py-3" style="color:var(--m3-error);">فشل تحميل الحوكمة (${dashRes.status}) - تحقق من تسجيل الدخول والصلاحيات</div>`;
       const gh = document.getElementById('gov-pending-hosp'); if (gh) gh.textContent = '--';
     }
-    const [hospRes, usersRes, verifyRes, patientsRes] = await Promise.all([fetch('/api/moh/hospitals'), fetch('/api/moh/users'), fetch('/api/moh/verification-queue'), fetch('/api/moh/patients?take=50')]);
+    const [hospRes] = await Promise.all([fetch('/api/moh/hospitals?limit=1&page=1')]);
     if (hospRes.ok && pendingEl && pendingEl.innerHTML.includes('لا توجد')) {
       // keep dashboard pending list; no override
     }
-      if (usersEl) {
-        if (!usersRes.ok) {
-          usersEl.innerHTML = `<div class="text-center py-3" style="color:var(--m3-error);">فشل تحميل المستخدمين (${usersRes.status})</div>`;
-        } else {
-      const users = await usersRes.json();
-      const pendingOrgIds = new Set(((dashData?.pendingHospitalsList)||[]).map(o=>o.id));
-      const isDemo = (u) => /^(test|demo|3mrr|sample)/i.test(u.username) || (u.email && /test|demo/i.test(u.email));
-      const filtered = users.filter(u => !isDemo(u));
-      const demoCount = users.length - filtered.length;
-      const list = filtered.slice(0,50);
-      let html = demoCount>0 ? `<div style="padding:4px 8px; font-size:0.75rem; color:var(--m3-on-surface-variant); background:var(--m3-surface-container); border-radius:var(--radius-sharp); margin-bottom:6px;">تم إخفاء ${demoCount} حساب اختبار - البيانات الحقيقية فقط</div>` : '';
-      html += list.map((u) => {
-        const isPendingOrg = pendingOrgIds.has(u.organizationId);
-        const pendingBadge = isPendingOrg ? `<span class="badge badge-warning">منشأة معلقة</span>` : '';
-        const orgStatusHint = isPendingOrg ? `<br><small style="color:var(--m3-warning);">⚠️ المنشأة بانتظار اعتماد MOH - دخول الأدمن معلق حتى التفعيل</small>` : '';
-        return `<div style="display:flex; justify-content:space-between; align-items:center; padding:6px 8px; border-bottom:1px solid var(--m3-outline-variant); ${isPendingOrg?'background:var(--m3-warning-container); border-radius:var(--radius-sm); margin-bottom:4px;':''}"><div><strong>${u.username}</strong> <span class="badge ${u.role==='SYS_ADMIN'?'badge-error':u.role==='MOH_ADMIN'?'badge-info':u.role==='MOH_AUDITOR'?'badge-secondary':u.role==='HOSPITAL_ADMIN'?'badge-warning':u.role==='CLINICIAN'?'badge-success':'badge-info'}">${u.role}</span> ${pendingBadge}<br><small>${u.fullName} • ${u.organizationNameAr||u.organizationName||''} • ${u.email||'لا بريد'} • ${u.phone||'لا هاتف'} • ${u.isActive?'نشط':'معطل'}</small>${orgStatusHint}</div><button class="btn btn-secondary btn-sm" onclick="toggleUserStatus('${u.id}', ${u.isActive})">${u.isActive?'تعطيل':'تفعيل'}</button></div>`;
-      }).join('') || 'لا يوجد مستخدمون';
-      if (users.length>0 && list.length===0) html+='<div class="text-center py-2" style="color:var(--m3-on-surface-variant);">كل المستخدمين الحاليين حسابات اختبار</div>';
-      usersEl.innerHTML = html;
-        }
-      }
-    if (verifyEl) {
-      if (!verifyRes.ok) verifyEl.innerHTML = `<div class="text-center py-3" style="color:var(--m3-error);">فشل تحميل طابور التحقق (${verifyRes.status})</div>`;
-      else if (verifyRes.ok) {
-      const q = await verifyRes.json();
-      const total = (q.allergies?.length||0)+(q.medications?.length||0)+(q.conditions?.length||0)+(q.procedures?.length||0);
-      if (total===0) verifyEl.innerHTML = '<div class="text-center py-3" style="color:var(--m3-on-surface-variant);">لا توجد بلاغات بانتظار التحقق</div>';
-      else {
-        let html='';
-        (q.allergies||[]).slice(0,5).forEach((a)=>{ html+= `<div style="padding:6px; border:1px solid var(--m3-outline-variant); border-radius:var(--radius-sharp); margin-bottom:4px; display:flex; justify-content:space-between; align-items:center;"><span>حساسية: ${a.allergenName} <small>(${a.patientInternalId||a.patientId})</small></span><span><button class="btn btn-primary btn-sm" onclick="verifyItem('allergy','${a.id}','VERIFIED')">تحقق</button> <button class="btn btn-secondary btn-sm" onclick="verifyItem('allergy','${a.id}','REFUTED')">رفض</button></span></div>`; });
-        (q.medications||[]).slice(0,5).forEach((m)=>{ html+= `<div style="padding:6px; border:1px solid var(--m3-outline-variant); border-radius:var(--radius-sharp); margin-bottom:4px; display:flex; justify-content:space-between; align-items:center;"><span>دواء: ${m.medicationName}</span><span><button class="btn btn-primary btn-sm" onclick="verifyItem('medication','${m.id}','VERIFIED')">تحقق</button> <button class="btn btn-secondary btn-sm" onclick="verifyItem('medication','${m.id}','REFUTED')">رفض</button></span></div>`; });
-        (q.conditions||[]).slice(0,5).forEach((c)=>{ html+= `<div style="padding:6px; border:1px solid var(--m3-outline-variant); border-radius:var(--radius-sharp); margin-bottom:4px; display:flex; justify-content:space-between; align-items:center;"><span>تشخيص: ${c.conditionName}</span><span><button class="btn btn-primary btn-sm" onclick="verifyItem('condition','${c.id}','VERIFIED')">تحقق</button> <button class="btn btn-secondary btn-sm" onclick="verifyItem('condition','${c.id}','REFUTED')">رفض</button></span></div>`; });
-        verifyEl.innerHTML = html;
-        }
-      }
-    }
+    loadGovernanceUsers();
+    loadVerificationQueue();
     if (patientsEl) {
-      if (!patientsRes.ok) patientsEl.innerHTML = `<div class="text-center py-3" style="color:var(--m3-error);">فشل تحميل المرضى (${patientsRes.status})</div>`;
-      else if (patientsRes.ok) {
-      const patients = await patientsRes.json();
-       if (patients.length===0) patientsEl.innerHTML = '<div class="text-center py-3" style="color:var(--m3-on-surface-variant);">لا يوجد مرضى بعد - البيانات مرتبطة مباشرة بجدول Patient الحقيقي</div>';
-       else patientsEl.innerHTML = `<div style="font-size:0.75rem; color:var(--m3-on-surface-variant); margin-bottom:6px;">${patients.length} مريض من قاعدة البيانات الموحدة (NID/HUID حقيقي)</div>` + patients.slice(0,50).map((p)=> `<div style="padding:6px 8px; border-bottom:1px solid var(--m3-outline-variant); display:flex; justify-content:space-between; align-items:center;"><span><strong>${p.firstNameAr||p.firstName||''} ${p.lastNameAr||p.lastName||''}</strong> <small>${p.internalId} • ${p.gender||''} • ${p.birthDate||''} • ${p.phone||''}</small></span><span class="badge badge-info">${p.identifiers?.[0]?.value||p.internalId}</span> <span class="badge badge-secondary">${p.status||'ACTIVE'}</span></div>`).join('');
-       }
-    loadOrgChangeRequests();
+      loadNationalPatients();
     }
+    loadOrgChangeRequests();
   } catch (e) {
     if (pendingEl) pendingEl.innerHTML = `<div style="color:var(--m3-error);">فشل تحميل الحوكمة: ${e.message}</div>`;
     if (usersEl && usersEl.innerHTML.includes('جاري التحميل')) usersEl.innerHTML = `<div style="color:var(--m3-error);">فشل تحميل المستخدمين: ${e.message}</div>`;
@@ -5226,15 +5455,43 @@ async function loadOrgChangeRequests(){
   if(!el) return;
   el.innerHTML='<div class="text-center py-3">جاري التحميل...</div>';
   try{
-    const r=await fetch('/api/moh/organization-changes');
-    const list=await r.json();
-    if(!Array.isArray(list) || list.length===0) el.innerHTML='<div class="text-center py-3" style="color:var(--m3-on-surface-variant);">لا توجد طلبات تغيير معلقة</div>';
-    else el.innerHTML=list.map(o=>`<div style="padding:8px; border:1px solid var(--m3-outline-variant); border-radius:var(--radius-sharp); margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;"><div><strong>${o.organizationNameAr||o.organizationName}</strong> <span class="badge badge-warning">${o.field}</span><br><small>${o.oldValue||'—'} → <strong>${o.newValue}</strong> • بواسطة ${o.requestedBy} • ${new Date(o.createdAt).toLocaleDateString('ar-SA')}</small></div><div style="display:flex; gap:6px;"><button class="btn btn-primary btn-sm" onclick="approveOrgChange('${o.id}')">اعتماد</button><button class="btn btn-secondary btn-sm" onclick="rejectOrgChange('${o.id}')">رفض</button></div></div>`).join('');
-  }catch(e){ el.innerHTML=`<div style="color:var(--m3-error);">${e.message}</div>`; }
+    const params = new URLSearchParams({ page: String(governanceChangesState.page), limit: String(governanceChangesState.pageSize) });
+    if (governanceChangesState.query) params.set('search', governanceChangesState.query);
+    const r=await fetch('/api/moh/organization-changes?' + params.toString());
+    const data=await r.json();
+    if(!r.ok) throw new Error(data.error || `فشل تحميل الطلبات (${r.status})`);
+    const list=data.items || [];
+    if(!list.length) el.innerHTML='<div class="text-center py-3" style="color:var(--m3-on-surface-variant);">لا توجد طلبات تغيير معلقة</div>';
+    else el.innerHTML=list.map(o=>`<div style="padding:8px; border:1px solid var(--m3-outline-variant); border-radius:var(--radius-sharp); margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;"><div><strong>${governanceEscape(o.organizationNameAr||o.organizationName)}</strong> <span class="badge badge-warning">${governanceEscape(o.field)}</span><br><small>${governanceEscape(o.oldValue||'—')} → <strong>${governanceEscape(o.newValue)}</strong> • بواسطة ${governanceEscape(o.requestedBy)} • ${new Date(o.createdAt).toLocaleDateString('ar-SA')}</small></div><div style="display:flex; gap:6px;"><button class="btn btn-primary btn-sm" onclick="approveOrgChange('${o.id}')">اعتماد</button><button class="btn btn-secondary btn-sm" onclick="rejectOrgChange('${o.id}')">رفض</button></div></div>`).join('');
+    renderGovernancePager(document.getElementById('gov-org-changes-pagination'), governanceChangesState, data.totalPages || 1, loadOrgChangeRequests);
+  }catch(e){ el.innerHTML=`<div style="color:var(--m3-error);">${governanceEscape(e.message)}</div>`; }
 }
 async function approveOrgChange(id){ try{ const r=await fetch('/api/moh/organization-changes/'+id+'/approve',{method:'POST'}); const j=await r.json(); if(r.ok){ showToast('تم الاعتماد','تم تطبيق التغيير','success'); loadOrgChangeRequests(); loadAdminGovernance(); } else showToast('خطأ',j.error,'error'); }catch(e){ showToast('خطأ',e.message,'error'); } }
 async function rejectOrgChange(id){ try{ const r=await fetch('/api/moh/organization-changes/'+id+'/reject',{method:'POST'}); const j=await r.json(); if(r.ok){ showToast('تم الرفض','تم رفض الطلب','info'); loadOrgChangeRequests(); } else showToast('خطأ',j.error,'error'); }catch(e){ showToast('خطأ',e.message,'error'); } }
-async function loadVerificationQueue(){ loadAdminGovernance(); }
+async function loadVerificationQueue(){
+  const el=document.getElementById('gov-verify-list');
+  if(!el) return;
+  el.innerHTML='<div class="text-center py-3">جاري التحميل...</div>';
+  try {
+    const params = new URLSearchParams({ page: String(governanceVerifyState.page), limit: String(governanceVerifyState.pageSize), type: governanceVerifyState.type });
+    if (governanceVerifyState.query) params.set('search', governanceVerifyState.query);
+    const r = await fetch('/api/moh/verification-queue?' + params.toString());
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || `فشل تحميل طابور التحقق (${r.status})`);
+    const list = data.items || [];
+    const type = governanceVerifyState.type;
+    const actionType = { profiles: 'profile', vitals: 'vitals', allergies: 'allergy', medications: 'medication', conditions: 'condition', procedures: 'procedure', family: 'family' }[type] || type;
+    const label = { medications:'دواء', allergies:'حساسية', conditions:'تشخيص', procedures:'إجراء', vitals:'علامة حيوية', family:'تاريخ عائلي', profiles:'ملف المريض' }[type] || type;
+    if (!list.length) el.innerHTML='<div class="text-center py-3" style="color:var(--m3-on-surface-variant);">لا توجد بلاغات بانتظار التحقق</div>';
+    else el.innerHTML = list.map(item => {
+      const value = item.medicationName || item.allergenName || item.conditionName || item.procedureName || item.relationship || item.preferredFirstName || item.observationName || item.code || 'بيانات مبلغة ذاتياً';
+      return `<div style="padding:6px; border:1px solid var(--m3-outline-variant); border-radius:var(--radius-sharp); margin-bottom:4px; display:flex; justify-content:space-between; align-items:center;"><span>${label}: ${governanceEscape(value)} <small>(${governanceEscape(item.patientInternalId || item.patientId || '')})</small></span><span><button class="btn btn-primary btn-sm" onclick="verifyItem('${actionType}','${item.id}','VERIFIED')">تحقق</button> <button class="btn btn-secondary btn-sm" onclick="verifyItem('${actionType}','${item.id}','REFUTED')">رفض</button></span></div>`;
+    }).join('');
+    renderGovernancePager(document.getElementById('gov-verify-pagination'), governanceVerifyState, data.totalPages || 1, loadVerificationQueue);
+  } catch (e) {
+    el.innerHTML = `<div style="color:var(--m3-error);">${governanceEscape(e.message)}</div>`;
+  }
+}
 document.getElementById('moh-admin-role')?.addEventListener('change', (e)=>{
   const role=e.target.value;
   const wrap=document.getElementById('gov-org-select-wrap');
@@ -5507,4 +5764,3 @@ document.getElementById('form-book-appointment')?.addEventListener('submit', asy
     }
   }catch(err){ if(resEl) resEl.textContent=err.message; }
 });
-

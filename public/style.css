@@ -2778,6 +2778,128 @@ pre, code, .mono-code, .json-display {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ---------- Governance and dense admin surfaces on phones ---------- */
+@media (max-width: 768px) {
+  /* Keep admin cards readable when two-column desktop layouts are inline-styled. */
+  #pane-admin-governance > .card,
+  #pane-admin-governance .card {
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  #pane-admin-governance .card-header {
+    align-items: flex-start;
+  }
+
+  #pane-admin-governance .card-header > button {
+    flex: 0 0 auto;
+  }
+
+  #gov-users-list > div,
+  #gov-pending-list > div,
+  #gov-org-changes-list > div,
+  #gov-verify-list > div {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  #gov-users-list > div {
+    align-items: flex-start !important;
+    flex-wrap: wrap;
+  }
+
+  #gov-users-list > div > div:last-child {
+    width: 100%;
+    justify-content: flex-start !important;
+  }
+
+  #gov-users-list > div > div:last-child .btn {
+    flex: 1 1 auto;
+  }
+
+  #gov-users-search,
+  #gov-org-changes-search,
+  #gov-verify-search {
+    min-width: 0;
+    width: 100%;
+  }
+
+  #gov-users-pagination,
+  #gov-pending-pagination,
+  #gov-org-changes-pagination,
+  #gov-verify-pagination {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  #gov-users-pagination .btn,
+  #gov-pending-pagination .btn,
+  #gov-org-changes-pagination .btn,
+  #gov-verify-pagination .btn {
+    flex: 1 1 110px;
+  }
+
+  /* Horizontal data remains available without shrinking text to unreadable sizes. */
+  #pane-admin-governance .table-wrap,
+  #pane-admin-governance .table-card {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .main-content {
+    padding-inline: 10px;
+  }
+
+  .card {
+    border-radius: var(--radius-md);
+  }
+
+  .card-header {
+    padding: 11px 12px;
+  }
+
+  .card-body {
+    padding: 11px 12px;
+  }
+
+  .card-header h3,
+  .card-header-title h3 {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  .card-header > .btn,
+  .card-header > button {
+    width: 100%;
+  }
+
+  #gov-users-list > div > div:last-child .btn {
+    flex-basis: calc(50% - 4px);
+  }
+
+  .form-row,
+  .actions-group,
+  .header-actions {
+    width: 100%;
+  }
+
+  .actions-group .btn,
+  .form-row .btn {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+
+  /* Avoid clipped fixed-width dialog content on narrow devices. */
+  .modal-content,
+  .modal-dialog,
+  .report-preview-sheet {
+    width: calc(100vw - 20px) !important;
+    max-width: calc(100vw - 20px) !important;
+  }
+}
 /* ---------- Short viewports: compact sidebar chrome ---------- */
 @media (max-height: 750px) {
   .brand { margin-bottom: 10px; }
