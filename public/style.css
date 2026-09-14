@@ -2067,10 +2067,58 @@ body.light-theme .toast,
 .mb-6 { margin-bottom: 18px; }
 .text-center { text-align: center; }
 
+/* Quiet counters: plain muted numerals replace pill badges for counts */
+.stat-count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--m3-on-surface-muted);
+}
+
+/* Demoted descriptor: formerly a colored badge, now quiet inline text */
+.muted-note {
+  font-size: 0.74rem;
+  color: var(--m3-on-surface-muted);
+}
+
 /* Calm table empty/loading cells: muted tone with breathing room */
 .data-table td.text-center {
   color: var(--m3-on-surface-variant);
   padding: 18px 12px;
+}
+
+/* Smooth anchor/scroll motion (disabled under reduced-motion below) */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Row hover eases instead of snapping */
+.data-table tbody tr {
+  transition: background-color var(--motion-fast) ease;
+}
+
+/* Skeleton loaders: shimmer wells for first-paint loading states.
+   Duration exception (like spin): shimmer physics needs ~1.2s, outside --motion-* scale. */
+@keyframes skelShimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+.skel {
+  display: block;
+  height: 12px;
+  border-radius: var(--radius-xs);
+  background: linear-gradient(90deg, var(--m3-surface-container-high) 25%, var(--m3-surface-container-highest) 50%, var(--m3-surface-container-high) 75%);
+  background-size: 200% 100%;
+  animation: skelShimmer 1.2s linear infinite;
+}
+
+.skel + .skel {
+  margin-top: 8px;
+}
+
+.skel-row td {
+  padding: 14px 16px;
 }
 
 /* Patient vitals charts: calm wells, token-colored SVG, responsive stack */
@@ -2945,6 +2993,9 @@ pre, code, .mono-code, .json-display {
 
 /* ---------- Reduced motion ---------- */
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
@@ -3003,6 +3054,11 @@ pre, code, .mono-code, .json-display {
 .gov-list-tall { max-height: 400px; }
 .gov-list-medium { max-height: 360px; }
 .gov-list-short { max-height: 300px; }
+
+/* Loading state: skeleton bars breathe inside list containers */
+.gov-list:has(> .skel) {
+  padding: 12px 14px;
+}
 
 .gov-pagination {
   display: flex;

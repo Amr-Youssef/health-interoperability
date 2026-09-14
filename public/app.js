@@ -1073,10 +1073,10 @@ function initFileDropzone() {
 
       if (data.success && data.result) {
         const r = data.result;
-        const formatBadge = r.format === 'hl7v2' ? '<span class="badge badge-warning">HL7 v2.5 MLLP Pipe</span>' :
-                            r.format === 'fhir-bundle' ? '<span class="badge badge-success">HL7 FHIR R4 Bundle</span>' :
-                            r.format === 'csv' ? '<span class="badge badge-info">Tabular CSV Records</span>' :
-                            '<span class="badge badge-purple">JSON Canonical Payload</span>';
+        const formatBadge = r.format === 'hl7v2' ? '<span class="muted-note">HL7 v2.5 MLLP Pipe</span>' :
+                            r.format === 'fhir-bundle' ? '<span class="muted-note">HL7 FHIR R4 Bundle</span>' :
+                            r.format === 'csv' ? '<span class="muted-note">Tabular CSV Records</span>' :
+                            '<span class="muted-note">JSON Canonical Payload</span>';
 
         resultContainer.innerHTML = `
           <div class="ingestion-result-box success">
@@ -1091,8 +1091,8 @@ function initFileDropzone() {
               تم التعرف على التنسيق ومعالجة <strong>${r.totalIngested}</strong> سجل بنجاح، وتوحيد الهوية في فهرس المرضى الرئيسي (MPI)، وتوثيق العملية في سجل الكتل المشفر (NCA).
             </p>
             <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-              <span class="badge badge-success">جودة المطابقة: ${r.validation?.score ?? r.qualityScore ?? '--'}/100</span>
-              <span class="badge badge-info">المنشأة: ${r.sourceSystemId || selectedHosp}</span>
+              <span class="muted-note">جودة المطابقة: ${r.validation?.score ?? r.qualityScore ?? '--'}/100</span>
+              <span class="muted-note">المنشأة: ${r.sourceSystemId || selectedHosp}</span>
               <button type="button" class="btn btn-primary btn-sm" id="btn-view-ingested-result">
                 <svg class="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
                 <span>عرض السجلات المحدثة في لوحة المراقبة</span>
@@ -1729,7 +1729,7 @@ function initActions() {
             <div style="background:var(--m3-surface-container-low); border:1px solid var(--m3-primary); border-radius:var(--radius-xs); padding:14px 18px;">
               <div style="display:flex; justify-content:space-between; align-items:center;">
                 <strong style="color:var(--m3-on-primary-container);">✅ تمت عملية دمج الهويات وتوحيد السجلات السريرية بنجاح</strong>
-                <span class="badge badge-success">تم التوثيق في سلسلة التدقيق</span>
+                
               </div>
               <p style="font-size:0.82rem; margin-top:6px; color:var(--m3-on-surface-variant);">
                 تم نقل ${data.reassignedRecords?.encountersUpdated || 0} زيارات، و${data.reassignedRecords?.conditionsUpdated || 0} تشخيصات، و${data.reassignedRecords?.medicationsUpdated || 0} وصفات طبية إلى الهوية الدائمة.
@@ -2078,7 +2078,7 @@ async function loadMonitoringStats() {
                 <div class="source-details">
                   <div class="detail-row"><span>نوع المصدر:</span><strong>${sourceType}</strong></div>
                   <div class="detail-row"><span>إجمالي السجلات المستوعبة:</span><strong>${recCount} سجل (حقيقي من DB)</strong></div>
-                  <div class="detail-row"><span>زمن الاستجابة:</span><span class="badge badge-success">${latency}ms</span></div>
+                  <div class="detail-row"><span>زمن الاستجابة:</span><code>${latency}ms</code></div>
                   <div class="detail-row"><span>آخر اتصال:</span><code>${lastSyncStr}</code></div>
                 </div>
               </div>
@@ -2119,7 +2119,7 @@ async function loadMonitoringStats() {
         return `
         <tr>
           <td><code>${new Date(ts).toLocaleTimeString('ar-SA')}</code></td>
-          <td><span class="badge badge-success">${a.action || a.entityType}</span></td>
+          <td><code>${a.action || a.entityType}</code></td>
           <td><strong>${a.entityType || a.target_entity_type || '--'}</strong></td>
           <td><code>${(a.entityId || a.target_entity_id || '').substring(0, 8)}...</code></td>
           <td style="color:var(--m3-on-surface-variant);">${a.detail || a.details || ''}</td>
@@ -2444,7 +2444,7 @@ async function loadOnboardedHospitals() {
             <td><code>${h.hospitalId.substring(0,8)}...</code><br><small style="color:var(--m3-on-surface-variant);">${h.hospitalId}</small></td>
             <td><strong>${h.hospitalNameAr}</strong></td>
             <td>${h.hospitalName}</td>
-            <td><span class="badge badge-info">${h.facilityType || h.organizationType || ''}</span></td>
+            <td>${h.facilityType || h.organizationType || ''}</td>
             <td>${h.region}</td>
             <td><code>${h.createdAt ? new Date(h.createdAt).toLocaleDateString('ar-SA') : '--'}</code></td>
             <td><span class="badge ${badge}">${label}</span></td>
@@ -2518,7 +2518,7 @@ async function loadCdsAndAnalyticsTab() {
       if (cdsData.cards) {
         const patientHeader = `<div style="padding:10px 14px; background:var(--m3-primary-container); border:1px solid var(--m3-primary); border-radius:var(--radius-xs); margin-bottom:12px; display:flex; align-items:center; gap:8px;">
           <strong style="color:var(--m3-on-primary-container); font-size:0.88rem;">تقييم السلامة الدوائية للمريض: ${patientLabel}</strong>
-          <span class="badge badge-info">${cdsData.cards.length} تنبيه</span>
+          <span class="stat-count">${cdsData.cards.length} تنبيه</span>
         </div>`;
         if (cdsData.cards.length === 0) {
           container.innerHTML = patientHeader + '<p class="text-center py-4 text-muted">لا توجد تعارضات أو تنبيهات دوائية حرجة مسجلة لهذا المريض.</p>';
@@ -2537,7 +2537,7 @@ async function loadCdsAndAnalyticsTab() {
                 <p style="font-size:0.84rem; color:var(--m3-on-surface-variant); margin-bottom:10px; line-height:1.5;">${c.detailAr}</p>
                 <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.75rem; color:var(--m3-on-surface-muted);">
                   <span>المصدر المعياري: <strong>${c.source?.labelAr}</strong></span>
-                  ${c.suggestions ? `<span>التوصية: <span class="badge badge-info">${c.suggestions[0].labelAr}</span></span>` : ''}
+                  ${c.suggestions ? `<span>التوصية: <strong>${c.suggestions[0].labelAr}</strong></span>` : ''}
                 </div>
               </div>
             `;
@@ -2578,8 +2578,8 @@ async function loadWeqaaSurveillanceCases() {
           <td><code>${c.caseId}</code></td>
           <td><strong>${c.patientName}</strong><br><small>هوية: <code>${c.nationalId}</code></small></td>
           <td><strong style="color:var(--m3-error);">${c.diseaseNameAr}</strong><br><small style="color:var(--m3-on-surface-muted);">${c.diseaseName}</small></td>
-          <td><code>SNOMED ${c.snomedCode}</code><br><span class="badge badge-purple">${c.icdCode}</span></td>
-          <td><span class="badge badge-info">${c.sourceFacilityId}</span></td>
+          <td><code>SNOMED ${c.snomedCode}</code><br><code>${c.icdCode}</code></td>
+          <td><code>${c.sourceFacilityId}</code></td>
           <td>${urgencyBadge}</td>
           <td>${statusBadge}</td>
           <td>
@@ -2610,7 +2610,7 @@ async function dispatchWeqaaCase(caseId) {
         <div style="background:var(--m3-surface-container-low); border:1px solid var(--m3-primary); border-radius:var(--radius-xs); padding:14px 18px; margin-top:12px;">
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <strong style="color:var(--m3-on-primary-container);">✅ تم إرسال البلاغ الوبائي الرسمي إلى هيئة وقاية بنجاح</strong>
-            <span class="badge badge-success">تم التوثيق في سجل التدقيق</span>
+            
           </div>
           <p style="font-size:0.82rem; margin-top:6px; color:var(--m3-on-surface-variant);">
             الرقم المرجعي الوطني: <code>${data.case.weqaaTrackingNumber}</code> | توقيت الإرسال: <code>${new Date(data.case.dispatchedAt).toLocaleString('ar-SA')}</code>
@@ -2668,10 +2668,10 @@ async function loadNphiesTab() {
           <td data-label="المريض"><strong>${patientName}</strong>${isCurrent ? ' <span class="badge badge-success" style="font-size:0.65rem;">النشط</span>' : ''}</td>
           <td data-label="شركة التأمين">${c.payerNameAr || c.payerName}</td>
           <td data-label="رقم العضوية"><code>${c.memberId}</code></td>
-          <td data-label="فئة الشبكة"><span class="badge badge-info">${c.networkClass}</span></td>
+          <td data-label="فئة الشبكة">${c.networkClass}</td>
           <td data-label="نسبة التحمل"><strong style="color:var(--m3-on-primary-container); font-size:0.95rem;">${c.copayPercentage}%</strong></td>
           <td data-label="الحد الأقصى"><strong>${c.copayMaxCapSAR} ر.س</strong></td>
-          <td data-label="الحالة"><span class="badge badge-success">نشطة</span></td>
+          <td data-label="الحالة">نشطة</td>
         </tr>`;
       }).join('') || '<tr><td colspan="8" class="text-center py-4">لا توجد وثائق تأمين</td></tr>';
     }
@@ -2695,12 +2695,12 @@ async function loadNphiesTab() {
           <tr style="${rowStyle}">
             <td data-label="رقم المطالبة"><code>${clm.internalId.substring(0, 8)}...</code></td>
             <td data-label="المريض"><strong>${patientName}</strong>${isCurrent ? ' <span class="badge badge-success" style="font-size:0.65rem;">النشط</span>' : ''}</td>
-            <td data-label="المستشفى المصدر"><span class="badge badge-info">${clm.provenance?.sourceSystemId}</span></td>
+            <td data-label="المستشفى المصدر"><code>${clm.provenance?.sourceSystemId}</code></td>
             <td data-label="رمز الخدمة"><code>${sbsCode}</code><br><small style="color:var(--m3-on-surface-muted);">${clm.items?.[0]?.serviceName || 'Consultation'}</small></td>
             <td data-label="الإجمالي"><strong>${clm.totalGrossSAR} ر.س</strong></td>
             <td data-label="تحمل المريض"><span style="color:var(--m3-on-warning-container); font-weight:700;">${resp ? resp.totalPatientCopaySAR : clm.totalPatientCopaySAR} ر.س</span></td>
             <td data-label="مطالبة التأمين"><strong style="color:var(--m3-on-primary-container); font-weight:700;">${resp ? resp.totalPayerPayableSAR : clm.totalInsurerClaimedSAR} ر.س</strong></td>
-            <td data-label="قرار التسوية"><span class="badge badge-success">${resp ? resp.disposition : 'معتمدة'}</span></td>
+            <td data-label="قرار التسوية">${resp ? resp.disposition : 'معتمدة'}</td>
             <td data-label="رقم المعاملة"><code>${txId}</code></td>
           </tr>
         `;
@@ -2733,9 +2733,9 @@ function renderRxMeds(list) {
         <tr style="${rowStyle}">
           <td data-label="المريض"><strong>${patientName}</strong>${isCurrentPatient ? ' <span class="badge badge-success" style="font-size:0.65rem;">النشط</span>' : ''}</td>
           <td data-label="الدواء بالمصدر"><strong>${m.medication?.code?.sourceCode || '—'}</strong><br><small style="color:var(--m3-on-surface-muted);">${m.medication?.code?.sourceDisplay || ''}</small></td>
-          <td data-label="المستشفى المصدر"><span class="badge badge-info">${m.provenance?.sourceSystemId || '—'}</span></td>
+          <td data-label="المستشفى المصدر"><code>${m.provenance?.sourceSystemId || '—'}</code></td>
           <td data-label="كود الدواء السعودي">${m.medication?.code?.sfdaCode ? `<strong style="color:var(--m3-on-secondary-container);"><code>${m.medication.code.sfdaCode}</code></strong><br><small style="color:var(--m3-on-surface-variant);">${m.medication?.code?.sfdaDisplay || ''}</small>` : '— (غير مرمّز SFDA)'}</td>
-          <td data-label="التصنيف العلمي">${m.medication?.code?.atcCode ? `<span class="badge badge-purple">${m.medication.code.atcCode}</span>` : '—'}<br><small style="color:var(--m3-on-surface-muted);">${m.medication?.code?.rxnormCode ? 'RxNorm: ' + m.medication.code.rxnormCode : ''}</small></td>
+          <td data-label="التصنيف العلمي">${m.medication?.code?.atcCode ? `<code>${m.medication.code.atcCode}</code>` : '—'}<br><small style="color:var(--m3-on-surface-muted);">${m.medication?.code?.rxnormCode ? 'RxNorm: ' + m.medication.code.rxnormCode : ''}</small></td>
           <td data-label="الجرعة والاستخدام">${m.dosageInstruction?.[0]?.textAr || m.dosageInstruction?.[0]?.text || '—'}</td>
           <td data-label="الكمية والتكرار">${m.dispenseRequest?.quantity?.value ? `<strong>${m.dispenseRequest.quantity.value} ${m.dispenseRequest.quantity.unit || ''}</strong>` : '—'}${m.dispenseRequest?.numberOfRepeatsAllowed ? ` (${m.dispenseRequest.numberOfRepeatsAllowed} مرات تكرار)` : ''}</td>
           <td data-label="تاريخ الوصفة"><code>${(() => { try { return m.authoredOn ? new Date(m.authoredOn).toLocaleDateString('ar-SA') : '—'; } catch (e) { return '—'; } })()}</code></td>
@@ -2761,9 +2761,9 @@ function renderRxVax(list) {
         <tr style="${rowStyle}">
           <td data-label="المريض"><strong>${patientName}</strong>${isCurrentPatient ? ' <span class="badge badge-success" style="font-size:0.65rem;">النشط</span>' : ''}</td>
           <td data-label="اللقاح بالمصدر"><strong>${v.vaccineCode?.sourceCode || '—'}</strong><br><small style="color:var(--m3-on-surface-muted);">${v.vaccineCode?.sourceDisplay || ''}</small></td>
-          <td data-label="المستشفى المصدر"><span class="badge badge-info">${v.provenance?.sourceSystemId || '—'}</span></td>
+          <td data-label="المستشفى المصدر"><code>${v.provenance?.sourceSystemId || '—'}</code></td>
           <td data-label="كود وزارة الصحة">${v.vaccineCode?.sourceCode?.includes('SA-VAX') ? `<strong style="color:var(--m3-on-primary-container);"><code>${v.vaccineCode.sourceCode}</code></strong>` : (v.vaccineCode?.sourceCode ? `<code>${v.vaccineCode.sourceCode}</code>` : '—')}</td>
-          <td data-label="المعيار الدولي">${v.vaccineCode?.cvxCode ? `<span class="badge badge-purple">CVX ${v.vaccineCode.cvxCode}</span>` : '—'}</td>
+          <td data-label="المعيار الدولي">${v.vaccineCode?.cvxCode ? `<code>CVX ${v.vaccineCode.cvxCode}</code>` : '—'}</td>
           <td data-label="رقم التشغيلة">${v.lotNumber ? `<code>${v.lotNumber}</code>` : '—'}</td>
           <td data-label="تاريخ الانتهاء"><code>${v.expirationDate || '—'}</code></td>
           <td data-label="تاريخ الإعطاء"><code>${(() => { try { return v.occurrenceDateTime ? new Date(v.occurrenceDateTime).toLocaleDateString('ar-SA') : '—'; } catch (e) { return '—'; } })()}</code></td>
@@ -2893,7 +2893,7 @@ async function loadMpiIdentities() {
                    <button type="button" class="btn btn-secondary btn-sm" onclick="unmergeMpiIdentity('${id.mergedInto}', '${id.internalPatientId}')">
                      <span>فصل الهوية (Unmerge)</span>
                    </button>`
-                : '<span class="badge badge-success">مطابقة حتمية مؤكدة 100% (نشطة)</span>'}
+                : '<span style="color:var(--m3-primary); font-weight:700; font-size:0.82rem;">مطابقة حتمية مؤكدة 100% (نشطة)</span>'}
             </div>
           </div>
 
@@ -2918,7 +2918,7 @@ async function loadMpiIdentities() {
             ${id.matchHistory.map((m) => `
               <div class="detail-row">
                 <span>[${m.matchStrategy}] ${m.details}</span>
-                <span class="badge badge-info">${m.confidence * 100}% ثقة</span>
+                <span class="muted-note">${m.confidence * 100}% ثقة</span>
               </div>
             `).join('')}
           </div>
@@ -3593,7 +3593,7 @@ async function loadHospitalMigrationTab() {
       const total=s.rawRecordsCount||0;
       const failed=s.recentImports?.reduce((a,c)=>a+(c.recordsFailed||0),0)||0;
       const rate= total? ((total-failed)/total*100).toFixed(1): '100';
-      qualityEl.innerHTML=`<div style="display:flex; gap:12px; flex-wrap:wrap; font-size:0.82rem;"><span class="badge badge-success">جودة: ${rate}%</span><span class="badge badge-info">إجمالي: ${total}</span><span class="badge ${failed?'badge-warning':'badge-success'}">فشل: ${failed}</span><button class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText(JSON.stringify(s,null,2))">نسخ تقرير</button><button class="btn btn-secondary btn-sm" onclick="window.open('/api/hospital/imports','_blank')">تصدير سجل</button></div>`;
+      qualityEl.innerHTML=`<div style="display:flex; gap:12px; flex-wrap:wrap; font-size:0.82rem;"><span class="muted-note">جودة: ${rate}%</span><span class="muted-note">إجمالي: ${total}</span><span class="muted-note">فشل: ${failed}</span><button class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText(JSON.stringify(s,null,2))">نسخ تقرير</button><button class="btn btn-secondary btn-sm" onclick="window.open('/api/hospital/imports','_blank')">تصدير سجل</button></div>`;
     }).catch(()=>{});
   }
   loadHospitalPatientsList();
@@ -3631,7 +3631,7 @@ async function loadHospitalImports() {
     tbody.innerHTML = list.map((r)=>`
       <tr>
         <td><strong>${r.fileName || r.sourceSystem}</strong><br><small style="color:var(--m3-on-surface-muted);">${r.sourceSystem}</small></td>
-        <td><span class="badge badge-info">${r.importType}</span></td>
+        <td><code>${r.importType}</code></td>
         <td><span class="badge ${r.status==='COMPLETED'?'badge-success':'badge-warning'}">${r.status}</span></td>
         <td><strong>${r.recordsProcessed}</strong> <small style="color:var(--m3-error);">/${r.recordsFailed} فشل</small></td>
         <td><code>${new Date(r.startedAt).toLocaleDateString('ar-SA')}</code></td>
@@ -3746,8 +3746,8 @@ function initHospitalMigrationDropzone() {
       const data = await res.json();
       if (data.success && data.result) {
         const r=data.result;
-        const badge = r.format==='hl7v2'?'<span class="badge badge-warning">HL7 v2.5</span>': r.format==='fhir-bundle'?'<span class="badge badge-success">FHIR R4</span>':'<span class="badge badge-info">CSV</span>';
-        resultContainer.innerHTML=`<div class="ingestion-result-box success"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;"><div style="display:flex; align-items:center; gap:8px;">${getSvgIcon('shieldCheck','style="width:20px; height:20px; color:var(--m3-secondary);"')}<strong style="color:var(--m3-on-surface); font-size:0.96rem;">تم ترحيل وتطبيع ملف منشأتك بنجاح: <code>${r.fileName}</code></strong></div>${badge}</div><p style="font-size:0.82rem; color:var(--m3-on-surface-variant); margin-bottom:10px;">تم استيعاب <strong>${r.totalIngested}</strong> سجل باسم منشأتك وربطها في السجل الوطني مع حفظ المصدر.</p><div style="display:flex; gap:8px; align-items:center;"><span class="badge badge-success">جودة ${r.validation?.score ?? r.qualityScore ?? '--'}/100</span><span class="badge badge-info">${orgId.substring(0,8)}</span><button type="button" class="btn btn-secondary btn-sm" onclick="loadHospitalMigrationTab()">تحديث الإحصائيات</button></div></div>`;
+        const badge = r.format==='hl7v2'?'<span class="muted-note">HL7 v2.5</span>': r.format==='fhir-bundle'?'<span class="muted-note">FHIR R4</span>':'<span class="muted-note">CSV</span>';
+        resultContainer.innerHTML=`<div class="ingestion-result-box success"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;"><div style="display:flex; align-items:center; gap:8px;">${getSvgIcon('shieldCheck','style="width:20px; height:20px; color:var(--m3-secondary);"')}<strong style="color:var(--m3-on-surface); font-size:0.96rem;">تم ترحيل وتطبيع ملف منشأتك بنجاح: <code>${r.fileName}</code></strong></div>${badge}</div><p style="font-size:0.82rem; color:var(--m3-on-surface-variant); margin-bottom:10px;">تم استيعاب <strong>${r.totalIngested}</strong> سجل باسم منشأتك وربطها في السجل الوطني مع حفظ المصدر.</p><div style="display:flex; gap:8px; align-items:center;"><span class="muted-note">جودة ${r.validation?.score ?? r.qualityScore ?? '--'}/100</span><code>${orgId.substring(0,8)}</code><button type="button" class="btn btn-secondary btn-sm" onclick="loadHospitalMigrationTab()">تحديث الإحصائيات</button></div></div>`;
         showToast('تم الترحيل بنجاح', `تم ترحيل ${r.totalIngested} سجل لمنشأتك`, 'success');
         loadHospitalScopedStats(); loadHospitalImports(); loadHospitalPatientsList();
       } else {
@@ -3900,7 +3900,7 @@ async function showHospGlobalDetail(patientId) {
                 <div><span style="font-size:0.72rem; color:var(--m3-on-surface-muted); display:block;">الجنس / تاريخ الميلاد</span><strong>${gender} • ${birthDate}</strong></div>
                 <div><span style="font-size:0.72rem; color:var(--m3-on-surface-muted); display:block;">التواصل</span><strong style="font-family:'JetBrains Mono', monospace; font-size:0.85rem;" dir="ltr">${phone}</strong><small style="display:block; color:var(--m3-on-surface-muted);">${email}</small></div>
                 <div><span style="font-size:0.72rem; color:var(--m3-on-surface-muted); display:block;">المعرف الداخلي الموحد (MPI)</span><code style="font-size:0.78rem;">${p.internalId}</code></div>
-                <div><span style="font-size:0.72rem; color:var(--m3-on-surface-muted); display:block;">أرقام ملفات المنشآت (MRN)</span>${mrnList.length ? mrnList.map(m=>`<span class="badge badge-info" style="margin:2px; font-size:0.68rem;">${m.sourceSystemId}: ${m.value}</span>`).join('') : '<small style="color:var(--m3-on-surface-muted);">لا يوجد</small>'}</div>
+                <div><span style="font-size:0.72rem; color:var(--m3-on-surface-muted); display:block;">أرقام ملفات المنشآت (MRN)</span>${mrnList.length ? mrnList.map(m=>`<code style="margin:2px; font-size:0.68rem;">${m.sourceSystemId}: ${m.value}</code>`).join(' ') : '<small style="color:var(--m3-on-surface-muted);">لا يوجد</small>'}</div>
               </div>
             </div>
           </div>
@@ -3924,10 +3924,10 @@ async function showHospGlobalDetail(patientId) {
           <div class="card mb-4 mt-4" style="border:1px solid var(--m3-outline-variant);">
             <div class="card-header" style="background:var(--m3-surface-container-high);">
               <div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg><h3>الوصفات والأدوية المعتمدة (SFDA SDC)</h3></div>
-              <span class="badge badge-info">${meds.length} وصفة</span>
+              <span class="stat-count">${meds.length} وصفة</span>
             </div>
             <div class="card-body p-0">
-              ${meds.length ? `<table class="data-table"><thead><tr><th>الدواء بالمصدر</th><th>المصدر</th><th>كود SFDA</th><th>ATC / RxNorm</th><th>الجرعة</th><th>الكمية</th><th>التاريخ</th></tr></thead><tbody>${meds.map(m=>`<tr><td><strong>${m.medication?.code?.sourceCode || '—'}</strong><br><small style="color:var(--m3-on-surface-muted);">${m.medication?.code?.sourceDisplay||''}</small></td><td><span class="badge badge-info">${m.provenance?.sourceSystemId||'—'}</span></td><td><code>${m.medication?.code?.sfdaCode||'—'}</code><br><small>${m.medication?.code?.sfdaDisplay||''}</small></td><td><span class="badge badge-purple">${m.medication?.code?.atcCode||'—'}</span><br><small>RxNorm ${m.medication?.code?.rxnormCode||'—'}</small></td><td>${m.dosageInstruction?.[0]?.text||m.dosageInstruction?.[0]?.textAr||'—'}</td><td><strong>${m.dispenseRequest?.quantity?.value||'—'} ${m.dispenseRequest?.quantity?.unit||''}</strong></td><td><code>${m.authoredOn? new Date(m.authoredOn).toLocaleDateString('ar-SA'):'—'}</code></td></tr>`).join('')}</tbody></table>` : '<p class="text-center py-4" style="color:var(--m3-on-surface-muted);">لا توجد وصفات أدوية في السجل الموحد</p>'}
+              ${meds.length ? `<table class="data-table"><thead><tr><th>الدواء بالمصدر</th><th>المصدر</th><th>كود SFDA</th><th>ATC / RxNorm</th><th>الجرعة</th><th>الكمية</th><th>التاريخ</th></tr></thead><tbody>${meds.map(m=>`<tr><td><strong>${m.medication?.code?.sourceCode || '—'}</strong><br><small style="color:var(--m3-on-surface-muted);">${m.medication?.code?.sourceDisplay||''}</small></td><td><code>${m.provenance?.sourceSystemId||'—'}</code></td><td><code>${m.medication?.code?.sfdaCode||'—'}</code><br><small>${m.medication?.code?.sfdaDisplay||''}</small></td><td><code>${m.medication?.code?.atcCode||'—'}</code><br><small>RxNorm ${m.medication?.code?.rxnormCode||'—'}</small></td><td>${m.dosageInstruction?.[0]?.text||m.dosageInstruction?.[0]?.textAr||'—'}</td><td><strong>${m.dispenseRequest?.quantity?.value||'—'} ${m.dispenseRequest?.quantity?.unit||''}</strong></td><td><code>${m.authoredOn? new Date(m.authoredOn).toLocaleDateString('ar-SA'):'—'}</code></td></tr>`).join('')}</tbody></table>` : '<p class="text-center py-4" style="color:var(--m3-on-surface-muted);">لا توجد وصفات أدوية في السجل الموحد</p>'}
             </div>
           </div>
 
@@ -3935,10 +3935,10 @@ async function showHospGlobalDetail(patientId) {
           <div class="card mb-4" style="border:1px solid var(--m3-outline-variant);">
             <div class="card-header" style="background:var(--m3-surface-container-high);">
               <div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"/><path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"/><circle cx="20" cy="10" r="2"/></svg><h3>التشخيصات المعيارية (SNOMED • ICD-10-AM • SBS)</h3></div>
-              <span class="badge badge-info">${cond.length} تشخيص</span>
+              <span class="stat-count">${cond.length} تشخيص</span>
             </div>
             <div class="card-body p-0">
-              ${cond.length ? `<table class="data-table"><thead><tr><th>التشخيص بالمصدر</th><th>المصدر</th><th>SNOMED CT</th><th>ICD-10-AM</th><th>SBS</th><th>التاريخ</th></tr></thead><tbody>${cond.map(c=>`<tr><td><strong>${c.code?.sourceCode||'—'}</strong><br><small style="color:var(--m3-on-surface-muted);">${c.code?.sourceDisplay||''}</small></td><td><span class="badge badge-info">${c.provenance?.sourceSystemId||'—'}</span></td><td><code>${c.code?.snomedCode||'—'}</code><br><small>${c.code?.snomedDisplay||''}</small></td><td><span class="badge badge-purple">${c.code?.icd10amCode||'—'}</span></td><td><span class="badge badge-warning">${c.code?.sbsCode||'—'}</span></td><td><code>${c.recordedDate? new Date(c.recordedDate).toLocaleDateString('ar-SA'):'—'}</code></td></tr>`).join('')}</tbody></table>` : '<p class="text-center py-4" style="color:var(--m3-on-surface-muted);">لا توجد تشخيصات مسجلة</p>'}
+              ${cond.length ? `<table class="data-table"><thead><tr><th>التشخيص بالمصدر</th><th>المصدر</th><th>SNOMED CT</th><th>ICD-10-AM</th><th>SBS</th><th>التاريخ</th></tr></thead><tbody>${cond.map(c=>`<tr><td><strong>${c.code?.sourceCode||'—'}</strong><br><small style="color:var(--m3-on-surface-muted);">${c.code?.sourceDisplay||''}</small></td><td><code>${c.provenance?.sourceSystemId||'—'}</code></td><td><code>${c.code?.snomedCode||'—'}</code><br><small>${c.code?.snomedDisplay||''}</small></td><td><code>${c.code?.icd10amCode||'—'}</code></td><td><code>${c.code?.sbsCode||'—'}</code></td><td><code>${c.recordedDate? new Date(c.recordedDate).toLocaleDateString('ar-SA'):'—'}</code></td></tr>`).join('')}</tbody></table>` : '<p class="text-center py-4" style="color:var(--m3-on-surface-muted);">لا توجد تشخيصات مسجلة</p>'}
             </div>
           </div>
 
@@ -3946,10 +3946,10 @@ async function showHospGlobalDetail(patientId) {
           <div class="card mb-4" style="border:1px solid var(--m3-outline-variant);">
             <div class="card-header" style="background:var(--m3-surface-container-high);">
               <div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 18h8M3 22h18M14 22a7 7 0 1 0-14 0"/><path d="M9 14h.01M9 10h.01M12 6h.01M12 2h.01M15 10a4 4 0 0 0 4-4V2h-4v4a4 4 0 0 0 4 4"/></svg><h3>النتائج المخبرية المعيارية (LOINC)</h3></div>
-              <span class="badge badge-info">${obs.length} نتيجة</span>
+              <span class="stat-count">${obs.length} نتيجة</span>
             </div>
             <div class="card-body p-0">
-              ${obs.length ? `<table class="data-table"><thead><tr><th>الفحص بالمصدر</th><th>المصدر</th><th>LOINC</th><th>النتيجة</th><th>المرجع</th><th>التاريخ</th></tr></thead><tbody>${obs.map(o=>`<tr><td><strong>${o.code?.sourceCode||'—'}</strong></td><td><span class="badge badge-info">${o.provenance?.sourceSystemId||'—'}</span></td><td><code>LOINC ${o.code?.loincCode||'—'}</code><br><small>${o.code?.loincDisplay||''}</small></td><td><strong style="color:var(--m3-on-primary-container);">${o.valueQuantity?.value ?? o.valueString ?? '—'} ${o.valueQuantity?.unit||''}</strong></td><td>${o.referenceRange?.text||'—'}</td><td><code>${o.effectiveDateTime? new Date(o.effectiveDateTime).toLocaleDateString('ar-SA'):'—'}</code></td></tr>`).join('')}</tbody></table>` : '<p class="text-center py-4" style="color:var(--m3-on-surface-muted);">لا توجد نتائج مخبرية</p>'}
+              ${obs.length ? `<table class="data-table"><thead><tr><th>الفحص بالمصدر</th><th>المصدر</th><th>LOINC</th><th>النتيجة</th><th>المرجع</th><th>التاريخ</th></tr></thead><tbody>${obs.map(o=>`<tr><td><strong>${o.code?.sourceCode||'—'}</strong></td><td><code>${o.provenance?.sourceSystemId||'—'}</code></td><td><code>LOINC ${o.code?.loincCode||'—'}</code><br><small>${o.code?.loincDisplay||''}</small></td><td><strong style="color:var(--m3-on-primary-container);">${o.valueQuantity?.value ?? o.valueString ?? '—'} ${o.valueQuantity?.unit||''}</strong></td><td>${o.referenceRange?.text||'—'}</td><td><code>${o.effectiveDateTime? new Date(o.effectiveDateTime).toLocaleDateString('ar-SA'):'—'}</code></td></tr>`).join('')}</tbody></table>` : '<p class="text-center py-4" style="color:var(--m3-on-surface-muted);">لا توجد نتائج مخبرية</p>'}
             </div>
           </div>
 
@@ -3957,10 +3957,10 @@ async function showHospGlobalDetail(patientId) {
           <div class="card mb-4" style="border:1px solid var(--m3-outline-variant);">
             <div class="card-header" style="background:var(--m3-surface-container-high);">
               <div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m18 2 4 4-4 4"/><path d="m17 7 3-3"/><path d="M19 9 8.7 19.3c-1 1-2.5 1-3.4 0l-.6-.6c-1-1-1-2.5 0-3.4L15 5"/><path d="m9 11 4 4"/><path d="m5 19-3 3"/></svg><h3>سجل التطعيمات واللقاحات (MOH / CVX)</h3></div>
-              <span class="badge badge-info">${imm.length} تطعيم</span>
+              <span class="stat-count">${imm.length} تطعيم</span>
             </div>
             <div class="card-body p-0">
-              ${imm.length ? `<table class="data-table"><thead><tr><th>اللقاح بالمصدر</th><th>المصدر</th><th>MOH Code</th><th>CVX</th><th>التشغيلة</th><th>التاريخ</th><th>الموقع</th></tr></thead><tbody>${imm.map(i=>`<tr><td><strong>${i.vaccineCode?.sourceCode||'—'}</strong><br><small style="color:var(--m3-on-surface-muted);">${i.vaccineCode?.sourceDisplay||''}</small></td><td><span class="badge badge-info">${i.provenance?.sourceSystemId||'—'}</span></td><td><code>${i.vaccineCode?.sourceCode || '—'}</code></td><td><span class="badge badge-purple">CVX ${i.vaccineCode?.cvxCode||'—'}</span></td><td><code>${i.lotNumber||'—'}</code></td><td><code>${i.occurrenceDateTime? new Date(i.occurrenceDateTime).toLocaleDateString('ar-SA'):'—'}</code></td><td>${i.site||'—'}</td></tr>`).join('')}</tbody></table>` : '<p class="text-center py-4" style="color:var(--m3-on-surface-muted);">لا توجد تطعيمات مسجلة</p>'}
+              ${imm.length ? `<table class="data-table"><thead><tr><th>اللقاح بالمصدر</th><th>المصدر</th><th>MOH Code</th><th>CVX</th><th>التشغيلة</th><th>التاريخ</th><th>الموقع</th></tr></thead><tbody>${imm.map(i=>`<tr><td><strong>${i.vaccineCode?.sourceCode||'—'}</strong><br><small style="color:var(--m3-on-surface-muted);">${i.vaccineCode?.sourceDisplay||''}</small></td><td><code>${i.provenance?.sourceSystemId||'—'}</code></td><td><code>${i.vaccineCode?.sourceCode || '—'}</code></td><td><code>CVX ${i.vaccineCode?.cvxCode||'—'}</code></td><td><code>${i.lotNumber||'—'}</code></td><td><code>${i.occurrenceDateTime? new Date(i.occurrenceDateTime).toLocaleDateString('ar-SA'):'—'}</code></td><td>${i.site||'—'}</td></tr>`).join('')}</tbody></table>` : '<p class="text-center py-4" style="color:var(--m3-on-surface-muted);">لا توجد تطعيمات مسجلة</p>'}
             </div>
           </div>
 
@@ -3971,7 +3971,7 @@ async function showHospGlobalDetail(patientId) {
               <span class="badge ${allergies.some(a=>a.criticality==='high')?'badge-warning':'badge-success'}">${allergies.length} حساسية</span>
             </div>
             <div class="card-body p-0">
-              ${allergies.length ? `<table class="data-table"><thead><tr><th>المادة المسببة</th><th>المصدر</th><th>SNOMED</th><th>الخطورة</th><th>التفاعل</th><th>التاريخ</th></tr></thead><tbody>${allergies.map(a=>`<tr><td><strong>${a.substanceTextAr||a.substanceText||'—'}</strong><br><small style="color:var(--m3-on-surface-muted);">${a.substanceText||''}</small></td><td><span class="badge badge-info">${a.provenance?.sourceSystemId||'—'}</span></td><td><code>SNOMED ${a.substanceCode?.snomedCode||'—'}</code></td><td><span class="badge ${a.criticality==='high'?'badge-warning':'badge-info'}">${a.criticality==='high'?'عالية':'منخفضة'}</span></td><td><strong style="color:var(--m3-error);">${a.reactions?.[0]?.manifestationTextAr || a.reactions?.[0]?.manifestationText || '—'}</strong></td><td><code>${a.recordedDate? new Date(a.recordedDate).toLocaleDateString('ar-SA'):'—'}</code></td></tr>`).join('')}</tbody></table>` : '<p class="text-center py-4" style="color:var(--m3-on-surface-muted);">لا توجد حساسيات مسجلة</p>'}
+              ${allergies.length ? `<table class="data-table"><thead><tr><th>المادة المسببة</th><th>المصدر</th><th>SNOMED</th><th>الخطورة</th><th>التفاعل</th><th>التاريخ</th></tr></thead><tbody>${allergies.map(a=>`<tr><td><strong>${a.substanceTextAr||a.substanceText||'—'}</strong><br><small style="color:var(--m3-on-surface-muted);">${a.substanceText||''}</small></td><td><code>${a.provenance?.sourceSystemId||'—'}</code></td><td><code>SNOMED ${a.substanceCode?.snomedCode||'—'}</code></td><td><span class="badge ${a.criticality==='high'?'badge-warning':'badge-info'}">${a.criticality==='high'?'عالية':'منخفضة'}</span></td><td><strong style="color:var(--m3-error);">${a.reactions?.[0]?.manifestationTextAr || a.reactions?.[0]?.manifestationText || '—'}</strong></td><td><code>${a.recordedDate? new Date(a.recordedDate).toLocaleDateString('ar-SA'):'—'}</code></td></tr>`).join('')}</tbody></table>` : '<p class="text-center py-4" style="color:var(--m3-on-surface-muted);">لا توجد حساسيات مسجلة</p>'}
             </div>
           </div>
 
@@ -3979,10 +3979,10 @@ async function showHospGlobalDetail(patientId) {
           <div class="card mb-4" style="border:1px solid var(--m3-outline-variant);">
             <div class="card-header" style="background:var(--m3-surface-container-high);">
               <div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><h3>التقارير التشخيصية المجمعة (LOINC)</h3></div>
-              <span class="badge badge-info">${diagnosticReports.length} تقرير</span>
+              <span class="stat-count">${diagnosticReports.length} تقرير</span>
             </div>
             <div class="card-body p-0">
-              ${diagnosticReports.length ? `<table class="data-table"><thead><tr><th>اسم التقرير</th><th>المصدر</th><th>LOINC</th><th>الحالة</th><th>الخلاصة</th><th>الإصدار</th></tr></thead><tbody>${diagnosticReports.map(d=>`<tr><td><strong>${d.code?.loincDisplay||d.code?.sourceDisplay||'تقرير تشخيصي'}</strong></td><td><span class="badge badge-info">${d.provenance?.sourceSystemId||'—'}</span></td><td><code>LOINC ${d.code?.loincCode||'—'}</code></td><td><span class="badge badge-success">${d.status||'final'}</span></td><td style="max-width:260px; font-size:0.82rem;">${d.conclusionAr||d.conclusion||'—'}</td><td><code>${d.issued? new Date(d.issued).toLocaleDateString('ar-SA'):'—'}</code></td></tr>`).join('')}</tbody></table>` : '<p class="text-center py-4" style="color:var(--m3-on-surface-muted);">لا توجد تقارير تشخيصية مجمعة</p>'}
+              ${diagnosticReports.length ? `<table class="data-table"><thead><tr><th>اسم التقرير</th><th>المصدر</th><th>LOINC</th><th>الحالة</th><th>الخلاصة</th><th>الإصدار</th></tr></thead><tbody>${diagnosticReports.map(d=>`<tr><td><strong>${d.code?.loincDisplay||d.code?.sourceDisplay||'تقرير تشخيصي'}</strong></td><td><code>${d.provenance?.sourceSystemId||'—'}</code></td><td><code>LOINC ${d.code?.loincCode||'—'}</code></td><td>${d.status||'final'}</td><td style="max-width:260px; font-size:0.82rem;">${d.conclusionAr||d.conclusion||'—'}</td><td><code>${d.issued? new Date(d.issued).toLocaleDateString('ar-SA'):'—'}</code></td></tr>`).join('')}</tbody></table>` : '<p class="text-center py-4" style="color:var(--m3-on-surface-muted);">لا توجد تقارير تشخيصية مجمعة</p>'}
             </div>
           </div>
 
@@ -4010,15 +4010,15 @@ async function showHospGlobalDetail(patientId) {
           <!-- 7. Coverages & Claims (NPHIES) -->
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;" class="mb-4">
             <div class="card" style="border:1px solid var(--m3-outline-variant);">
-              <div class="card-header" style="background:var(--m3-surface-container-high);"><div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg><h3>وثائق التأمين (Coverage)</h3></div><span class="badge badge-info">${coverages.length}</span></div>
+              <div class="card-header" style="background:var(--m3-surface-container-high);"><div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg><h3>وثائق التأمين (Coverage)</h3></div><span class="stat-count">${coverages.length}</span></div>
               <div class="card-body p-0">
-                ${coverages.length ? `<table class="data-table"><thead><tr><th>البوليصة</th><th>شركة التأمين</th><th>العضوية</th><th>الحالة</th></tr></thead><tbody>${coverages.map(c=>`<tr><td><code>${c.policyNumber||c.subscriberId||'—'}</code></td><td>${c.payerNameAr||c.payerName||c.payorId||'—'}</td><td><code>${c.memberId||c.beneficiaryId||'—'}</code></td><td><span class="badge badge-success">${c.status||'active'}</span></td></tr>`).join('')}</tbody></table>` : '<p class="text-center py-4" style="color:var(--m3-on-surface-muted); font-size:0.82rem;">لا توجد وثائق تأمين</p>'}
+                ${coverages.length ? `<table class="data-table"><thead><tr><th>البوليصة</th><th>شركة التأمين</th><th>العضوية</th><th>الحالة</th></tr></thead><tbody>${coverages.map(c=>`<tr><td><code>${c.policyNumber||c.subscriberId||'—'}</code></td><td>${c.payerNameAr||c.payerName||c.payorId||'—'}</td><td><code>${c.memberId||c.beneficiaryId||'—'}</code></td><td>${c.status||'active'}</td></tr>`).join('')}</tbody></table>` : '<p class="text-center py-4" style="color:var(--m3-on-surface-muted); font-size:0.82rem;">لا توجد وثائق تأمين</p>'}
               </div>
             </div>
             <div class="card" style="border:1px solid var(--m3-outline-variant);">
-              <div class="card-header" style="background:var(--m3-surface-container-high);"><div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg><h3>المطالبات (نفيس)</h3></div><span class="badge badge-info">${claims.length}</span></div>
+              <div class="card-header" style="background:var(--m3-surface-container-high);"><div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg><h3>المطالبات (نفيس)</h3></div><span class="stat-count">${claims.length}</span></div>
               <div class="card-body p-0">
-                ${claims.length ? `<table class="data-table"><thead><tr><th>رقم المطالبة</th><th>المبلغ</th><th>الحالة</th><th>التاريخ</th></tr></thead><tbody>${claims.map(cl=>`<tr><td><code>${(cl.internalId||'').substring(0,12)}...</code></td><td><strong>${cl.totalGrossSAR ?? cl.total?.value ?? 0} ر.س</strong></td><td><span class="badge badge-success">${cl.status||'submitted'}</span></td><td><code>${cl.submissionDate? new Date(cl.submissionDate).toLocaleDateString('ar-SA') : (cl.createdAt? new Date(cl.createdAt).toLocaleDateString('ar-SA'):'—')}</code></td></tr>`).join('')}</tbody></table>` : '<p class="text-center py-4" style="color:var(--m3-on-surface-muted); font-size:0.82rem;">لا توجد مطالبات</p>'}
+                ${claims.length ? `<table class="data-table"><thead><tr><th>رقم المطالبة</th><th>المبلغ</th><th>الحالة</th><th>التاريخ</th></tr></thead><tbody>${claims.map(cl=>`<tr><td><code>${(cl.internalId||'').substring(0,12)}...</code></td><td><strong>${cl.totalGrossSAR ?? cl.total?.value ?? 0} ر.س</strong></td><td>${cl.status||'submitted'}</td><td><code>${cl.submissionDate? new Date(cl.submissionDate).toLocaleDateString('ar-SA') : (cl.createdAt? new Date(cl.createdAt).toLocaleDateString('ar-SA'):'—')}</code></td></tr>`).join('')}</tbody></table>` : '<p class="text-center py-4" style="color:var(--m3-on-surface-muted); font-size:0.82rem;">لا توجد مطالبات</p>'}
               </div>
             </div>
           </div>
@@ -4027,7 +4027,7 @@ async function showHospGlobalDetail(patientId) {
           <div class="card" style="border:1px solid var(--m3-outline-variant);">
             <div class="card-header" style="background:var(--m3-surface-container-high);">
               <div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l8-4v18"/><path d="M9 9h.01M9 13h.01M9 17h.01"/></svg><h3>الخط الزمني الموحد للزيارات (عبر جميع المنشآت)</h3></div>
-              <span class="badge badge-info">${enc.length} زيارة</span>
+              <span class="stat-count">${enc.length} زيارة</span>
             </div>
             <div class="card-body">
               ${enc.length ? `<div class="timeline">${enc.map(e=>`
@@ -4036,7 +4036,7 @@ async function showHospGlobalDetail(patientId) {
                   <div class="timeline-card">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
                       <strong style="color:var(--m3-on-surface);">زيارة ${e.class||'—'} ${e.departmentAr? '('+e.departmentAr+')':''}</strong>
-                      <span class="badge badge-info">${e.provenance?.sourceSystemId||'—'} • ${e.sourceVisitId||e.internalId.substring(0,8)}</span>
+                      <code>${e.provenance?.sourceSystemId||'—'} • ${e.sourceVisitId||e.internalId.substring(0,8)}</code>
                     </div>
                     <p style="font-size:0.82rem; color:var(--m3-on-surface-variant);">التاريخ: <code>${new Date(e.period?.start||e.createdAt||Date.now()).toLocaleString('ar-SA')}</code> ${e.period?.end ? '— انتهاء: <code>'+new Date(e.period.end).toLocaleString('ar-SA')+'</code>' : ''} | الحالة: <strong>${e.status||'finished'}</strong> | السبب: <strong>${e.reasonTextAr||e.reasonText||'متابعة دورية'}</strong></p>
                   </div>
@@ -4151,7 +4151,7 @@ function renderLongitudinalContent(data, patientId) {
               ${getSvgIcon('printer', 'btn-svg-icon')}
               <span>معاينة وطباعة التقرير المعتمد (PDF)</span>
             </button>
-            <span class="badge badge-success">هوية موحدة مفعلة</span>
+            <span class="muted-note">هوية موحدة مفعلة</span>
           </div>
         </div>
       </div>
@@ -4395,7 +4395,7 @@ function renderLongitudinalContent(data, patientId) {
                   <td data-label="اسم التقرير"><strong>${d.code?.loincDisplay || d.code?.sourceCode || '—'}</strong></td>
                   <td data-label="المصدر"><span class="badge badge-info">${d.provenance?.sourceSystemId || '—'}</span></td>
                   <td data-label="كود LOINC">${d.code?.loincCode ? `<code>LOINC ${d.code.loincCode}</code>` : '—'}</td>
-                  <td data-label="الحالة"><span class="badge badge-success">${d.status || '—'}</span></td>
+                  <td data-label="الحالة">${d.status || '—'}</td>
                   <td data-label="الخلاصة" style="font-size:0.82rem; overflow-wrap:anywhere;">${d.conclusionAr || d.conclusion || 'لا توجد خلاصة مسجلة'}</td>
                   <td data-label="تاريخ الإصدار"><code>${(() => { try { return d.issued ? new Date(d.issued).toLocaleDateString('ar-SA') : '—'; } catch (e) { return '—'; } })()}</code></td>
                 </tr>
@@ -4422,7 +4422,7 @@ function renderLongitudinalContent(data, patientId) {
             <div class="timeline-card">
               <div style="display:flex; justify-content:space-between; margin-bottom:6px; align-items:center; flex-wrap:wrap; gap:6px;">
                 <strong style="color:var(--m3-on-surface); font-size:0.96rem;">زيارة ${e.class || '—'}${e.departmentAr ? ` (${e.departmentAr})` : ''}</strong>
-                <span class="badge badge-info">${e.provenance?.sourceSystemId || '—'} (رقم الزيارة: ${e.sourceVisitId || '—'})</span>
+                <code>${e.provenance?.sourceSystemId || '—'} (رقم الزيارة: ${e.sourceVisitId || '—'})</code>
               </div>
               <p class="metric-sub">التاريخ: <code>${(() => { try { return e.period?.start ? new Date(e.period.start).toLocaleString('ar-SA') : '—'; } catch (err) { return '—'; } })()}</code> | السبب: <strong style="color:var(--m3-on-surface-variant);">${e.reasonTextAr || e.reasonText || 'غير محدد'}</strong></p>
             </div>
@@ -4899,7 +4899,7 @@ async function loadMappingStudio() {
           <tr>
             <td><strong>${c.preferredTermAr}</strong><br><small style="color:var(--m3-on-surface-muted);">${c.preferredTerm}</small></td>
             <td><code>${snomed?.code || '—'}</code></td>
-            <td><span class="badge badge-purple">${icd?.code || '—'}</span></td>
+            <td><code>${icd?.code || '—'}</code></td>
             <td><span class="badge badge-warning">${sbs?.code || '—'}</span></td>
             <td><code>${loinc?.code ? 'LOINC ' + loinc.code : '—'}</code></td>
             <td><strong style="color:var(--m3-on-secondary-container);">${sfda?.code ? sfda.code : '—'}</strong></td>
@@ -4916,14 +4916,14 @@ async function loadMappingStudio() {
         <div class="source-details mb-6" style="padding:14px;">
           <div style="display:flex; justify-content:space-between; margin-bottom:8px; align-items:center;">
             <strong style="font-size:0.9rem;">[${m.sourceSystemId}] ${m.sourceEntityType} ➔ ${m.targetCanonicalEntity}</strong>
-            <span class="badge badge-info">v${m.mappingVersion} (${m.status})</span>
+            <code>v${m.mappingVersion} (${m.status})</code>
           </div>
           <p style="font-size:0.82rem; color:var(--m3-on-surface-variant); margin-bottom:10px;">${m.description}</p>
           <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:6px;">
             ${m.fieldMappings.map((f) => `
               <div style="background:var(--m3-surface-container); padding:6px 10px; border-radius:var(--radius-xs); font-size:0.78rem; border:1px solid var(--m3-outline-variant);">
                 <code>${f.sourceField}</code> ➔ <strong>${f.targetField}</strong>
-                ${f.transformation ? `<span class="badge badge-success" style="margin-right:4px;">${f.transformation}</span>` : ''}
+                ${f.transformation ? `<code style="margin-right:4px;">${f.transformation}</code>` : ''}
                 ${f.terminologyMapId ? `<span class="badge badge-warning" style="margin-right:4px;">TerminologyMap</span>` : ''}
               </div>
             `).join('')}
@@ -4962,7 +4962,7 @@ async function loadProvenanceRecords() {
           ${_hideRaw ? '<span class="badge badge-secondary" title="الحمولة الخام محجوبة عن المدقق — تقليل البيانات">الخام محجوب</span>' : `<button class="btn btn-secondary btn-sm" onclick="fetch('/api/raw-store/${p.sourceRecordId}').then(r=>r.json()).then(j=>alert(JSON.stringify(j,null,2))).catch(()=>alert('لا توجد حمولة خام'))">عرض الخام</button>`}
           </div>
           <div style="display:flex; align-items:center; gap:8px; font-size:0.78rem; color:var(--m3-on-surface-variant); margin-bottom:8px;"><span style="background:var(--m3-surface-container-high); padding:2px 6px;">${p.sourceSystemId}</span> → <span style="background:var(--m3-primary-container); padding:2px 6px;">${p.targetEntityType}</span> → <span style="background:var(--m3-tertiary-container); padding:2px 6px;">MPI</span></div>
-          <span class="badge badge-success">جودة التحقق: ${p.validationScore}/100</span>
+          <span class="muted-note">جودة التحقق: ${p.validationScore}/100</span>
         </div>
 
         <div class="source-details">
@@ -5060,8 +5060,8 @@ async function loadSecurityAuditChain() {
       if (statusEl && !verification.isValid) statusEl.textContent += ' — انكسار!';
       tbody.innerHTML = filtered.map((b) => `
         <tr>
-          <td><span class="badge badge-info">Block #${b.index}</span></td>
-          <td><span class="badge badge-success">${b.action}</span></td>
+<td><code>Block #${b.index}</code></td>
+            <td><code>${b.action}</code></td>
           <td><strong>${b.actor}</strong></td>
           <td>${b.entityType} <code>${b.entityId?.substring(0, 10)}...</code></td>
           <td><code>${new Date(b.timestamp).toLocaleTimeString('ar-SA')}</code></td>
@@ -5113,7 +5113,7 @@ async function triggerBulkExport(anonymize) {
         <div>• نوع التصدير: <strong>${data.isAnonymized ? 'مجهّل للأبحاث (PDPL De-identified)' : 'قياسي كامل (Standard Full Export)'}</strong></div>
         <div>• إجمالي الموارد المصدرة: <strong>${data.totalResourcesExported} مورد</strong></div>
         <div>• توقيت المعاملة: <code>${data.transactionTime}</code></div>
-        <div>• الحزم المنشأة: ${data.output?.map(o => `<span class="badge badge-info mr-1">${o.type}: ${o.count}</span>`).join(' ') || '0'}</div>
+        <div>• الحزم المنشأة: ${data.output?.map(o => `<span class="muted-note mr-1">${o.type}: ${o.count}</span>`).join(' ') || '0'}</div>
       `;
     }
 
@@ -5381,7 +5381,7 @@ async function loadNationalPatients() {
         const status = governanceEscape(p.status || 'ACTIVE');
         return `<div class="gov-row" style="padding:8px; border-bottom:1px solid var(--m3-outline-variant); display:flex; justify-content:space-between; align-items:center; gap:10px;">
           <span class="gov-row-main"><strong>${name}</strong><br><small class="gov-row-meta">${internalId} • ${gender} • ${birthDate} • ${phone}</small></span>
-          <span class="gov-row-actions" style="display:flex; gap:4px; flex-wrap:wrap; justify-content:flex-end;"><span class="badge badge-info">${identifier}</span> <span class="badge badge-secondary">${status}</span></span>
+          <span class="gov-row-actions" style="display:flex; gap:4px; flex-wrap:wrap; justify-content:flex-end;"><code>${identifier}</code> <span class="badge badge-secondary">${status}</span></span>
         </div>`;
       }).join('');
     }
@@ -5458,7 +5458,7 @@ async function loadAdminGovernance() {
         if (list.length === 0) pendingEl.innerHTML = '<div class="text-center py-3" style="color:var(--m3-on-surface-variant);">لا توجد منشآت بانتظار الاعتماد — جميع المنشآت معتمدة ونشطة</div>';
         else pendingEl.innerHTML = list.map((o) => {
           const admin = o.admins?.[0];
-          const adminHtml = admin ? `<div style="margin-top:6px; background:var(--m3-surface-container); border-radius:var(--radius-sharp); padding:6px 8px; font-size:0.78rem;"><strong>أدمن المنشأة:</strong> ${governanceEscape(admin.fullName)} (@${governanceEscape(admin.username)}) • ${governanceEscape(admin.email||'لا بريد')} • ${governanceEscape(admin.phone||'لا هاتف')} <span class="badge ${admin.isActive?'badge-success':'badge-warning'}">${admin.isActive?'نشط':'معلق'}</span> ${o.hasMapping?'<span class="badge badge-info">خرائط محفوظة</span>':''}</div>` : `<div style="margin-top:6px; font-size:0.75rem; color:var(--m3-error);">⚠️ لا يوجد أدمن مرتبط - المنشأة من تسجيل قديم</div>`;
+          const adminHtml = admin ? `<div style="margin-top:6px; background:var(--m3-surface-container); border-radius:var(--radius-sharp); padding:6px 8px; font-size:0.78rem;"><strong>أدمن المنشأة:</strong> ${governanceEscape(admin.fullName)} (@${governanceEscape(admin.username)}) • ${governanceEscape(admin.email||'لا بريد')} • ${governanceEscape(admin.phone||'لا هاتف')} <span class="badge ${admin.isActive?'badge-success':'badge-warning'}">${admin.isActive?'نشط':'معلق'}</span> ${o.hasMapping?'<span class="muted-note">خرائط محفوظة</span>':''}</div>` : `<div style="margin-top:6px; font-size:0.75rem; color:var(--m3-error);">⚠️ لا يوجد أدمن مرتبط - المنشأة من تسجيل قديم</div>`;
           const dateStr = o.createdAt ? new Date(o.createdAt).toLocaleDateString('ar-SA') : '';
           return `<div class="gov-card-row" style="padding:10px; border:1px solid var(--m3-outline-variant); border-radius:var(--radius-sharp); margin-bottom:8px; background:var(--m3-surface);"><div style="display:flex; justify-content:space-between; align-items:flex-start;"><div class="gov-row-main"><strong>${governanceEscape(o.organizationNameAr || o.organizationName)}</strong> <span class="badge badge-warning">PENDING</span><br><small class="gov-row-meta">${governanceEscape(o.organizationName)} • ${governanceEscape(o.region)} • ${governanceEscape(o.organizationType)} • ${dateStr}</small>${adminHtml}</div><div class="gov-row-actions" style="display:flex; flex-direction:column; gap:6px; min-width:90px;"><button class="btn btn-primary btn-sm" onclick="approveHospital('${o.id}')">اعتماد وتفعيل</button><button class="btn btn-secondary btn-sm" onclick="rejectHospital('${o.id}')">رفض</button></div></div></div>`;
         }).join('');
@@ -5480,9 +5480,10 @@ async function loadAdminGovernance() {
     loadOrgChangeRequests();
   } catch (e) {
     if (pendingEl) pendingEl.innerHTML = `<div style="color:var(--m3-error);">فشل تحميل الحوكمة: ${e.message}</div>`;
-    if (usersEl && usersEl.innerHTML.includes('جاري التحميل')) usersEl.innerHTML = `<div style="color:var(--m3-error);">فشل تحميل المستخدمين: ${e.message}</div>`;
-    if (verifyEl && verifyEl.innerHTML.includes('جاري التحميل')) verifyEl.innerHTML = `<div style="color:var(--m3-error);">فشل تحميل التحقق: ${e.message}</div>`;
-    if (patientsEl && patientsEl.innerHTML.includes('جاري التحميل')) patientsEl.innerHTML = `<div style="color:var(--m3-error);">فشل تحميل المرضى: ${e.message}</div>`;
+    const stillLoading = (el) => el && (el.innerHTML.includes('جاري التحميل') || el.innerHTML.includes('skel'));
+    if (stillLoading(usersEl)) usersEl.innerHTML = `<div style="color:var(--m3-error);">فشل تحميل المستخدمين: ${e.message}</div>`;
+    if (stillLoading(verifyEl)) verifyEl.innerHTML = `<div style="color:var(--m3-error);">فشل تحميل التحقق: ${e.message}</div>`;
+    if (stillLoading(patientsEl)) patientsEl.innerHTML = `<div style="color:var(--m3-error);">فشل تحميل المرضى: ${e.message}</div>`;
   }
 }
 async function approveHospital(id){ try{ const r=await fetch('/api/moh/hospitals/'+id+'/approve',{method:'POST', headers:{'Content-Type':'application/json'}}); const j=await r.json(); if(r.ok){ showToast('تم الاعتماد', j.message||'تم اعتماد المنشأة','success'); loadAdminGovernance(); } else showToast('خطأ', j.error||'فشل الاعتماد','error'); } catch(e){ showToast('خطأ', e.message,'error'); } }
@@ -5582,7 +5583,7 @@ async function loadAppointments(){
       const orgName = a.organization?.organization_name_ar||a.organization?.organization_name||a.organization_id?.substring(0,8);
       const dateStr = a.scheduled_start ? new Date(a.scheduled_start).toLocaleString('ar-SA') : '--';
       const clinName = a.clinician?.full_name ? `${a.clinician.full_name} (@${a.clinician.username})` : (a.clinician_id ? a.clinician_id.substring(0,8) : 'غير محدد - أي طبيب');
-      const clinicianBadge = a.clinician ? `<span class="badge badge-info">${clinName}</span>` : '<span class="badge badge-secondary">غير محدد</span>';
+      const clinicianBadge = a.clinician ? `${clinName}` : '<span class="muted-note">غير محدد</span>';
       let actions='';
       if(a.status==='proposed'){
         if(appAuth.currentRole==='HOSPITAL_ADMIN'){

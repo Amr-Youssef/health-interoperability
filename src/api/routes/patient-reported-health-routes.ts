@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { verifyToken } from '../../security/auth-middleware.js';
 import { prisma } from '../../lib/prisma.js';
 import { PatientReportedHealthService } from '../../core/patient-reported-health-service.js';
+import { PatientReportedHealthFhirSerializer } from '../../fhir/patient-reported-health-fhir-serializer.js';
 import {
   PatientReportedAllergyData,
   PatientReportedMedicationData,
@@ -816,6 +817,79 @@ router.get('/me/health-profile', async (req, res) => {
     res.json(profile);
   } catch (error) {
     console.error('Error fetching health profile:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// === FHIR EXPORT ===
+/**
+ * Export patient's self-reported health profile as FHIR R4 Bundle
+ * GET /api/patients/me/health-profile/fhir
+ * Only the patient's own rows; every entry tagged PATIENT source (UNVERIFIED).
+ */
+router.get('/me/health-profile/fhir', async (req, res) => {
+  try {
+    const patientId = req.user!.patient_profile_id!;
+    const profile = await healthService.getPatientHealthProfile(patientId);
+    const serializer = new PatientReportedHealthFhirSerializer();
+
+    const sourceTag = {
+      system: 'http://sa.nphies.gov/fhir/CodeSystem/source',
+      code: 'PATIENT',
+      display: 'Patient-Reported (UNVERIFIED)',
+    };
+    const entry: Array<{ fullUrl: string; resource: Record<string, any> }> = [];
+    const push = (resource: Record<string, any>, recordId?: string) => {
+      // Prefer the stable DB row id so entry ids are unique (serializer ids are not).
+      if (recordId) resource.id = recordId;
+      entry.push({
+        fullUrl: `urn:uuid:${resource.id}`,
+        resource,
+      });
+    };
+
+    const displayName = [profile.profile?.preferredFirstName, profile.profile?.preferredLastName]
+      .filter(Boolean)
+      .join(' ');
+    push(
+      {
+        resourceType: 'Patient',
+        meta: { tag: [sourceTag] },
+        name: displayName ? [{ text: displayName }] : undefined,
+      },
+      patientId
+    );
+
+    for (const a of profile.allergies ?? []) {
+      push(serializer.serializePatientReportedAllergy(a), (a as { id?: string }).id);
+    }
+    for (const m of profile.medications ?? []) {
+      push(serializer.serializePatientReportedMedication(m), (m as { id?: string }).id);
+    }
+    for (const c of profile.conditions ?? []) {
+      push(serializer.serializePatientReportedCondition(c), (c as { id?: string }).id);
+    }
+    for (const p of profile.procedures ?? []) {
+      push(serializer.serializePatientReportedProcedure(p), (p as { id?: string }).id);
+    }
+    for (const f of profile.familyHistory ?? []) {
+      push(serializer.serializePatientFamilyMember(f), (f as { id?: string }).id);
+    }
+    for (const v of profile.vitalObservations ?? []) {
+      push(serializer.serializePatientReportedVitalObservation(v), (v as { id?: string }).id);
+    }
+
+    res.json({
+      resourceType: 'Bundle',
+      id: `patient-${patientId}-self-reported`,
+      meta: { tag: [sourceTag] },
+      type: 'collection',
+      timestamp: new Date().toISOString(),
+      total: entry.length,
+      entry,
+    });
+  } catch (error) {
+    console.error('Error exporting FHIR bundle:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

@@ -7,10 +7,11 @@
   <meta name="supported-color-schemes" content="light dark">
   <meta name="format-detection" content="telephone=no">
   <title>المنصة الوطنية للربط والتشغيل الصحي البيني • Saudi Health Interoperability Engine</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.ico">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;700;800&family=JetBrains+Mono:wght@400;700&family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
   
   <link rel="stylesheet" href="style.css">
 </head>
@@ -821,7 +822,7 @@
               </tr>
             </thead>
             <tbody id="audit-table-body">
-              <tr><td colspan="5" class="text-center py-4">جاري تحميل سجلات التدقيق...</td></tr>
+              <tr class="skel-row"><td colspan="5"><span class="skel" style="width:38%"></span><span class="skel" style="width:74%"></span><span class="skel" style="width:58%"></span></td></tr>
             </tbody>
           </table>
         </div>
@@ -867,7 +868,7 @@
             <div class="card-header"><div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l8-4v18"/></svg><h3>المنشآت بانتظار الاعتماد</h3></div><button class="btn btn-secondary btn-sm" onclick="loadAdminGovernance()">تحديث</button></div>
             <div class="card-body">
               <div class="gov-toolbar"><input id="gov-pending-search" class="form-select" type="search" placeholder="بحث باسم المنشأة أو المنطقة"><select id="gov-pending-page-size" class="form-select" style="max-width:130px;"><option value="10">10 لكل صفحة</option><option value="50">50 لكل صفحة</option></select></div>
-              <div id="gov-pending-list" class="gov-list gov-list-medium">جاري التحميل...</div>
+              <div id="gov-pending-list" class="gov-list gov-list-medium"><span class="skel" style="width:55%"></span><span class="skel" style="width:85%"></span><span class="skel" style="width:40%"></span></div>
               <div id="gov-pending-pagination" class="gov-pagination"></div>
             </div>
           </div>
@@ -910,7 +911,7 @@
                 <select id="gov-users-page-size" class="form-select"><option value="20">20 لكل صفحة</option><option value="50">50 لكل صفحة</option></select>
               </div>
               <div id="gov-users-summary" class="gov-summary"></div>
-              <div id="gov-users-list" class="gov-list gov-list-tall">جاري التحميل...</div>
+              <div id="gov-users-list" class="gov-list gov-list-tall"><span class="skel" style="width:65%"></span><span class="skel" style="width:80%"></span><span class="skel" style="width:50%"></span></div>
               <div id="gov-users-pagination" class="gov-pagination"></div>
             </div>
           </div>
@@ -918,7 +919,7 @@
             <div class="card-header"><div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l11 0"/><path d="M9 12l-3 3"/><path d="M9 12l-3 -3"/></svg><h3>طلبات تغيير بيانات المنشآت</h3></div><button class="btn btn-secondary btn-sm" onclick="loadOrgChangeRequests()">تحديث</button></div>
             <div class="card-body">
               <div class="gov-toolbar"><input id="gov-org-changes-search" class="form-select" type="search" placeholder="بحث باسم المنشأة أو الحقل"><select id="gov-org-changes-page-size" class="form-select" style="max-width:130px;"><option value="20">20 لكل صفحة</option><option value="50">50 لكل صفحة</option></select></div>
-              <div id="gov-org-changes-list" class="gov-list gov-list-short">جاري التحميل...</div>
+              <div id="gov-org-changes-list" class="gov-list gov-list-short"><span class="skel" style="width:60%"></span><span class="skel" style="width:75%"></span></div>
               <div id="gov-org-changes-pagination" class="gov-pagination"></div>
             </div>
           </div>
@@ -926,7 +927,7 @@
             <div class="card-header"><div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><h3>طابور التحقق – بيانات المرضى المبلغة</h3></div><button class="btn btn-secondary btn-sm" onclick="loadVerificationQueue()">تحديث</button></div>
             <div class="card-body">
               <div class="gov-toolbar"><input id="gov-verify-search" class="form-select" type="search" placeholder="بحث بالمعرف الداخلي للمريض"><select id="gov-verify-type" class="form-select"><option value="medications">الأدوية</option><option value="allergies">الحساسيات</option><option value="conditions">التشخيصات</option><option value="procedures">الإجراءات</option><option value="vitals">العلامات الحيوية</option><option value="family">التاريخ العائلي</option><option value="profiles">الملفات الشخصية</option></select><select id="gov-verify-page-size" class="form-select" style="max-width:130px;"><option value="20">20 لكل صفحة</option><option value="50">50 لكل صفحة</option></select></div>
-              <div id="gov-verify-list" class="gov-list gov-list-tall">جاري التحميل...</div>
+              <div id="gov-verify-list" class="gov-list gov-list-tall"><span class="skel" style="width:58%"></span><span class="skel" style="width:82%"></span><span class="skel" style="width:44%"></span></div>
               <div id="gov-verify-pagination" class="gov-pagination"></div>
             </div>
           </div>
@@ -941,7 +942,7 @@
               <select id="gov-patients-page-size" class="form-select"><option value="20">20 لكل صفحة</option><option value="50">50 لكل صفحة</option></select>
             </div>
             <div id="gov-patients-summary" class="gov-summary"></div>
-            <div id="gov-patients-list" class="gov-list gov-list-medium">جاري التحميل...</div>
+            <div id="gov-patients-list" class="gov-list gov-list-medium"><span class="skel" style="width:62%"></span><span class="skel" style="width:78%"></span><span class="skel" style="width:48%"></span></div>
             <div id="gov-patients-pagination" class="gov-pagination"></div>
           </div>
         </div>
@@ -1088,7 +1089,7 @@
               <h3>مركز استيراد ومعالجة الملفات السريرية</h3>
             </div>
             <div style="display:flex; gap:8px; align-items:center;">
-              <span class="badge badge-info">HL7 v2.5 / FHIR R4 / CSV / JSON</span>
+              <span class="muted-note">HL7 v2.5 / FHIR R4 / CSV / JSON</span>
             </div>
           </div>
           <div class="card-body">
@@ -1371,7 +1372,7 @@
               <svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
               <h3>وثائق وبوالص التأمين الصحي المعتمدة</h3>
             </div>
-            <span class="badge badge-info" id="nphies-coverages-count">—</span>
+            <span class="stat-count" id="nphies-coverages-count">—</span>
           </div>
           <div class="card-body p-0 rx-card-body">
             <table class="data-table rx-table">
@@ -1401,7 +1402,7 @@
               <svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
               <h3>سجل المطالبات الإلكترونية والتسوية الفورية</h3>
             </div>
-            <span class="badge badge-success" id="nphies-claims-count">—</span>
+            <span class="stat-count" id="nphies-claims-count">—</span>
           </div>
           <div class="card-body p-0 rx-card-body">
             <table class="data-table rx-table">
@@ -1447,7 +1448,7 @@
               <svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg>
               <h3>الوصفات الطبية المعيارية</h3>
             </div>
-            <span class="badge badge-info" id="medications-count">—</span>
+            <span class="stat-count" id="medications-count">—</span>
           </div>
           <div class="rx-toolbar">
             <div class="rx-search-wrap">
@@ -1485,7 +1486,7 @@
               <svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 2 4 4-4 4"/><path d="m17 7 3-3"/><path d="M19 9 8.7 19.3c-1 1-2.5 1-3.4 0l-.6-.6c-1-1-1-2.5 0-3.4L15 5"/><path d="m9 11 4 4"/><path d="m5 19-3 3"/></svg>
               <h3>سجل التطعيمات واللقاحات الوطنية</h3>
             </div>
-            <span class="badge badge-purple" id="immunizations-count">—</span>
+            <span class="stat-count" id="immunizations-count">—</span>
           </div>
           <div class="rx-toolbar">
             <div class="rx-search-wrap">
@@ -1579,7 +1580,6 @@
               <svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
               <h3>لوحة التحكم في دمج وفصل هويات المرضى</h3>
             </div>
-            <span class="badge badge-info">إدارة الهويات الوطنية الموحدة</span>
           </div>
           <div class="card-body">
             <p style="font-size:0.84rem; color:var(--m3-on-surface-variant); margin-bottom:14px;">
@@ -1624,7 +1624,7 @@
             <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
               <svg style="width:20px;height:20px; color:var(--m3-primary);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
               <h3 style="margin:0; font-size:1rem;">اختيار المريض</h3>
-              <span id="longitudinal-total-badge" class="badge badge-info" style="margin-right:auto;">—</span>
+              <span id="longitudinal-total-badge" class="stat-count" style="margin-right:auto;">—</span>
             </div>
             <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
               <div style="flex:1; min-width:260px; position:relative;">
@@ -1647,7 +1647,7 @@
 
         <div id="patient-self-reported-dashboard" class="mt-4" style="display:none;"></div>
         <div id="clinical-write-card" class="card mb-4" style="display:block;">
-          <div class="card-header"><h3>إضافة بيانات سريرية — الطبيب</h3><span class="badge badge-info">CLINICAL_WRITE_ORG</span></div>
+          <div class="card-header"><h3>إضافة بيانات سريرية — الطبيب</h3></div>
           <div class="card-body" style="display:grid; gap:12px;">
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;" class="grid-2">
               <div><label style="font-size:0.78rem;">نوع الإضافة</label><select id="clinical-write-type" class="form-select"><option value="encounter">زيارة/فحص (Encounter)</option><option value="condition">تشخيص (Condition)</option><option value="observation">فحص مخبري/قياس (Observation)</option><option value="diagnostic">تقرير تشخيصي (DiagnosticReport)</option><option value="allergy">حساسية (Allergy)</option><option value="immunization">تطعيم (Immunization)</option><option value="medication">وصفة دوائية (Medication)</option></select></div>
@@ -1708,7 +1708,7 @@
         </div>
 
         <div id="appointments-patient-card" class="card mb-4" style="display:none;">
-          <div class="card-header"><div class="card-header-title"><h3>حجز موعد جديد</h3><span class="badge badge-info">للمريض فقط</span></div><span style="font-size:0.72rem; color:var(--m3-on-surface-variant);">المنشأة + النوع + الشريحة — 3 خطوات</span></div>
+          <div class="card-header"><div class="card-header-title"><h3>حجز موعد جديد</h3></div><span style="font-size:0.72rem; color:var(--m3-on-surface-variant);">المنشأة + النوع + الشريحة — 3 خطوات</span></div>
           <div class="card-body" style="padding:18px;">
             <form id="form-book-appointment" style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
               <div><label style="font-size:0.78rem; display:block; margin-bottom:4px;">المنشأة *</label><select id="appt-org" class="form-select" required><option value="">-- اختر المنشأة النشطة --</option></select></div>
@@ -1726,7 +1726,7 @@
         </div>
 
         <div class="card" style="border:1px solid var(--m3-outline-variant);">
-          <div class="card-header"><div class="card-header-title"><h3>مواعيدي</h3><span id="appointments-count" class="badge badge-info" style="margin-inline-start:8px;">—</span></div><button class="btn btn-secondary btn-sm" onclick="loadAppointments()">تحديث</button></div>
+          <div class="card-header"><div class="card-header-title"><h3>مواعيدي</h3><span id="appointments-count" class="stat-count" style="margin-inline-start:8px;">—</span></div><button class="btn btn-secondary btn-sm" onclick="loadAppointments()">تحديث</button></div>
           <div class="card-body p-0 rx-card-body">
             <div style="padding:10px 14px; background:var(--m3-surface-container-low); border-bottom:1px solid var(--m3-outline-variant); font-size:0.78rem; color:var(--m3-on-surface-variant); display:flex; gap:8px; flex-wrap:wrap;">
               <span><span class="badge badge-secondary">proposed</span> بانتظار تأكيد المنشأة</span>
@@ -1734,7 +1734,7 @@
               <span><span class="badge badge-warning">arrived</span> وصل</span>
               <span><span class="badge badge-success">fulfilled</span> مكتمل</span>
             </div>
-            <table class="data-table rx-table"><thead><tr><th>المريض</th><th>المنشأة</th><th>النوع</th><th>الحالة</th><th>الموعد</th><th>الإذن</th><th>إجراء</th></tr></thead><tbody id="appointments-tbody"><tr><td colspan="7" class="text-center py-4">جاري التحميل...</td></tr></tbody></table>
+            <table class="data-table rx-table"><thead><tr><th>المريض</th><th>المنشأة</th><th>النوع</th><th>الحالة</th><th>الموعد</th><th>الإذن</th><th>إجراء</th></tr></thead><tbody id="appointments-tbody"><tr class="skel-row"><td colspan="7"><span class="skel" style="width:45%"></span><span class="skel" style="width:70%"></span></td></tr></tbody></table>
           </div>
         </div>
       </section>
@@ -1762,7 +1762,6 @@
             <div style="margin-bottom:20px; padding:12px 16px; background:var(--m3-surface-container-low); border-radius:var(--radius-lg);">
             <div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;">
               <h3 style="font-size:1.35rem; font-weight:800; letter-spacing:-0.02em; color:var(--m3-on-surface); margin:0;">هويتك الموثقة</h3>
-              <span class="badge badge-warning" style="font-size:0.7rem;">محمية — للعرض فقط</span>
             </div>
             <p style="margin-top:6px; font-size:0.84rem; color:var(--m3-on-surface-variant); max-width:65ch;">بياناتك السيادية من وزارة الداخلية — لا يمكن تعديلها ذاتياً. أي تغيير يتطلب تحققاً إدارياً (PDPL).</p>
           </div>
@@ -1796,7 +1795,7 @@
                 </div>
                 <div class="metric-card" style="padding:14px; background:var(--m3-surface-container);">
                   <span class="metric-label">حالة السجل</span>
-                  <strong style="color:var(--m3-primary);"><span class="badge badge-success">نشط وموثق</span></strong>
+                  <strong style="color:var(--m3-primary);">نشط وموثق</strong>
                   <small style="display:block; color:var(--m3-on-surface-muted); font-size:0.72rem; margin-top:4px;">مطابق للسجل الوطني الموحد (NPHIES)</small>
                 </div>
               </div>
@@ -1810,7 +1809,7 @@
                 <svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-5"/><path d="M12 12l8-8a2.18 2.18 0 0 1 3 3l-8 8a2 2 0 0 1-1 .59l-3 1 1-3a2 2 0 0 1 .59-1z"/></svg>
                 <h3>بيانات التواصل والعنوان (قابلة للتعديل)</h3>
               </div>
-              <span class="badge badge-success">مصرح بتعديلها ذاتياً</span>
+              
             </div>
             <div class="card-body">
               <div id="profile-edit-status" style="display:none; margin-bottom:16px;"></div>
@@ -1936,9 +1935,9 @@
       <!-- TAB: PATIENT INSURANCE (NPHIES) — PATIENT only -->
       <section class="tab-pane" id="pane-patient-insurance">
         <div class="card">
-          <div class="card-header"><h3>تأميني — وثائق ومطالبات نفيس</h3><span class="badge badge-info">قراءة ذاتية</span></div>
+          <div class="card-header"><h3>تأميني — وثائق ومطالبات نفيس</h3></div>
           <div class="card-body">
-            <div id="patient-insurance-loading" style="text-align:center; padding:30px; color:var(--m3-on-surface-variant);">جاري تحميل بيانات التأمين...</div>
+            <div id="patient-insurance-loading" style="padding:30px;"><span class="skel" style="width:50%"></span><span class="skel" style="width:80%"></span><span class="skel" style="width:60%"></span></div>
             <div id="patient-insurance-content" style="display:none;">
               <div id="patient-insurance-eligibility" style="margin-bottom:16px;"></div>
               <h4 style="margin:12px 0 8px;">الوثائق</h4>
@@ -1953,7 +1952,7 @@
       <!-- TAB: PATIENT ACCESS HISTORY & EXPORT — PATIENT only -->
       <section class="tab-pane" id="pane-patient-access">
         <div class="card">
-          <div class="card-header"><div class="card-header-title"><h3>سجل وصولي وتصدير بياناتي</h3><span id="patient-access-count" class="badge badge-info" style="margin-inline-start:8px;">—</span></div><span class="badge badge-success">خصوصية تامة</span></div>
+          <div class="card-header"><div class="card-header-title"><h3>سجل وصولي وتصدير بياناتي</h3><span id="patient-access-count" class="stat-count" style="margin-inline-start:8px;">—</span></div></div>
           <div class="card-body">
             <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
               <button class="btn btn-secondary" onclick="loadPatientAccessLog()">تحديث سجل الوصول</button>
@@ -2034,7 +2033,7 @@
               <svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
               <h3>ترحيل البيانات القديمة من النظام السابق — اسحب ملفاتك هنا</h3>
             </div>
-            <span class="badge badge-info" style="background:var(--m3-secondary); color:var(--m3-on-secondary);">HL7 v2 / FHIR R4 / CSV</span>
+            <span class="muted-note">HL7 v2 / FHIR R4 / CSV</span>
           </div>
           <div class="card-body">
             <p style="font-size:0.84rem; color:var(--m3-on-surface-variant); margin-bottom:14px;">هذه <strong>بوابة منشأتك الخاصة</strong> — أي ملف ترفعه سيُوسم تلقائياً بمعرف منشأتك (<code id="hosp-dropzone-orgid" style="background:var(--m3-secondary); color:var(--m3-on-secondary); padding:2px 6px; border-radius:var(--radius-xs);">—</code>) وسيُطبّع ويُربط في السجل الوطني مع الحفاظ على مصدره. لن يرى أي مستشفى آخر بياناتك.</p>
@@ -2079,20 +2078,20 @@
             <div class="card-body p-0">
               <table class="data-table">
                 <thead><tr><th>الملف / النظام المصدر</th><th>النوع</th><th>الحالة</th><th>سجلات</th><th>التاريخ</th></tr></thead>
-                <tbody id="hosp-imports-tbody"><tr><td colspan="5" class="text-center py-4">جاري التحميل...</td></tr></tbody>
+                <tbody id="hosp-imports-tbody"><tr class="skel-row"><td colspan="5"><span class="skel" style="width:42%"></span><span class="skel" style="width:68%"></span></td></tr></tbody>
               </table>
             </div>
           </div>
 
           <div class="card">
             <div class="card-header">
-              <div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><h3>مرضى منشأتك المرتبطون</h3><span class="badge badge-success" id="hosp-patients-count">—</span></div>
+              <div class="card-header-title"><svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><h3>مرضى منشأتك المرتبطون</h3><span class="stat-count" id="hosp-patients-count">—</span></div>
               <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;"><input id="hosp-patients-search" class="form-input" placeholder="ابحث بالاسم/الهوية" style="flex:1; min-width:140px; padding:6px 10px; font-size:0.82rem;"><button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-hosp-patients"><svg class="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg><span>تحديث</span></button></div>
             </div>
             <div class="card-body p-0">
               <table class="data-table">
                 <thead><tr><th>الاسم</th><th>الهوية</th><th>الجنس</th><th>تاريخ الربط</th><th>إجراء</th></tr></thead>
-                <tbody id="hosp-patients-tbody"><tr><td colspan="5" class="text-center py-4">جاري التحميل...</td></tr></tbody>
+                <tbody id="hosp-patients-tbody"><tr class="skel-row"><td colspan="5"><span class="skel" style="width:52%"></span><span class="skel" style="width:76%"></span></td></tr></tbody>
               </table>
               <div id="hosp-patients-pagination" style="display:flex; justify-content:space-between; align-items:center; padding:10px 14px; font-size:0.78rem; color:var(--m3-on-surface-variant);"></div>
             </div>
@@ -2126,7 +2125,6 @@
                 <svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><circle cx="12" cy="8" r="3"/></svg>
                 <h3>هوية المنشأة الموثقة (للعرض فقط)</h3>
               </div>
-              <span class="badge badge-warning">محمية - لا يمكن تعديل النوع/المعرف</span>
             </div>
             <div class="card-body" style="padding:0;">
               <div style="display:flex; flex-wrap:wrap; gap:24px; padding:18px 20px; align-items:flex-start;">
@@ -2141,7 +2139,7 @@
                   <div style="font-size:0.78rem; color:var(--m3-on-surface-variant);">HOSPITAL_ADMIN • <span id="hosp-ro-created">—</span></div>
                 </div>
               </div>
-              <div id="hosp-pending-requests" style="margin:0 20px 16px; padding:10px 14px; background:var(--m3-surface-container); border-radius:var(--radius-md); font-size:0.82rem; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">جاري تحميل الطلبات المعلقة...</div>
+              <div id="hosp-pending-requests" style="margin:0 20px 16px; padding:10px 14px; background:var(--m3-surface-container); border-radius:var(--radius-md); font-size:0.82rem; display:flex; gap:8px; align-items:center; flex-wrap:wrap;"><span class="skel" style="width:65%; flex:1;"></span></div>
             </div>
           </div>
 
@@ -2152,7 +2150,7 @@
                 <svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-5"/><path d="M12 12l8-8a2.18 2.18 0 0 1 3 3l-8 8a2 2 0 0 1-1 .59l-3 1 1-3a2 2 0 0 1 .59-1z"/></svg>
                 <h3>بيانات التواصل والمعلومات العامة للمنشأة (قابلة للتعديل)</h3>
               </div>
-              <span class="badge badge-success">مصرح بتعديلها ذاتياً</span>
+              
             </div>
             <div class="card-body">
               <div id="hospital-profile-edit-status" style="display:none; margin-bottom:16px;"></div>
@@ -2229,13 +2227,13 @@
             </div>
           </div>
           <div class="card" id="hospital-users-card" style="margin-top:18px;">
-            <div class="card-header"><h3>إدارة مستخدمي المنشأة</h3><span class="badge badge-secondary">HOSPITAL_ADMIN فقط</span></div>
+            <div class="card-header"><h3>إدارة مستخدمي المنشأة</h3><span class="muted-note">HOSPITAL_ADMIN فقط</span></div>
             <div class="card-body">
               <div style="display:flex; gap:8px; margin-bottom:12px;"><input id="hospital-new-username" placeholder="اسم المستخدم" class="form-input" style="flex:1"><input id="hospital-new-fullname" placeholder="الاسم الكامل" class="form-input" style="flex:1"><select id="hospital-new-role" class="form-select" style="flex:1"><option value="CLINICIAN">طبيب CLINICIAN</option><option value="HOSPITAL_ADMIN">أدمن HOSPITAL_ADMIN</option></select></div>
               <div style="display:flex; gap:8px; margin-bottom:12px;"><input id="hospital-new-password" placeholder="كلمة المرور 8+ حروف وأرقام" type="password" class="form-input" style="flex:1"><input id="hospital-new-email" placeholder="البريد (اختياري)" class="form-input" style="flex:1"><input id="hospital-new-phone" placeholder="جوال 05xxxxxxxx" class="form-input" style="flex:1"></div>
               <button class="btn btn-primary" onclick="createHospitalUser()">إنشاء مستخدم</button>
               <div id="hospital-users-status" style="margin-top:8px; font-size:0.8rem;"></div>
-              <div class="table-wrap" style="margin-top:12px; max-height:320px; overflow:auto;"><table class="data-table"><thead><tr><th>المستخدم</th><th>الدور</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody id="hospital-users-tbody"><tr><td colspan="4" style="text-align:center; padding:20px;">جاري التحميل...</td></tr></tbody></table></div>
+              <div class="table-wrap" style="margin-top:12px; max-height:320px; overflow:auto;"><table class="data-table"><thead><tr><th>المستخدم</th><th>الدور</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody id="hospital-users-tbody"><tr class="skel-row"><td colspan="4"><span class="skel" style="width:48%"></span><span class="skel" style="width:72%"></span></td></tr></tbody></table></div>
             </div>
           </div>
         </div>
@@ -2251,7 +2249,7 @@
             <h4>السجل العام الموحد لجميع المرضى — نظرة وطنية شاملة (منفصلة عن سجل منشأتي)</h4>
             <p>هذا السجل يعرض <strong>جميع المرضى الموحدين في قاعدة البيانات الوطنية</strong> (بعد تطبيع `MPI` وربط الهويات). هو <strong>منفصل عرضاً</strong> عن جدول "مرضى منشأتي" لكنه <strong>متكامل بياناتياً</strong>: نفس قاعدة البيانات، نفس المعايير (`SNOMED/ICD/LOINC/SFDA`)، ونفس سلسلة التدقيق.</p>
           </div>
-          <span class="badge badge-purple">قراءة فقط • وطني</span>
+          <span class="muted-note">قراءة فقط • وطني</span>
         </div>
 
         <div class="card mb-6" style="background:var(--m3-surface-container-low);">
@@ -2267,7 +2265,7 @@
               <svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
               <h3>بحث في السجل العام (وطني)</h3>
             </div>
-            <span class="badge badge-purple">قراءة فقط</span>
+            <span class="muted-note">قراءة فقط</span>
           </div>
           <div class="card-body">
             <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
@@ -2288,7 +2286,7 @@
           <div class="card-body p-0">
             <table class="data-table">
               <thead><tr><th>المريض</th><th>الهوية</th><th>الجنس / الميلاد</th><th>مرتبط بمنشأتي؟</th><th>عرض</th></tr></thead>
-              <tbody id="hosp-global-tbody"><tr><td colspan="5" class="text-center py-4">جاري تحميل السجل العام...</td></tr></tbody>
+              <tbody id="hosp-global-tbody"><tr class="skel-row"><td colspan="5"><span class="skel" style="width:55%"></span><span class="skel" style="width:78%"></span></td></tr></tbody>
             </table>
           </div>
         </div>
@@ -2552,7 +2550,7 @@
                   </tr>
                 </thead>
                 <tbody id="audit-chain-tbody">
-                  <tr><td colspan="7" class="text-center">جاري تحميل سلسلة التدقيق المشفرة...</td></tr>
+                  <tr class="skel-row"><td colspan="7"><span class="skel" style="width:40%"></span><span class="skel" style="width:66%"></span><span class="skel" style="width:52%"></span></td></tr>
                 </tbody>
               </table>
             </div>

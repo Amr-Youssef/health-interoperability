@@ -98,6 +98,15 @@
       try { var p = await api('/health-profile'); var blob = new Blob([JSON.stringify(p, null, 2)], { type: 'application/json' }); var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'my-health-profile.json'; a.click(); }
       catch (e) { status(e.message, false); }
     },
+    async exportFhir() {
+      try {
+        var b = await api('/health-profile/fhir');
+        var blob = new Blob([JSON.stringify(b, null, 2)], { type: 'application/fhir+json' });
+        var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'my-health-fhir-bundle.json'; a.click();
+        status('تم تصدير حزمة FHIR R4 (' + (b.total || (b.entry || []).length) + ' مورداً)', true);
+      }
+      catch (e) { status(e.message, false); }
+    },
     inject() {
       if (document.getElementById('self-reported-health-card') || !document.getElementById('profile-content')) return;
       var anchor = document.querySelector('#profile-content .card[style*="dashed"]') || document.getElementById('profile-content').lastElementChild;
@@ -116,7 +125,7 @@
         + '<div class="card" style="padding:12px;"><strong>علاماتي الحيوية</strong><form id="sr-vit-form" style="display:grid; gap:8px; margin-top:8px;" onsubmit="event.preventDefault(); SR.addVital();"><div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;"><select id="sr-vit-type" class="form-select"><option value="BLOOD_PRESSURE">ضغط الدم</option><option value="BLOOD_SUGAR">سكر الدم</option><option value="WEIGHT">الوزن</option><option value="HEIGHT">الطول</option><option value="TEMPERATURE">الحرارة</option><option value="HEART_RATE">النبض</option></select><input id="sr-vit-date" type="datetime-local" class="form-select" required></div><div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;"><input id="sr-vit-sys" type="number" class="form-select" placeholder="انقباضي"><input id="sr-vit-dia" type="number" class="form-select" placeholder="انبساطي"><input id="sr-vit-val" type="number" step="any" class="form-select" placeholder="قيمة"></div><button class="btn btn-primary btn-sm" type="submit">حفظ قياس</button></form><div id="sr-vit-charts" style="margin-top:10px;"></div><div id="sr-vit-list" style="margin-top:8px; font-size:0.82rem;"></div></div>'
         + '<div class="card" style="padding:12px;"><strong>حساسياتي</strong><div id="sr-allergy-list" style="margin-top:8px; font-size:0.82rem;"></div><small>الإضافة من نموذج الحساسية. الحذف متاح هنا.</small></div>'
         + '<div class="card" style="padding:12px;"><strong>مستنداتي</strong><form id="sr-doc-form" style="display:grid; gap:8px; margin-top:8px;" onsubmit="event.preventDefault(); SR.addDocument();"><input id="sr-doc-name" class="form-select" placeholder="report.pdf *" required><div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;"><select id="sr-doc-cat" class="form-select"><option value="LAB_REPORT">مختبر</option><option value="RADIOLOGY">أشعة</option><option value="PRESCRIPTION">وصفة</option><option value="DISCHARGE">خروج</option><option value="OTHER">أخرى</option></select><input id="sr-doc-desc" class="form-select" placeholder="وصف"></div><button class="btn btn-primary btn-sm" type="submit">توثيق</button></form><div id="sr-doc-list" style="margin-top:8px; font-size:0.82rem;"></div></div>'
-        + '</div><div style="margin-top:10px; display:flex; gap:8px;"><button class="btn btn-secondary btn-sm" onclick="SR.reload()">تحديث</button><button class="btn btn-secondary btn-sm" onclick="SR.export()">تصدير JSON</button></div>'
+        + '</div><div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;"><button class="btn btn-secondary btn-sm" onclick="SR.reload()">تحديث</button><button class="btn btn-secondary btn-sm" onclick="SR.export()">تصدير JSON</button><button class="btn btn-secondary btn-sm" onclick="SR.exportFhir()">تصدير حزمة FHIR R4</button></div>'
         + '</div></div>';
       if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(div, anchor);
       else document.getElementById('profile-content').appendChild(div);

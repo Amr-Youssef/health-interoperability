@@ -328,7 +328,7 @@ The following components were listed as "not yet started" on Aug 30 — most now
 7. **Social History Form** - ✅ موجود
 8. **Vital Measurements** - ✅ موجود (عرض + رسوم زمنية SVG: ضغط/سكر/وزن عبر `public/js/vitals-charts.js`)
 9. **Document Upload** - ✅ موجود (رفع + بيانات وصفية)
-10. **Health Profile Export** - 🔶 جزئي (تسلسل FHIR جاهز؛ زر تصدير الحزم مقترح)
+10. **Health Profile Export** - ✅ موجود (`GET /api/patients/me/health-profile/fhir` حزمة `collection` + زر «تصدير حزمة FHIR R4» في `SR.exportFhir` — كل مدخل بمعرف الصف ووَسم `PATIENT`)
 
 **Note:** Backend is 100% complete and basic frontend is delivered. Remaining: charts, bulk FHIR-bundle download button.
 

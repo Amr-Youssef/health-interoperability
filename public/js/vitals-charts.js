@@ -123,7 +123,7 @@
 
   function chartCard(title, latestChip, legend, svg, provNote, extraNote) {
     return '<div class="sr-chart" dir="ltr">'
-      + '<div class="sr-chart-head" dir="rtl"><strong>' + esc(title) + '</strong><span><span class="badge badge-warning" style="font-size:0.62rem; margin-inline-end:4px;">PATIENT</span><span class="badge badge-info">' + esc(latestChip) + '</span></span></div>'
+      + '<div class="sr-chart-head" dir="rtl"><strong>' + esc(title) + '</strong><span><span class="badge badge-warning" style="font-size:0.62rem; margin-inline-end:4px;">PATIENT</span><span class="stat-count">' + esc(latestChip) + '</span></span></div>'
       + '<div class="sr-chart-legend" dir="rtl">' + legend + '</div>'
       + svg
       + '<small class="sr-chart-note" dir="rtl">' + esc(provNote) + '</small>'

@@ -174,9 +174,20 @@ export function createPlatformApp() {
   let bootPromise: Promise<void> | null = null;
   app.locals.bootState = () => bootState;
   app.locals.markBootReady = () => { bootState = 'ready'; };
+  // Static UI shell must never 503: boot gate protects API/clinical routes only.
+  // (A failed engine boot previously returned ENGINE_NOT_READY for `/`, assets
+  // and favicon too, leaving users with a dead blank page instead of login.)
+  const BOOT_EXEMPT_STATIC = /\.(css|js|map|json|png|jpg|jpeg|svg|ico|woff2?|ttf)$/i;
   app.use(async (req, res, next) => {
-    // Never block auth pages or health check
-    if (req.path.startsWith('/auth') || req.path === '/api/health') {
+    // Never block auth pages, health check, app shell, favicon, or static assets
+    if (
+      req.path.startsWith('/auth') ||
+      req.path === '/api/health' ||
+      req.path === '/' ||
+      req.path === '/index.html' ||
+      req.path === '/favicon.ico' ||
+      BOOT_EXEMPT_STATIC.test(req.path)
+    ) {
       return next();
     }
     if (bootState !== 'ready') {
@@ -264,6 +275,14 @@ export function createPlatformApp() {
     return sendHtml(path.join(publicDir, 'auth', requestedFile), res, next);
   });
   app.use('/auth', express.static(path.join(publicDir, 'auth'), staticOpts));
+  // Brand favicon (Red Crescent mark): inline SVG, no file dependency, cached
+  app.get('/favicon.ico', (_req: Request, res: Response) => {
+    res.setHeader('Content-Type', 'image/svg+xml');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.send(
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#141519"/><path d="M13 2.5C7.2 2.5 2.5 7.2 2.5 13S7.2 23.5 13 23.5c3.3 0 6.2-1.5 8.2-3.9-.4-.1-.8-.2-1.2-.2-4.4 0-8-3.6-8-8s3.6-8 8-8c.4 0 .8-.1 1.2-.2C19.2 4 16.3 2.5 13 2.5z" fill="#DC2626"/></svg>'
+    );
+  });
   app.get(['/', '/index.html'], async (req: Request, res: Response, next) => {
     try {
       const user = await extractAuthUser(req);
