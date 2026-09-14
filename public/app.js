@@ -2731,13 +2731,13 @@ function renderRxMeds(list) {
     return `
         <tr style="${rowStyle}">
           <td data-label="المريض"><strong>${patientName}</strong>${isCurrentPatient ? ' <span class="badge badge-success" style="font-size:0.65rem;">النشط</span>' : ''}</td>
-          <td data-label="الدواء بالمصدر"><strong>${m.medication?.code?.sourceCode}</strong><br><small style="color:var(--m3-on-surface-muted);">${m.medication?.code?.sourceDisplay || ''}</small></td>
-          <td data-label="المستشفى المصدر"><span class="badge badge-info">${m.provenance?.sourceSystemId}</span></td>
-          <td data-label="كود الدواء السعودي"><strong style="color:var(--m3-on-secondary-container);"><code>${m.medication?.code?.sfdaCode || 'SDC-0628500100101'}</code></strong><br><small style="color:var(--m3-on-surface-variant);">${m.medication?.code?.sfdaDisplay || 'Glucophage 500mg'}</small></td>
-          <td data-label="التصنيف العلمي"><span class="badge badge-purple">${m.medication?.code?.atcCode || 'A10BA02'}</span><br><small style="color:var(--m3-on-surface-muted);">RxNorm: ${m.medication?.code?.rxnormCode || '860975'}</small></td>
-          <td data-label="الجرعة والاستخدام">${m.dosageInstruction?.[0]?.textAr || m.dosageInstruction?.[0]?.text || '1 tab PO BID'}</td>
-          <td data-label="الكمية والتكرار"><strong>${m.dispenseRequest?.quantity?.value || 60} ${m.dispenseRequest?.quantity?.unit || 'TAB'}</strong> (${m.dispenseRequest?.numberOfRepeatsAllowed || 2} مرات تكرار)</td>
-          <td data-label="تاريخ الوصفة"><code>${new Date(m.authoredOn).toLocaleDateString('ar-SA')}</code></td>
+          <td data-label="الدواء بالمصدر"><strong>${m.medication?.code?.sourceCode || '—'}</strong><br><small style="color:var(--m3-on-surface-muted);">${m.medication?.code?.sourceDisplay || ''}</small></td>
+          <td data-label="المستشفى المصدر"><span class="badge badge-info">${m.provenance?.sourceSystemId || '—'}</span></td>
+          <td data-label="كود الدواء السعودي">${m.medication?.code?.sfdaCode ? `<strong style="color:var(--m3-on-secondary-container);"><code>${m.medication.code.sfdaCode}</code></strong><br><small style="color:var(--m3-on-surface-variant);">${m.medication?.code?.sfdaDisplay || ''}</small>` : '— (غير مرمّز SFDA)'}</td>
+          <td data-label="التصنيف العلمي">${m.medication?.code?.atcCode ? `<span class="badge badge-purple">${m.medication.code.atcCode}</span>` : '—'}<br><small style="color:var(--m3-on-surface-muted);">${m.medication?.code?.rxnormCode ? 'RxNorm: ' + m.medication.code.rxnormCode : ''}</small></td>
+          <td data-label="الجرعة والاستخدام">${m.dosageInstruction?.[0]?.textAr || m.dosageInstruction?.[0]?.text || '—'}</td>
+          <td data-label="الكمية والتكرار">${m.dispenseRequest?.quantity?.value ? `<strong>${m.dispenseRequest.quantity.value} ${m.dispenseRequest.quantity.unit || ''}</strong>` : '—'}${m.dispenseRequest?.numberOfRepeatsAllowed ? ` (${m.dispenseRequest.numberOfRepeatsAllowed} مرات تكرار)` : ''}</td>
+          <td data-label="تاريخ الوصفة"><code>${(() => { try { return m.authoredOn ? new Date(m.authoredOn).toLocaleDateString('ar-SA') : '—'; } catch (e) { return '—'; } })()}</code></td>
         </tr>`;
   }).join('');
 }
@@ -2759,14 +2759,14 @@ function renderRxVax(list) {
     return `
         <tr style="${rowStyle}">
           <td data-label="المريض"><strong>${patientName}</strong>${isCurrentPatient ? ' <span class="badge badge-success" style="font-size:0.65rem;">النشط</span>' : ''}</td>
-          <td data-label="اللقاح بالمصدر"><strong>${v.vaccineCode?.sourceCode}</strong><br><small style="color:var(--m3-on-surface-muted);">${v.vaccineCode?.sourceDisplay || ''}</small></td>
-          <td data-label="المستشفى المصدر"><span class="badge badge-info">${v.provenance?.sourceSystemId}</span></td>
-          <td data-label="كود وزارة الصحة"><strong style="color:var(--m3-on-primary-container);"><code>${v.vaccineCode?.sourceCode?.includes('SA-VAX') ? v.vaccineCode?.sourceCode : 'SA-VAX-FLU-01'}</code></strong></td>
-          <td data-label="المعيار الدولي"><span class="badge badge-purple">CVX ${v.vaccineCode?.cvxCode || '158'}</span></td>
-          <td data-label="رقم التشغيلة"><code>${v.lotNumber}</code></td>
-          <td data-label="تاريخ الانتهاء"><code>${v.expirationDate}</code></td>
-          <td data-label="تاريخ الإعطاء"><code>${new Date(v.occurrenceDateTime).toLocaleDateString('ar-SA')}</code></td>
-          <td data-label="موقع الحقن">${v.site || 'العضلة الدالية اليسرى'}</td>
+          <td data-label="اللقاح بالمصدر"><strong>${v.vaccineCode?.sourceCode || '—'}</strong><br><small style="color:var(--m3-on-surface-muted);">${v.vaccineCode?.sourceDisplay || ''}</small></td>
+          <td data-label="المستشفى المصدر"><span class="badge badge-info">${v.provenance?.sourceSystemId || '—'}</span></td>
+          <td data-label="كود وزارة الصحة">${v.vaccineCode?.sourceCode?.includes('SA-VAX') ? `<strong style="color:var(--m3-on-primary-container);"><code>${v.vaccineCode.sourceCode}</code></strong>` : (v.vaccineCode?.sourceCode ? `<code>${v.vaccineCode.sourceCode}</code>` : '—')}</td>
+          <td data-label="المعيار الدولي">${v.vaccineCode?.cvxCode ? `<span class="badge badge-purple">CVX ${v.vaccineCode.cvxCode}</span>` : '—'}</td>
+          <td data-label="رقم التشغيلة">${v.lotNumber ? `<code>${v.lotNumber}</code>` : '—'}</td>
+          <td data-label="تاريخ الانتهاء"><code>${v.expirationDate || '—'}</code></td>
+          <td data-label="تاريخ الإعطاء"><code>${(() => { try { return v.occurrenceDateTime ? new Date(v.occurrenceDateTime).toLocaleDateString('ar-SA') : '—'; } catch (e) { return '—'; } })()}</code></td>
+          <td data-label="موقع الحقن">${v.site || '—'}</td>
         </tr>`;
   }).join('');
 }
@@ -3958,7 +3958,7 @@ async function showHospGlobalDetail(patientId) {
               <span class="badge badge-info">${imm.length} تطعيم</span>
             </div>
             <div class="card-body p-0">
-              ${imm.length ? `<table class="data-table"><thead><tr><th>اللقاح بالمصدر</th><th>المصدر</th><th>MOH Code</th><th>CVX</th><th>التشغيلة</th><th>التاريخ</th><th>الموقع</th></tr></thead><tbody>${imm.map(i=>`<tr><td><strong>${i.vaccineCode?.sourceCode||'—'}</strong><br><small style="color:var(--m3-on-surface-muted);">${i.vaccineCode?.sourceDisplay||''}</small></td><td><span class="badge badge-info">${i.provenance?.sourceSystemId||'—'}</span></td><td><code>${i.vaccineCode?.sourceCode?.includes('SA-VAX')? i.vaccineCode?.sourceCode : (i.vaccineCode?.sourceCode||'SA-VAX-FLU-01')}</code></td><td><span class="badge badge-purple">CVX ${i.vaccineCode?.cvxCode||'—'}</span></td><td><code>${i.lotNumber||'—'}</code></td><td><code>${i.occurrenceDateTime? new Date(i.occurrenceDateTime).toLocaleDateString('ar-SA'):'—'}</code></td><td>${i.site||'—'}</td></tr>`).join('')}</tbody></table>` : '<p class="text-center py-4" style="color:var(--m3-on-surface-muted);">لا توجد تطعيمات مسجلة</p>'}
+              ${imm.length ? `<table class="data-table"><thead><tr><th>اللقاح بالمصدر</th><th>المصدر</th><th>MOH Code</th><th>CVX</th><th>التشغيلة</th><th>التاريخ</th><th>الموقع</th></tr></thead><tbody>${imm.map(i=>`<tr><td><strong>${i.vaccineCode?.sourceCode||'—'}</strong><br><small style="color:var(--m3-on-surface-muted);">${i.vaccineCode?.sourceDisplay||''}</small></td><td><span class="badge badge-info">${i.provenance?.sourceSystemId||'—'}</span></td><td><code>${i.vaccineCode?.sourceCode || '—'}</code></td><td><span class="badge badge-purple">CVX ${i.vaccineCode?.cvxCode||'—'}</span></td><td><code>${i.lotNumber||'—'}</code></td><td><code>${i.occurrenceDateTime? new Date(i.occurrenceDateTime).toLocaleDateString('ar-SA'):'—'}</code></td><td>${i.site||'—'}</td></tr>`).join('')}</tbody></table>` : '<p class="text-center py-4" style="color:var(--m3-on-surface-muted);">لا توجد تطعيمات مسجلة</p>'}
             </div>
           </div>
 
@@ -4103,8 +4103,8 @@ function renderLongitudinalContent(data, patientId) {
     const nidObj = p.identifiers?.find(i => i.type === 'NID' || i.type === 'IQAMA') || p.identifiers?.[0];
     const nid = nidObj?.value || p.internalId || '—';
     const idLabel = nidObj?.type === 'IQAMA' ? 'الإقامة النظامية' : 'الهوية الوطنية';
-    const phone = p.phone || p.telecom?.[0]?.value || '+966 50 123 4567';
-    const address = p.city || p.addresses?.[0]?.city || (p.nationalityCode === 'SAU' ? 'الرياض' : 'جدة');
+    const phone = p.phone || p.telecom?.[0]?.value || '—';
+    const address = (p.address && (p.address.city || p.address.cityAr)) || p.city || p.addresses?.[0]?.city || '—';
 
     // Lab trends — real data only, no fabrication
     const hba1cObs = observations.find(o => o.code?.loincCode === '4548-4' || o.code?.sourceCode?.includes('HbA1c') || o.code?.sourceCode?.includes('السكر التراكمي'));
@@ -4209,12 +4209,12 @@ function renderLongitudinalContent(data, patientId) {
             <tbody>
               ${medications.map((m) => `
                 <tr>
-                  <td data-label="الدواء بالمصدر"><strong>${m.medication?.code?.sourceCode}</strong></td>
-                  <td data-label="المصدر"><span class="badge badge-info">${m.provenance?.sourceSystemId}</span></td>
-                  <td data-label="كود الدواء السعودي"><code>${m.medication?.code?.sfdaCode || '0628500100101'}</code> (${m.medication?.code?.sfdaDisplay || 'Glucophage 500mg'})</td>
-                  <td data-label="الجرعة والاستخدام">${m.dosageInstruction?.[0]?.textAr || m.dosageInstruction?.[0]?.text || '1 tab PO BID'}</td>
-                  <td data-label="الكمية"><strong>${m.dispenseRequest?.quantity?.value || 60} ${m.dispenseRequest?.quantity?.unit || 'TAB'}</strong></td>
-                  <td data-label="التاريخ"><code>${new Date(m.authoredOn).toLocaleDateString('ar-SA')}</code></td>
+                  <td data-label="الدواء بالمصدر"><strong>${m.medication?.code?.sourceCode || '—'}</strong></td>
+                  <td data-label="المصدر"><span class="badge badge-info">${m.provenance?.sourceSystemId || '—'}</span></td>
+                  <td data-label="كود الدواء السعودي">${m.medication?.code?.sfdaCode ? `<code>${m.medication.code.sfdaCode}</code> (${m.medication?.code?.sfdaDisplay || ''})` : '— (غير مرمّز SFDA)'}</td>
+                  <td data-label="الجرعة والاستخدام">${m.dosageInstruction?.[0]?.textAr || m.dosageInstruction?.[0]?.text || '—'}</td>
+                  <td data-label="الكمية">${m.dispenseRequest?.quantity?.value ? `<strong>${m.dispenseRequest.quantity.value} ${m.dispenseRequest.quantity.unit || ''}</strong>` : '—'}</td>
+                  <td data-label="التاريخ"><code>${(() => { try { return m.authoredOn ? new Date(m.authoredOn).toLocaleDateString('ar-SA') : '—'; } catch (e) { return '—'; } })()}</code></td>
                 </tr>
               `).join('') || '<tr><td colspan="6" class="text-center py-4">لا توجد وصفات أدوية</td></tr>'}
             </tbody>
@@ -4245,12 +4245,12 @@ function renderLongitudinalContent(data, patientId) {
             <tbody>
               ${conditions.map((c) => `
                 <tr>
-                  <td data-label="التشخيص بالمصدر"><strong>${c.code?.sourceCode}</strong> (${c.code?.sourceDisplay || ''})</td>
-                  <td data-label="المصدر"><span class="badge badge-info">${c.provenance?.sourceSystemId}</span></td>
-                  <td data-label="SNOMED CT"><code>${c.code?.snomedCode || 'N/A'}</code> ${c.code?.snomedDisplay || ''}</td>
-                  <td data-label="ICD-10-AM"><span class="badge badge-purple">${c.code?.icd10amCode || 'N/A'}</span></td>
-                  <td data-label="SBS"><span class="badge badge-warning">${c.code?.sbsCode || 'N/A'}</span></td>
-                  <td data-label="التاريخ"><code>${new Date(c.recordedDate).toLocaleDateString('ar-SA')}</code></td>
+                  <td data-label="التشخيص بالمصدر"><strong>${c.code?.sourceCode || '—'}</strong> (${c.code?.sourceDisplay || c.code?.snomedDisplay || ''})</td>
+                  <td data-label="المصدر"><span class="badge badge-info">${c.provenance?.sourceSystemId || '—'}</span></td>
+                  <td data-label="SNOMED CT">${c.code?.snomedCode ? `<code>${c.code.snomedCode}</code> ${c.code?.snomedDisplay || ''}` : '—'}</td>
+                  <td data-label="ICD-10-AM">${c.code?.icd10amCode ? `<span class="badge badge-purple">${c.code.icd10amCode}</span>` : '—'}</td>
+                  <td data-label="SBS">${c.code?.sbsCode ? `<span class="badge badge-warning">${c.code.sbsCode}</span>` : '—'}</td>
+                  <td data-label="التاريخ"><code>${(() => { try { return c.recordedDate ? new Date(c.recordedDate).toLocaleDateString('ar-SA') : '—'; } catch (e) { return '—'; } })()}</code></td>
                 </tr>
               `).join('') || '<tr><td colspan="6" class="text-center py-4">لا توجد تشخيصات</td></tr>'}
             </tbody>
@@ -4281,12 +4281,12 @@ function renderLongitudinalContent(data, patientId) {
             <tbody>
               ${observations.map((o) => `
                 <tr>
-                  <td data-label="اسم الفحص"><strong>${o.code?.sourceCode}</strong></td>
-                  <td data-label="المصدر"><span class="badge badge-info">${o.provenance?.sourceSystemId}</span></td>
-                  <td data-label="كود LOINC"><code>LOINC ${o.code?.loincCode || 'N/A'}</code></td>
-                  <td data-label="النتيجة"><strong style="color:var(--m3-on-primary-container); font-size:1rem;">${o.valueQuantity?.value} ${o.valueQuantity?.unit || ''}</strong></td>
-                  <td data-label="المرجع الطبيعي">${o.referenceRange?.text || '4.0 - 5.6 %'}</td>
-                  <td data-label="التاريخ"><code>${new Date(o.effectiveDateTime).toLocaleDateString('ar-SA')}</code></td>
+                  <td data-label="اسم الفحص"><strong>${o.code?.sourceCode || o.code?.loincDisplay || '—'}</strong></td>
+                  <td data-label="المصدر"><span class="badge badge-info">${o.provenance?.sourceSystemId || '—'}</span></td>
+                  <td data-label="كود LOINC">${o.code?.loincCode ? `<code>LOINC ${o.code.loincCode}</code>` : '—'}</td>
+                  <td data-label="النتيجة">${o.valueQuantity?.value !== undefined && o.valueQuantity?.value !== null ? `<strong style="color:var(--m3-on-primary-container); font-size:1rem;">${o.valueQuantity.value} ${o.valueQuantity?.unit || ''}</strong>` : (o.valueString ? `<strong>${o.valueString}</strong>` : '—')}</td>
+                  <td data-label="المرجع الطبيعي">${o.referenceRange?.text || ((o.referenceRange?.low !== undefined || o.referenceRange?.high !== undefined) ? `${o.referenceRange?.low ?? '—'} - ${o.referenceRange?.high ?? '—'} ${o.referenceRange?.unit || ''}` : '—')}</td>
+                  <td data-label="التاريخ"><code>${(() => { try { return o.effectiveDateTime ? new Date(o.effectiveDateTime).toLocaleDateString('ar-SA') : '—'; } catch (e) { return '—'; } })()}</code></td>
                 </tr>
               `).join('') || '<tr><td colspan="6" class="text-center py-4">لا توجد نتائج مخبرية</td></tr>'}
             </tbody>
@@ -4317,12 +4317,12 @@ function renderLongitudinalContent(data, patientId) {
             <tbody>
               ${immunizations.map((i) => `
                 <tr>
-                  <td data-label="اللقاح بالمصدر"><strong>${i.vaccineCode?.sourceCode}</strong></td>
-                  <td data-label="المصدر"><span class="badge badge-info">${i.provenance?.sourceSystemId}</span></td>
-                  <td data-label="كود وزارة الصحة"><code>${i.vaccineCode?.sourceCode?.includes('SA-VAX') ? i.vaccineCode?.sourceCode : 'SA-VAX-FLU-01'}</code></td>
-                  <td data-label="CVX"><span class="badge badge-purple">CVX ${i.vaccineCode?.cvxCode || '158'}</span></td>
-                  <td data-label="رقم التشغيلة"><code>${i.lotNumber}</code></td>
-                  <td data-label="التاريخ"><code>${new Date(i.occurrenceDateTime).toLocaleDateString('ar-SA')}</code></td>
+                  <td data-label="اللقاح بالمصدر"><strong>${i.vaccineCode?.sourceCode || '—'}</strong></td>
+                  <td data-label="المصدر"><span class="badge badge-info">${i.provenance?.sourceSystemId || '—'}</span></td>
+                  <td data-label="كود وزارة الصحة">${i.vaccineCode?.sourceCode?.includes('SA-VAX') ? `<code>${i.vaccineCode.sourceCode}</code>` : '—'}</td>
+                  <td data-label="CVX">${i.vaccineCode?.cvxCode ? `<span class="badge badge-purple">CVX ${i.vaccineCode.cvxCode}</span>` : '—'}</td>
+                  <td data-label="رقم التشغيلة">${i.lotNumber ? `<code>${i.lotNumber}</code>` : '—'}</td>
+                  <td data-label="التاريخ"><code>${(() => { try { return i.occurrenceDateTime ? new Date(i.occurrenceDateTime).toLocaleDateString('ar-SA') : '—'; } catch (e) { return '—'; } })()}</code></td>
                 </tr>
               `).join('') || '<tr><td colspan="6" class="text-center py-4">لا توجد تطعيمات</td></tr>'}
             </tbody>
@@ -4354,12 +4354,12 @@ function renderLongitudinalContent(data, patientId) {
             <tbody>
               ${allergies.map((a) => `
                 <tr>
-                  <td data-label="المادة المسببة"><strong>${a.substanceTextAr || a.substanceText}</strong><br><small style="color:var(--m3-on-surface-muted);">${a.substanceText}</small></td>
-                  <td data-label="المصدر"><span class="badge badge-info">${a.provenance?.sourceSystemId}</span></td>
-                  <td data-label="كود SNOMED"><code>SNOMED ${a.substanceCode?.snomedCode || '764146007'}</code></td>
-                  <td data-label="درجة الخطورة"><span class="badge ${a.criticality === 'high' ? 'badge-warning' : 'badge-info'}">${a.criticality === 'high' ? 'عالية الخطورة (High)' : 'منخفضة'}</span></td>
-                  <td data-label="التفاعل"><strong style="color:var(--m3-error);">${a.reactions?.[0]?.manifestationTextAr || a.reactions?.[0]?.manifestationText || 'صدمة تحسسية'}</strong></td>
-                  <td data-label="تاريخ التسجيل"><code>${new Date(a.recordedDate).toLocaleDateString('ar-SA')}</code></td>
+                  <td data-label="المادة المسببة"><strong>${a.substanceTextAr || a.substanceText || '—'}</strong>${(a.substanceTextAr && a.substanceText && a.substanceTextAr !== a.substanceText) ? `<br><small style="color:var(--m3-on-surface-muted);">${a.substanceText}</small>` : ''}</td>
+                  <td data-label="المصدر"><span class="badge badge-info">${a.provenance?.sourceSystemId || '—'}</span></td>
+                  <td data-label="كود SNOMED">${a.substanceCode?.snomedCode ? `<code>SNOMED ${a.substanceCode.snomedCode}</code>` : '—'}</td>
+                  <td data-label="درجة الخطورة"><span class="badge ${a.criticality === 'high' ? 'badge-warning' : 'badge-info'}">${a.criticality === 'high' ? 'عالية الخطورة (High)' : a.criticality === 'low' ? 'منخفضة' : 'غير محددة'}</span></td>
+                  <td data-label="التفاعل">${a.reactions?.[0]?.manifestationTextAr || a.reactions?.[0]?.manifestationText ? `<strong style="color:var(--m3-error);">${a.reactions[0].manifestationTextAr || a.reactions[0].manifestationText}</strong>` : '—'}</td>
+                  <td data-label="تاريخ التسجيل"><code>${(() => { try { return a.recordedDate ? new Date(a.recordedDate).toLocaleDateString('ar-SA') : '—'; } catch (e) { return '—'; } })()}</code></td>
                 </tr>
               `).join('') || '<tr><td colspan="6" class="text-center py-4">لا توجد حساسيات مسجلة</td></tr>'}
             </tbody>
@@ -4390,12 +4390,12 @@ function renderLongitudinalContent(data, patientId) {
             <tbody>
               ${diagnosticReports.map((d) => `
                 <tr>
-                  <td data-label="اسم التقرير"><strong>${d.code?.loincDisplay || 'Comprehensive Metabolic 2000 Panel'}</strong></td>
-                  <td data-label="المصدر"><span class="badge badge-info">${d.provenance?.sourceSystemId}</span></td>
-                  <td data-label="كود LOINC"><code>LOINC ${d.code?.loincCode || '24323-8'}</code></td>
-                  <td data-label="الحالة"><span class="badge badge-success">${d.status}</span></td>
-                  <td data-label="الخلاصة" style="font-size:0.82rem; overflow-wrap:anywhere;">${d.conclusionAr || d.conclusion || 'نتائج ضمن المعدل المطلوب'}</td>
-                  <td data-label="تاريخ الإصدار"><code>${new Date(d.issued).toLocaleDateString('ar-SA')}</code></td>
+                  <td data-label="اسم التقرير"><strong>${d.code?.loincDisplay || d.code?.sourceCode || '—'}</strong></td>
+                  <td data-label="المصدر"><span class="badge badge-info">${d.provenance?.sourceSystemId || '—'}</span></td>
+                  <td data-label="كود LOINC">${d.code?.loincCode ? `<code>LOINC ${d.code.loincCode}</code>` : '—'}</td>
+                  <td data-label="الحالة"><span class="badge badge-success">${d.status || '—'}</span></td>
+                  <td data-label="الخلاصة" style="font-size:0.82rem; overflow-wrap:anywhere;">${d.conclusionAr || d.conclusion || 'لا توجد خلاصة مسجلة'}</td>
+                  <td data-label="تاريخ الإصدار"><code>${(() => { try { return d.issued ? new Date(d.issued).toLocaleDateString('ar-SA') : '—'; } catch (e) { return '—'; } })()}</code></td>
                 </tr>
               `).join('') || '<tr><td colspan="6" class="text-center py-4">لا توجد تقارير تشخيصية مجمعة</td></tr>'}
             </tbody>
@@ -4419,10 +4419,10 @@ function renderLongitudinalContent(data, patientId) {
             </div>
             <div class="timeline-card">
               <div style="display:flex; justify-content:space-between; margin-bottom:6px; align-items:center; flex-wrap:wrap; gap:6px;">
-                <strong style="color:var(--m3-on-surface); font-size:0.96rem;">زيارة ${e.class} (${e.departmentAr || 'العيادة'})</strong>
-                <span class="badge badge-info">${e.provenance?.sourceSystemId} (رقم الزيارة: ${e.sourceVisitId})</span>
+                <strong style="color:var(--m3-on-surface); font-size:0.96rem;">زيارة ${e.class || '—'}${e.departmentAr ? ` (${e.departmentAr})` : ''}</strong>
+                <span class="badge badge-info">${e.provenance?.sourceSystemId || '—'} (رقم الزيارة: ${e.sourceVisitId || '—'})</span>
               </div>
-              <p class="metric-sub">التاريخ: <code>${new Date(e.period?.start).toLocaleString('ar-SA')}</code> | السبب: <strong style="color:var(--m3-on-surface-variant);">${e.reasonTextAr || 'متابعة دورية'}</strong></p>
+              <p class="metric-sub">التاريخ: <code>${(() => { try { return e.period?.start ? new Date(e.period.start).toLocaleString('ar-SA') : '—'; } catch (err) { return '—'; } })()}</code> | السبب: <strong style="color:var(--m3-on-surface-variant);">${e.reasonTextAr || e.reasonText || 'غير محدد'}</strong></p>
             </div>
           </div>
         `).join('') || '<p class="py-4 text-center">لا توجد زيارات مسجلة.</p>'}
@@ -4430,8 +4430,8 @@ function renderLongitudinalContent(data, patientId) {
 
       <!-- Official Printable Document Footer -->
       <div class="print-only-footer">
-        <span>تم إصدار وتوثيق هذا التقرير آلياً عبر محرك التشغيل البيني الصحي الوطني التابع للمجلس الصحي السعودي.</span>
-        <span>بصمة التوثيق الأمني: <code>NCA-SEC-${Math.random().toString(36).substring(2, 10).toUpperCase()}</code></span>
+        <span>تم إصدار هذا التقرير آلياً عبر محرك التشغيل البيني الصحي الوطني التابع للمجلس الصحي السعودي.</span>
+        <span>المرجع: <code>${nid}</code> • التاريخ: <code>${new Date().toLocaleDateString('ar-SA')}</code></span>
       </div>
     `;
 }
@@ -4454,12 +4454,36 @@ function openMedicalReportPreview(patientId) {
       const nidObj = p.identifiers?.find(i => i.type === 'NID' || i.type === 'IQAMA') || p.identifiers?.[0];
       const nid = nidObj?.value || p.internalId || '—';
       const idLabel = nidObj?.type === 'IQAMA' ? 'رقم الإقامة النظامية' : 'رقم الهوية الوطنية';
-      const phone = p.phone || p.telecom?.[0]?.value || '+966 50 123 4567';
-      const address = p.city || p.addresses?.[0]?.city || (p.nationalityCode === 'SAU' ? 'الرياض، المملكة العربية السعودية' : 'جدة، المملكة العربية السعودية');
+      // Real data only — never invent demographics (no fake phone/city/nationality/age/lab values)
+      const safeFmtDate = (v) => { try { if (!v) return '—'; const d = new Date(v); return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('ar-SA'); } catch (e) { return '—'; } };
+      const safeFmtDateTime = (v) => { try { if (!v) return '—'; const d = new Date(v); return isNaN(d.getTime()) ? '—' : d.toLocaleString('ar-SA'); } catch (e) { return '—'; } };
+      const calcAge = (bd) => { try { if (!bd) return null; const b = new Date(bd); if (isNaN(b.getTime())) return null; const now = new Date(); let a = now.getFullYear() - b.getFullYear(); const m = now.getMonth() - b.getMonth(); if (m < 0 || (m === 0 && now.getDate() < b.getDate())) a--; return a >= 0 ? a : null; } catch (e) { return null; } };
+      const phoneRaw = p.phone || p.telecom?.[0]?.value || null;
+      const phone = phoneRaw || 'غير مسجل (—)';
+      const cityRaw = (p.address && (p.address.city || p.address.cityAr)) || p.city || p.addresses?.[0]?.city || null;
+      const address = cityRaw || 'غير مسجل (—)';
+      const natRaw = p.nationality || p.nationalityCode || null;
+      const nationalityLabel = (() => { if (!natRaw) return '—'; const v = String(natRaw).toUpperCase(); if (v === 'SAU' || v.includes('سعود')) return 'سعودي (SAU)'; return String(natRaw); })();
+      const genderLabel = p.gender === 'male' ? 'ذكر (Male)' : p.gender === 'female' ? 'أنثى (Female)' : 'غير محدد';
+      const birthLabel = p.birthDate || '—';
+      const ageVal = calcAge(p.birthDate);
+      const ageLabel = ageVal !== null ? `(${ageVal} سنة)` : '';
+      // Lab trends — real data only, no fabrication
       const hba1cObs = observations.find(o => o.code?.loincCode === '4548-4' || o.code?.sourceCode?.includes('HbA1c') || o.code?.sourceCode?.includes('السكر التراكمي'));
-      const hba1cVal = hba1cObs?.valueQuantity?.value || (conditions.some(c => c.code?.snomedCode === '44054006') ? '8.4' : '5.4');
-      const isDiabetic = parseFloat(hba1cVal) >= 6.5;
-      const docSerial = `SA-MOH-LHR-2026-${Math.floor(100000 + Math.random() * 900000)}`;
+      const hba1cRaw = hba1cObs?.valueQuantity?.value;
+      const hasHba1c = hba1cRaw !== undefined && hba1cRaw !== null && hba1cRaw !== '';
+      const hba1cVal = hasHba1c ? String(hba1cRaw) : null;
+      const hba1cNum = hasHba1c ? parseFloat(String(hba1cRaw)) : NaN;
+      const hasDiabetesDx = conditions.some(c => c.code?.snomedCode === '44054006');
+      const isDiabetic = (hasHba1c && !isNaN(hba1cNum) && hba1cNum >= 6.5) || (!hasHba1c && hasDiabetesDx);
+      const glucoseObs = observations.find(o => o.code?.loincCode === '1558-6' || o.code?.sourceCode?.includes('Glucose') || o.code?.sourceCode?.includes('جلوكوز') || o.code?.sourceCode?.includes('السكر الصائم'));
+      const glucoseRaw = glucoseObs?.valueQuantity?.value;
+      const hasGlucose = glucoseRaw !== undefined && glucoseRaw !== null && glucoseRaw !== '';
+      // Deterministic reference per patient+day (stable across re-preview/print — never random)
+      const stableRef = (() => { try { const day = new Date().toISOString().slice(0, 10).replace(/-/g, ''); const seed = String(p.internalId || nid || 'X'); let h = 0; for (let k = 0; k < seed.length; k++) { h = ((h << 5) - h + seed.charCodeAt(k)) | 0; } const suffix = String(Math.abs(h) % 900000 + 100000); return `SA-MOH-LHR-${day}-${suffix}`; } catch (e) { return 'SA-MOH-LHR-REF'; } })();
+      const docSerial = stableRef;
+      const issueDateTime = new Date().toLocaleString('ar-SA');
+      const issueDate = new Date().toLocaleDateString('ar-SA');
 
       const patientArName = `${p.givenNameAr || p.givenName || ''} ${p.familyNameAr || p.familyName || ''}`.trim() || 'مريض مسجل';
       const patientEnName = `${p.givenName || ''} ${p.familyName || ''}`.trim() || patientArName;
@@ -4506,8 +4530,8 @@ function openMedicalReportPreview(patientId) {
             </div>
             <div class="pdf-header-meta">
               <div><strong>الرقم المرجعي:</strong> <code>${docSerial}</code></div>
-              <div><strong>تاريخ الإصدار:</strong> ${new Date().toLocaleDateString('ar-SA')}</div>
-              <div><strong>حالة الوثيقة:</strong> <span style="color:var(--m3-primary); font-weight:700;">موثقة ومعتمدة رقمياً</span></div>
+              <div><strong>تاريخ الإصدار:</strong> ${issueDate} <small style="color:var(--m3-on-surface-variant);">(${issueDateTime})</small></div>
+              <div><strong>حالة الوثيقة:</strong> <span style="color:var(--m3-primary); font-weight:700;">نسخة نظامية من السجل الموحد (الاعتماد بختم المنشأة وتوقيع الممارس)</span></div>
               <div><strong>التصنيف الأمني:</strong> طبي سري (PDPL Protected)</div>
             </div>
           </div>
@@ -4534,15 +4558,15 @@ function openMedicalReportPreview(patientId) {
             </div>
             <div class="pdf-grid-cell">
               <span class="pdf-grid-label">تاريخ الميلاد / العمر:</span>
-              <span class="pdf-grid-val">${p.birthDate} (42 سنة)</span>
+              <span class="pdf-grid-val">${birthLabel} ${ageLabel}</span>
             </div>
             <div class="pdf-grid-cell">
               <span class="pdf-grid-label">الجنس:</span>
-              <span class="pdf-grid-val">${p.gender === 'male' ? 'ذكر (Male)' : 'أنثى (Female)'}</span>
+              <span class="pdf-grid-val">${genderLabel}</span>
             </div>
             <div class="pdf-grid-cell">
               <span class="pdf-grid-label">الجنسية:</span>
-              <span class="pdf-grid-val">سعودي (SAU)</span>
+              <span class="pdf-grid-val">${nationalityLabel}</span>
             </div>
             <div class="pdf-grid-cell">
               <span class="pdf-grid-label">رقم الجوال:</span>
@@ -4554,17 +4578,15 @@ function openMedicalReportPreview(patientId) {
             </div>
           </div>
 
-          <!-- Clinical KPI Highlights -->
+          <!-- Clinical KPI Highlights (real data only — no invented lab values) -->
           <div class="pdf-kpi-bar">
             <div class="pdf-kpi-box ${isDiabetic ? 'warning' : ''}">
               <div class="kpi-title">السكر التراكمي (HbA1c)</div>
-              <div class="kpi-num">${hba1cVal}%</div>
-              <small style="font-size:0.68rem; color:var(--m3-on-surface-variant);">LOINC 4548-4 (الهدف: &lt; 7.0%)</small>
+              ${hasHba1c ? `<div class="kpi-num">${hba1cVal}%</div><small style="font-size:0.68rem; color:var(--m3-on-surface-variant);">LOINC 4548-4 (الهدف: &lt; 7.0%)${hba1cObs?.effectiveDateTime ? ' • ' + safeFmtDate(hba1cObs.effectiveDateTime) : ''}</small>` : `<div class="kpi-num">—</div><small style="font-size:0.68rem; color:var(--m3-on-surface-variant);">لا يوجد فحص HbA1c مسجل لهذا المريض</small>`}
             </div>
             <div class="pdf-kpi-box">
               <div class="kpi-title">سكر الدم الصائم (Glucose)</div>
-              <div class="kpi-num">${isDiabetic ? '142' : '94'} mg/dL</div>
-              <small style="font-size:0.68rem; color:var(--m3-on-surface-variant);">LOINC 1558-6 (المرجع: 70 - 99)</small>
+              ${hasGlucose ? `<div class="kpi-num">${glucoseRaw} ${glucoseObs.valueQuantity?.unit || 'mg/dL'}</div><small style="font-size:0.68rem; color:var(--m3-on-surface-variant);">LOINC 1558-6 (المرجع: 70 - 99)${glucoseObs?.effectiveDateTime ? ' • ' + safeFmtDate(glucoseObs.effectiveDateTime) : ''}</small>` : `<div class="kpi-num">—</div><small style="font-size:0.68rem; color:var(--m3-on-surface-variant);">لا يوجد فحص صائم مسجل لهذا المريض</small>`}
             </div>
             <div class="pdf-kpi-box">
               <div class="kpi-title">الأدوية الفعالة المصروفة</div>
@@ -4597,11 +4619,11 @@ function openMedicalReportPreview(patientId) {
               <tbody>
                 ${medications.map(m => `
                   <tr>
-                    <td><strong>${m.medication?.code?.sourceCode || 'دواء معتمد'}</strong><br><small style="color:var(--m3-on-surface-variant);">${m.medication?.code?.sfdaDisplay || ''}</small></td>
-                    <td><code>SFDA ${m.medication?.code?.sfdaCode || '0628500100101'}</code></td>
-                    <td>${m.dosageInstruction?.[0]?.textAr || m.dosageInstruction?.[0]?.text || 'حبة واحدة يومياً عن طريق الفم'}</td>
-                    <td><strong>${m.dispenseRequest?.quantity?.value || 60} ${m.dispenseRequest?.quantity?.unit || 'قرص'}</strong></td>
-                    <td>${m.provenance?.sourceSystemId || 'المستشفى'}<br><small><code>${new Date(m.authoredOn).toLocaleDateString('ar-SA')}</code></small></td>
+                    <td><strong>${m.medication?.code?.sourceCode || '—'}</strong><br><small style="color:var(--m3-on-surface-variant);">${m.medication?.code?.sfdaDisplay || ''}</small></td>
+                    <td>${m.medication?.code?.sfdaCode ? `<code>SFDA ${m.medication.code.sfdaCode}</code>` : '<span style="color:var(--m3-on-surface-muted);">— (غير مرمّز SFDA)</span>'}</td>
+                    <td>${m.dosageInstruction?.[0]?.textAr || m.dosageInstruction?.[0]?.text || '<span style="color:var(--m3-on-surface-muted);">غير محدد</span>'}</td>
+                    <td>${m.dispenseRequest?.quantity?.value ? `<strong>${m.dispenseRequest.quantity.value} ${m.dispenseRequest.quantity.unit || ''}</strong>` : '<span style="color:var(--m3-on-surface-muted);">—</span>'}</td>
+                    <td>${m.provenance?.sourceSystemId || '—'}<br><small><code>${safeFmtDate(m.authoredOn)}</code></small></td>
                   </tr>
                 `).join('') || '<tr><td colspan="5" style="text-align:center; padding:10px;">لا توجد وصفات أدوية مسجلة.</td></tr>'}
               </tbody>
@@ -4627,11 +4649,11 @@ function openMedicalReportPreview(patientId) {
               <tbody>
                 ${conditions.map(c => `
                   <tr>
-                    <td><strong>${c.code?.sourceCode || 'تشخيص سريري'}</strong><br><small style="color:var(--m3-on-surface-variant);">${c.code?.sourceDisplay || ''}</small></td>
-                    <td><code>SNOMED ${c.code?.snomedCode || 'N/A'}</code><br><small>${c.code?.snomedDisplay || ''}</small></td>
-                    <td><span style="background:var(--m3-tertiary-container); padding:2px 6px; border-radius:var(--radius-sharp); font-weight:700;">${c.code?.icd10amCode || 'N/A'}</span></td>
-                    <td><span style="background:var(--m3-warning-container); padding:2px 6px; border-radius:var(--radius-sharp); font-weight:700;">${c.code?.sbsCode || 'N/A'}</span></td>
-                    <td>${c.provenance?.sourceSystemId || 'المستشفى'}<br><small><code>${new Date(c.recordedDate).toLocaleDateString('ar-SA')}</code></small></td>
+                    <td><strong>${c.code?.sourceCode || '—'}</strong><br><small style="color:var(--m3-on-surface-variant);">${c.code?.sourceDisplay || c.code?.snomedDisplay || ''}</small></td>
+                    <td>${c.code?.snomedCode ? `<code>SNOMED ${c.code.snomedCode}</code><br><small>${c.code?.snomedDisplay || ''}</small>` : '<span style="color:var(--m3-on-surface-muted);">—</span>'}</td>
+                    <td>${c.code?.icd10amCode ? `<span style="background:var(--m3-tertiary-container); padding:2px 6px; border-radius:var(--radius-sharp); font-weight:700;">${c.code.icd10amCode}</span>` : '<span style="color:var(--m3-on-surface-muted);">—</span>'}</td>
+                    <td>${c.code?.sbsCode ? `<span style="background:var(--m3-warning-container); padding:2px 6px; border-radius:var(--radius-sharp); font-weight:700;">${c.code.sbsCode}</span>` : '<span style="color:var(--m3-on-surface-muted);">—</span>'}</td>
+                    <td>${c.provenance?.sourceSystemId || '—'}<br><small><code>${safeFmtDate(c.recordedDate)}</code></small></td>
                   </tr>
                 `).join('') || '<tr><td colspan="5" style="text-align:center; padding:10px;">لا توجد تشخيصات مسجلة.</td></tr>'}
               </tbody>
@@ -4657,11 +4679,11 @@ function openMedicalReportPreview(patientId) {
               <tbody>
                 ${observations.map(o => `
                   <tr>
-                    <td><strong>${o.code?.sourceCode || 'تحليل مخبري'}</strong></td>
-                    <td><code>LOINC ${o.code?.loincCode || 'N/A'}</code></td>
-                    <td><strong style="color:var(--m3-primary); font-size:0.9rem;">${o.valueQuantity?.value} ${o.valueQuantity?.unit || ''}</strong></td>
-                    <td>${o.referenceRange?.text || '4.0 - 5.6 %'}</td>
-                    <td>${o.provenance?.sourceSystemId || 'المختبر'}<br><small><code>${new Date(o.effectiveDateTime).toLocaleDateString('ar-SA')}</code></small></td>
+                    <td><strong>${o.code?.sourceCode || o.code?.loincDisplay || '—'}</strong></td>
+                    <td>${o.code?.loincCode ? `<code>LOINC ${o.code.loincCode}</code>` : '<span style="color:var(--m3-on-surface-muted);">— (غير مرمّز LOINC)</span>'}</td>
+                    <td>${o.valueQuantity?.value !== undefined && o.valueQuantity?.value !== null && o.valueQuantity?.value !== '' ? `<strong style="color:var(--m3-primary); font-size:0.9rem;">${o.valueQuantity.value} ${o.valueQuantity?.unit || ''}</strong>` : (o.valueString ? `<strong>${o.valueString}</strong>` : '<span style="color:var(--m3-on-surface-muted);">—</span>')}</td>
+                    <td>${o.referenceRange?.text || ((o.referenceRange?.low !== undefined || o.referenceRange?.high !== undefined) ? `${o.referenceRange?.low ?? '—'} - ${o.referenceRange?.high ?? '—'} ${o.referenceRange?.unit || ''}` : '<span style="color:var(--m3-on-surface-muted);">—</span>')}</td>
+                    <td>${o.provenance?.sourceSystemId || '—'}<br><small><code>${safeFmtDate(o.effectiveDateTime)}</code></small></td>
                   </tr>
                 `).join('') || '<tr><td colspan="5" style="text-align:center; padding:10px;">لا توجد نتائج مخبرية مسجلة.</td></tr>'}
               </tbody>
@@ -4687,11 +4709,11 @@ function openMedicalReportPreview(patientId) {
               <tbody>
                 ${immunizations.map(i => `
                   <tr>
-                    <td><strong>${i.vaccineCode?.sourceCode || 'لقاح معتمد'}</strong></td>
-                    <td><code>${i.vaccineCode?.sourceCode?.includes('SA-VAX') ? i.vaccineCode?.sourceCode : 'SA-VAX-FLU-01'}</code></td>
-                    <td><span style="background:var(--m3-tertiary-container); padding:2px 6px; border-radius:var(--radius-sharp); font-weight:700;">CVX ${i.vaccineCode?.cvxCode || '158'}</span></td>
-                    <td><code>${i.lotNumber || 'LOT-2026-X'}</code></td>
-                    <td>${i.provenance?.sourceSystemId || 'المركز'}<br><small><code>${new Date(i.occurrenceDateTime).toLocaleDateString('ar-SA')}</code></small></td>
+                    <td><strong>${i.vaccineCode?.sourceCode || '—'}</strong></td>
+                    <td>${i.vaccineCode?.sourceCode?.includes('SA-VAX') ? `<code>${i.vaccineCode.sourceCode}</code>` : '<span style="color:var(--m3-on-surface-muted);">—</span>'}</td>
+                    <td>${i.vaccineCode?.cvxCode ? `<span style="background:var(--m3-tertiary-container); padding:2px 6px; border-radius:var(--radius-sharp); font-weight:700;">CVX ${i.vaccineCode.cvxCode}</span>` : '<span style="color:var(--m3-on-surface-muted);">—</span>'}</td>
+                    <td>${i.lotNumber ? `<code>${i.lotNumber}</code>` : '<span style="color:var(--m3-on-surface-muted);">—</span>'}</td>
+                    <td>${i.provenance?.sourceSystemId || '—'}<br><small><code>${safeFmtDate(i.occurrenceDateTime)}</code></small></td>
                   </tr>
                 `).join('') || '<tr><td colspan="5" style="text-align:center; padding:10px;">لا توجد تطعيمات مسجلة.</td></tr>'}
               </tbody>
@@ -4717,11 +4739,11 @@ function openMedicalReportPreview(patientId) {
               <tbody>
                 ${allergies.map(a => `
                   <tr>
-                    <td><strong>${a.substanceTextAr || a.substanceText}</strong><br><small style="color:var(--m3-on-surface-variant);">${a.substanceText}</small></td>
-                    <td><code>SNOMED ${a.substanceCode?.snomedCode || '764146007'}</code></td>
-                    <td><span style="background:${a.criticality === 'high' ? 'var(--m3-error-container)' : 'var(--m3-primary-container)'}; color:${a.criticality === 'high' ? 'var(--m3-error)' : 'var(--m3-primary)'}; padding:2px 6px; border-radius:var(--radius-sharp); font-weight:700;">${a.criticality === 'high' ? 'عالية الخطورة' : 'منخفضة'}</span></td>
-                    <td><strong style="color:var(--m3-error);">${a.reactions?.[0]?.manifestationTextAr || a.reactions?.[0]?.manifestationText || 'صدمة تحسسية'}</strong></td>
-                    <td>${a.provenance?.sourceSystemId || 'المستشفى'}<br><small><code>${new Date(a.recordedDate).toLocaleDateString('ar-SA')}</code></small></td>
+                    <td><strong>${a.substanceTextAr || a.substanceText || '—'}</strong>${(a.substanceTextAr && a.substanceText && a.substanceTextAr !== a.substanceText) ? `<br><small style="color:var(--m3-on-surface-variant);">${a.substanceText}</small>` : ''}</td>
+                    <td>${a.substanceCode?.snomedCode ? `<code>SNOMED ${a.substanceCode.snomedCode}</code>` : '<span style="color:var(--m3-on-surface-muted);">—</span>'}</td>
+                    <td><span style="background:${a.criticality === 'high' ? 'var(--m3-error-container)' : 'var(--m3-primary-container)'}; color:${a.criticality === 'high' ? 'var(--m3-error)' : 'var(--m3-primary)'}; padding:2px 6px; border-radius:var(--radius-sharp); font-weight:700;">${a.criticality === 'high' ? 'عالية الخطورة' : a.criticality === 'low' ? 'منخفضة' : 'غير محددة'}</span></td>
+                    <td>${a.reactions?.[0]?.manifestationTextAr || a.reactions?.[0]?.manifestationText ? `<strong style="color:var(--m3-error);">${a.reactions[0].manifestationTextAr || a.reactions[0].manifestationText}</strong>` : '<span style="color:var(--m3-on-surface-muted);">—</span>'}</td>
+                    <td>${a.provenance?.sourceSystemId || '—'}<br><small><code>${safeFmtDate(a.recordedDate)}</code></small></td>
                   </tr>
                 `).join('') || '<tr><td colspan="5" style="text-align:center; padding:10px;">لا توجد حساسيات مسجلة.</td></tr>'}
               </tbody>
@@ -4747,11 +4769,11 @@ function openMedicalReportPreview(patientId) {
               <tbody>
                 ${diagnosticReports.map(d => `
                   <tr>
-                    <td><strong>${d.code?.loincDisplay || 'Comprehensive Metabolic 2000 Panel'}</strong></td>
-                    <td><code>LOINC ${d.code?.loincCode || '24323-8'}</code></td>
-                    <td><span style="background:var(--m3-primary-container); color:var(--m3-primary); padding:2px 6px; border-radius:var(--radius-sharp); font-weight:700;">${d.status}</span></td>
-                    <td style="font-size:0.75rem;">${d.conclusionAr || d.conclusion || 'نتائج ضمن المعدل المطلوب'}</td>
-                    <td>${d.provenance?.sourceSystemId || 'المختبر'}<br><small><code>${new Date(d.issued).toLocaleDateString('ar-SA')}</code></small></td>
+                    <td><strong>${d.code?.loincDisplay || d.code?.sourceCode || '—'}</strong></td>
+                    <td>${d.code?.loincCode ? `<code>LOINC ${d.code.loincCode}</code>` : '<span style="color:var(--m3-on-surface-muted);">—</span>'}</td>
+                    <td><span style="background:var(--m3-primary-container); color:var(--m3-primary); padding:2px 6px; border-radius:var(--radius-sharp); font-weight:700;">${d.status || '—'}</span></td>
+                    <td style="font-size:0.75rem;">${d.conclusionAr || d.conclusion || '<span style="color:var(--m3-on-surface-muted);">لا توجد خلاصة مسجلة</span>'}</td>
+                    <td>${d.provenance?.sourceSystemId || '—'}<br><small><code>${safeFmtDate(d.issued)}</code></small></td>
                   </tr>
                 `).join('') || '<tr><td colspan="5" style="text-align:center; padding:10px;">لا توجد تقارير تشخيصية مجمعة.</td></tr>'}
               </tbody>
@@ -4778,11 +4800,11 @@ function openMedicalReportPreview(patientId) {
               <tbody>
                 ${encounters.map(e => `
                   <tr>
-                    <td><strong>${e.provenance?.sourceSystemId || 'المستشفى'}</strong></td>
-                    <td><code>${e.sourceVisitId || 'VIS-001'}</code></td>
-                    <td>زيارة ${e.class} (${e.departmentAr || 'العيادة'})</td>
-                    <td>${e.reasonTextAr || 'متابعة وفحص دوري'}</td>
-                    <td><code>${new Date(e.period?.start).toLocaleString('ar-SA')}</code></td>
+                    <td><strong>${e.provenance?.sourceSystemId || '—'}</strong></td>
+                    <td>${e.sourceVisitId ? `<code>${e.sourceVisitId}</code>` : '<span style="color:var(--m3-on-surface-muted);">—</span>'}</td>
+                    <td>زيارة ${e.class || '—'}${e.departmentAr ? ` (${e.departmentAr})` : ''}</td>
+                    <td>${e.reasonTextAr || e.reasonText || '<span style="color:var(--m3-on-surface-muted);">غير محدد</span>'}</td>
+                    <td><code>${safeFmtDateTime(e.period?.start)}</code></td>
                   </tr>
                 `).join('') || '<tr><td colspan="5" style="text-align:center; padding:10px;">لا توجد زيارات مسجلة.</td></tr>'}
               </tbody>
@@ -4798,9 +4820,10 @@ function openMedicalReportPreview(patientId) {
                 </svg>
               </div>
               <div class="pdf-auth-text">
-                <strong>التحقق الرقمي المعتمد (NCA Verified)</strong>
-                <span>البصمة المشفرة: <code>SHA256: 9F8A2B7C8E1D4F3A</code></span><br>
-                <span>الرقم المرجعي لنفيس: <code>NPHIES-TX-2026-889912</code></span>
+                <strong>التوثيق والمرجعية</strong>
+                <span>الرقم المرجعي للوثيقة: <code>${docSerial}</code></span><br>
+                <span>وقت التوليد: <code>${issueDateTime}</code> • نطاق البيانات: <code>${encounters.length} زيارات / ${medications.length} أدوية / ${observations.length} فحوصات</code></span><br>
+                <span style="font-size:0.68rem; color:var(--m3-on-surface-muted);">نسخة مطبوعة للاطلاع — الاعتماد النظامي بختم المنشأة وتوقيع الممارس. لا يوجد توقيع رقمي (NCA) مرفق بهذه النسخة.</span>
               </div>
             </div>
 
