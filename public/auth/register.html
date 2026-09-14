@@ -522,13 +522,13 @@ try{document.documentElement.setAttribute('data-theme',localStorage.getItem('app
     const email = document.getElementById('register-email').value.trim();
 
     const body = {
-      fullName: fullname,
+      full_name: fullname,
       username: username,
       password: pwd,
-      role: 'PATIENT',
-      nid: nid,
+      roleType: 'PATIENT',
+      nationalId: nid,
       phone: phone,
-      dob: dob,
+      birthDate: dob,
       gender: gender
     };
     if(email) body.email = email;
@@ -546,23 +546,24 @@ try{document.documentElement.setAttribute('data-theme',localStorage.getItem('app
     const postal = document.getElementById('register-postal')?.value?.trim();
 
     if(prefFirst||prefLast||prefLang||emName||emPhone||emRel||city||district||address||postal){
-      body.patientProfile = {};
-      if(prefFirst) body.patientProfile.preferredFirstName = prefFirst;
-      if(prefLast) body.patientProfile.preferredLastName = prefLast;
-      if(prefLang) body.patientProfile.preferredLanguage = prefLang;
-      if(emName) body.patientProfile.emergencyContactName = emName;
-      if(emPhone) body.patientProfile.emergencyContactPhone = emPhone;
-      if(emRel) body.patientProfile.emergencyContactRelationship = emRel;
-      if(city) body.patientProfile.addressCity = city;
-      if(district) body.patientProfile.addressDistrict = district;
-      if(address) body.patientProfile.addressLine = address;
-      if(postal) body.patientProfile.addressPostalCode = postal;
+      body.patient_profile = {};
+      if(prefFirst) body.patient_profile.preferred_first_name = prefFirst;
+      if(prefLast) body.patient_profile.preferred_last_name = prefLast;
+      if(prefLang) body.patient_profile.preferred_language = prefLang;
+      if(emName) body.patient_profile.emergency_contact_name = emName;
+      if(emPhone) body.patient_profile.emergency_contact_phone = emPhone;
+      if(emRel) body.patient_profile.emergency_contact_relationship = emRel;
+      if(city) body.patient_profile.address_city = city;
+      if(district) body.patient_profile.address_district = district;
+      if(address) body.patient_profile.address_line = address;
+      if(postal) body.patient_profile.address_postal_code = postal;
     }
 
     try {
       const res = await fetch('/api/auth/register', {
         method:'POST',
         headers:{'Content-Type':'application/json'},
+        credentials:'include',
         body: JSON.stringify(body)
       });
       const data = await res.json();

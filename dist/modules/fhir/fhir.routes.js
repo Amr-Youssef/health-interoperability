@@ -24,6 +24,41 @@ async function resolvePatientInternalId(user, canonicalStore) {
         return byNid.internalId;
     return user.patient_profile_id || null;
 }
+async function canAccessPatient(user, patientId, canonicalStore) {
+    const role = user?.role?.role_code;
+    if (role === 'SYS_ADMIN' || role === 'MOH_ADMIN' || role === 'MOH_AUDITOR')
+        return true;
+    if (role === 'PATIENT')
+        return (await resolvePatientInternalId(user, canonicalStore)) === patientId;
+    if (!['HOSPITAL_ADMIN', 'CLINICIAN'].includes(role))
+        return false;
+    const patient = await prisma.patient.findFirst({
+        where: { OR: [{ internal_id: patientId }, { id: patientId }] },
+        select: { id: true, internal_id: true, source_system_id: true }
+    });
+    if (!patient)
+        return false;
+    if (patient.source_system_id === user.organization_id)
+        return true;
+    const linked = await prisma.patientOrganization.findFirst({
+        where: { patient_id: patient.id, organization_id: user.organization_id, active: true },
+        select: { id: true }
+    });
+    if (linked)
+        return true;
+    const appointment = await prisma.appointment.findFirst({
+        where: {
+            patient_id: { in: [patient.id, patient.internal_id] },
+            organization_id: user.organization_id,
+            status: { in: ['booked', 'arrived', 'fulfilled'] }
+        },
+        include: { consent: true }
+    });
+    const consent = appointment?.consent;
+    if (!appointment || !consent?.granted || consent.revoked_at || (consent.expires_at && consent.expires_at <= new Date()))
+        return false;
+    return role !== 'CLINICIAN' || !appointment.clinician_id || appointment.clinician_id === user.id;
+}
 export function createFhirRoutes(canonicalStore, fhirSerializer, engine) {
     const router = Router();
     router.get('/metadata', (req, res) => {
@@ -75,6 +110,11 @@ export function createFhirRoutes(canonicalStore, fhirSerializer, engine) {
     router.get('/Patient', verifyToken, requirePermission('FHIR_READ_SELF', 'FHIR_READ_ORG', 'FHIR_READ_ALL'), async (req, res) => {
         const user = req.user;
         const identifier = getQueryString(req.query.identifier);
+        if (user?.role?.role_code === 'PATIENT') {
+            const ownId = await resolvePatientInternalId(user, canonicalStore);
+            const patient = ownId ? await canonicalStore.getPatient(ownId) : null;
+            return res.json({ resourceType: 'Bundle', type: 'searchset', total: patient ? 1 : 0, entry: patient ? [{ fullUrl: `/fhir/Patient/${patient.internalId}`, resource: fhirSerializer.serializePatient(patient) }] : [] });
+        }
         let patients = await canonicalStore.getAllPatients();
         if (['HOSPITAL_ADMIN', 'CLINICIAN'].includes(user?.role?.role_code)) {
             const orgId = user.organization_id;
@@ -100,10 +140,8 @@ export function createFhirRoutes(canonicalStore, fhirSerializer, engine) {
             }
             catch { }
         }
-        if (user?.role?.role_code === 'PATIENT') {
-            const target = await resolvePatientInternalId(user, canonicalStore);
-            if (target !== patientId)
-                return res.status(403).json({ resourceType: 'OperationOutcome', issue: [{ severity: 'error', code: 'forbidden', diagnostics: 'Patients can only read own record' }] });
+        if (!await canAccessPatient(user, patientId, canonicalStore)) {
+            return res.status(403).json({ resourceType: 'OperationOutcome', issue: [{ severity: 'error', code: 'forbidden', diagnostics: 'Patient record is outside the permitted scope' }] });
         }
         const patient = await canonicalStore.getPatient(patientId);
         if (!patient)
@@ -113,6 +151,9 @@ export function createFhirRoutes(canonicalStore, fhirSerializer, engine) {
     });
     router.get('/Patient/:id/$everything', verifyToken, requirePermission('FHIR_READ_SELF', 'FHIR_READ_ORG', 'FHIR_READ_ALL'), async (req, res) => {
         const patientId = req.params.id;
+        if (!await canAccessPatient(req.user, patientId, canonicalStore)) {
+            return res.status(403).json({ resourceType: 'OperationOutcome', issue: [{ severity: 'error', code: 'forbidden', diagnostics: 'Patient record is outside the permitted scope' }] });
+        }
         const record = await canonicalStore.getLongitudinalRecord(patientId);
         if (!record)
             return res.status(404).json({ resourceType: 'OperationOutcome', issue: [{ severity: 'error', code: 'not-found', diagnostics: 'Patient not found' }] });

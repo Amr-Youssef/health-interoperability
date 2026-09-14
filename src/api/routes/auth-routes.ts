@@ -210,7 +210,23 @@ async function ensureDefaultAccounts() {
 
   router.post('/register', async (req: Request, res: Response) => {
   try {
-    const { username, password, full_name, roleType, organization_name, organization_name_ar, region, facility_type, organization_id: orgIdParam, patient_profile, nationalId, birthDate, gender, phone, email } = req.body;
+    // Accept both snake_case (canonical) and camelCase aliases sent by older/newer frontends.
+    const b: any = req.body || {};
+    const username = b.username;
+    const password = b.password;
+    const full_name = b.full_name ?? b.fullName;
+    const roleType = b.roleType ?? b.role;
+    const organization_name = b.organization_name;
+    const organization_name_ar = b.organization_name_ar;
+    const region = b.region;
+    const facility_type = b.facility_type;
+    const orgIdParam = b.organization_id ?? b.orgId ?? b.organizationId;
+    const patient_profile = b.patient_profile ?? b.patientProfile;
+    const nationalId = b.nationalId ?? b.national_id ?? b.nid;
+    const birthDate = b.birthDate ?? b.birth_date ?? b.dob;
+    const gender = b.gender;
+    const phone = b.phone;
+    const email = b.email;
 
     if (!username || !password || !full_name || !roleType) {
       return res.status(400).json({ error: 'Username, password, full_name, and roleType are required' });
@@ -580,29 +596,40 @@ async function ensureDefaultAccounts() {
       // Save patient profile supplementary data if provided
       if (patient_profile) {
         try {
+          const pp: any = patient_profile;
+          const pp_pref_first = pp.preferred_first_name ?? pp.preferredFirstName;
+          const pp_pref_last = pp.preferred_last_name ?? pp.preferredLastName;
+          const pp_pref_lang = pp.preferred_language ?? pp.preferredLanguage;
+          const pp_em_name = pp.emergency_contact_name ?? pp.emergencyContactName;
+          const pp_em_phone_raw = pp.emergency_contact_phone ?? pp.emergencyContactPhone;
+          const pp_em_rel = pp.emergency_contact_relationship ?? pp.emergencyContactRelationship;
+          const pp_addr_line = pp.address_line ?? pp.addressLine;
+          const pp_addr_city = pp.address_city ?? pp.addressCity;
+          const pp_addr_district = pp.address_district ?? pp.addressDistrict;
+          const pp_postal_raw = pp.address_postal_code ?? pp.addressPostalCode;
           // Validate emergency contact phone if provided
           let emergencyPhoneNormalized: string | undefined = undefined;
-          if (patient_profile.emergency_contact_phone) {
-            const ep = normalizeSaudiPhone(String(patient_profile.emergency_contact_phone).trim());
+          if (pp_em_phone_raw) {
+            const ep = normalizeSaudiPhone(String(pp_em_phone_raw).trim());
             if (ep) emergencyPhoneNormalized = ep;
           }
           // Validate postal code if provided (5 digits)
-          let postalValid = patient_profile.address_postal_code;
+          let postalValid = pp_postal_raw;
           if (postalValid && !/^\d{5}$/.test(String(postalValid).trim())) {
             postalValid = null; // silently drop invalid but keep rest
           }
           await prisma.patientProfile.create({
             data: {
               patient_id: patient.id,
-              preferred_first_name: patient_profile.preferred_first_name?.trim() || null,
-              preferred_last_name: patient_profile.preferred_last_name?.trim() || null,
-              preferred_language: ['ar','en'].includes(patient_profile.preferred_language) ? patient_profile.preferred_language : 'ar',
-              emergency_contact_name: patient_profile.emergency_contact_name?.trim() || null,
-              emergency_contact_phone: emergencyPhoneNormalized || patient_profile.emergency_contact_phone?.trim() || null,
-              emergency_contact_relationship: patient_profile.emergency_contact_relationship || null,
-              address_line: patient_profile.address_line?.trim() || null,
-              address_city: patient_profile.address_city?.trim() || null,
-              address_district: patient_profile.address_district?.trim() || null,
+              preferred_first_name: pp_pref_first?.trim() || null,
+              preferred_last_name: pp_pref_last?.trim() || null,
+              preferred_language: ['ar','en'].includes(pp_pref_lang) ? pp_pref_lang : 'ar',
+              emergency_contact_name: pp_em_name?.trim() || null,
+              emergency_contact_phone: emergencyPhoneNormalized || pp_em_phone_raw?.trim() || null,
+              emergency_contact_relationship: pp_em_rel || null,
+              address_line: pp_addr_line?.trim() || null,
+              address_city: pp_addr_city?.trim() || null,
+              address_district: pp_addr_district?.trim() || null,
               address_postal_code: postalValid ? String(postalValid).trim() : null,
               source: 'PATIENT',
               verification_status: 'SELF_REPORTED',

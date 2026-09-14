@@ -244,6 +244,15 @@ export function createPlatformApp() {
         if (req.method !== 'GET' || !req.path.endsWith('.html'))
             return next();
         const requestedFile = path.basename(req.path);
+        if (requestedFile === 'login.html') {
+            try {
+                if (await extractAuthUser(req))
+                    return res.redirect('/');
+            }
+            catch {
+                // Invalid or expired cookies are handled by the login page.
+            }
+        }
         return sendHtml(path.join(publicDir, 'auth', requestedFile), res, next);
     });
     app.use('/auth', express.static(path.join(publicDir, 'auth'), staticOpts));

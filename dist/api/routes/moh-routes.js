@@ -5,11 +5,24 @@ import bcrypt from 'bcryptjs';
 import { PrismaCanonicalStore } from '../../persistence/prisma-canonical-store.js';
 const router = Router();
 const canonicalStore = new PrismaCanonicalStore(prisma);
+const parsePagination = (req, defaultLimit = 20, maxLimit = 100) => {
+    const page = Math.max(Number.parseInt(String(req.query.page ?? '1'), 10) || 1, 1);
+    const limit = Math.min(Math.max(Number.parseInt(String(req.query.limit ?? req.query.take ?? defaultLimit), 10) || defaultLimit, 1), maxLimit);
+    return { page, limit, skip: (page - 1) * limit, requested: ['page', 'limit', 'take', 'search', 'q', 'status', 'region', 'type', 'field'].some((key) => req.query[key] !== undefined) };
+};
+const pageEnvelope = (items, total, page, pageSize) => ({
+    items, total, page, pageSize, totalPages: Math.ceil(total / pageSize)
+});
 router.use(verifyToken);
 router.use(requireNationalAdmin);
 router.get('/dashboard', async (req, res) => {
     try {
-        const [patientsTotal, encountersTotal, conditionsTotal, observationsTotal, medicationsTotal, immunizationsTotal, claimsTotal, coveragesTotal, organizationsTotal, pendingHospitals, activeHospitals, usersTotal, rawRecordsTotal, unverifiedAllergies, unverifiedMeds, unverifiedConditions, unverifiedProcedures, unverifiedVitals, pendingProfiles] = await Promise.all([
+        let degradedCounts = false;
+        const resilientCount = (query) => query.catch(() => {
+            degradedCounts = true;
+            return 0;
+        });
+        const [patientsTotal, encountersTotal, conditionsTotal, observationsTotal, medicationsTotal, immunizationsTotal, claimsTotal, coveragesTotal, organizationsTotal, pendingHospitals, activeHospitals, usersTotal, rawRecordsTotal, unverifiedAllergies, unverifiedMeds, unverifiedConditions, unverifiedProcedures, unverifiedVitals, unverifiedFamily, pendingProfiles] = await Promise.all([
             prisma.patient.count(),
             prisma.encounter.count(),
             prisma.condition.count(),
@@ -22,15 +35,28 @@ router.get('/dashboard', async (req, res) => {
             prisma.organization.count({ where: { status: 'PENDING_APPROVAL' } }),
             prisma.organization.count({ where: { status: 'ACTIVE', organization_type: { not: 'MOH' } } }),
             prisma.user.count(),
-            prisma.rawRecord.count().catch(() => 0),
-            prisma.patientReportedAllergy.count({ where: { verification_status: 'UNVERIFIED' } }).catch(() => 0),
-            prisma.patientReportedMedication.count({ where: { verification_status: 'UNVERIFIED' } }).catch(() => 0),
-            prisma.patientReportedCondition.count({ where: { verification_status: 'UNVERIFIED' } }).catch(() => 0),
-            prisma.patientReportedProcedure.count({ where: { verification_status: 'UNVERIFIED' } }).catch(() => 0),
-            prisma.patientReportedVitalObservation.count({ where: { verification_status: 'UNVERIFIED' } }).catch(() => 0),
-            prisma.patientProfile.count({ where: { verification_status: 'SELF_REPORTED' } }).catch(() => 0)
+            resilientCount(prisma.rawRecord.count()),
+            resilientCount(prisma.patientReportedAllergy.count({ where: { verification_status: 'UNVERIFIED' } })),
+            resilientCount(prisma.patientReportedMedication.count({ where: { verification_status: 'UNVERIFIED' } })),
+            resilientCount(prisma.patientReportedCondition.count({ where: { verification_status: 'UNVERIFIED' } })),
+            resilientCount(prisma.patientReportedProcedure.count({ where: { verification_status: 'UNVERIFIED' } })),
+            resilientCount(prisma.patientReportedVitalObservation.count({ where: { verification_status: 'UNVERIFIED' } })),
+            resilientCount(prisma.familyMember.count({ where: { verification_status: 'UNVERIFIED' } })),
+            resilientCount(prisma.patientProfile.count({ where: { verification_status: 'SELF_REPORTED' } }))
         ]);
-        const pendingOrgsRaw = await prisma.organization.findMany({ where: { status: 'PENDING_APPROVAL' }, orderBy: { created_at: 'desc' }, take: 10 });
+        const pendingPagination = parsePagination(req, 10, 50);
+        const pendingSearch = String(req.query.search || req.query.q || '').trim();
+        const pendingWhere = { status: 'PENDING_APPROVAL' };
+        if (pendingSearch)
+            pendingWhere.OR = [
+                { organization_name: { contains: pendingSearch, mode: 'insensitive' } },
+                { organization_name_ar: { contains: pendingSearch, mode: 'insensitive' } },
+                { region: { contains: pendingSearch, mode: 'insensitive' } }
+            ];
+        const pendingOrgsRaw = await prisma.organization.findMany({
+            where: pendingWhere, orderBy: [{ created_at: 'desc' }, { id: 'desc' }],
+            skip: pendingPagination.skip, take: pendingPagination.limit
+        });
         const pendingHospitalsList = await Promise.all(pendingOrgsRaw.map(async (org) => {
             const admins = await prisma.user.findMany({ where: { organization_id: org.id }, include: { role: true }, take: 3 });
             const audit = await prisma.auditLog.findFirst({ where: { entity_type: 'Organization', entity_id: org.id, action: 'HOSPITAL_ONBOARDED_PENDING' }, orderBy: { created_at: 'desc' } });
@@ -82,9 +108,11 @@ router.get('/dashboard', async (req, res) => {
                 conditions: unverifiedConditions,
                 procedures: unverifiedProcedures,
                 vitals: unverifiedVitals,
+                family: unverifiedFamily,
                 profiles: pendingProfiles,
-                total: unverifiedAllergies + unverifiedMeds + unverifiedConditions + unverifiedProcedures + unverifiedVitals
+                total: unverifiedAllergies + unverifiedMeds + unverifiedConditions + unverifiedProcedures + unverifiedVitals + unverifiedFamily + pendingProfiles
             },
+            dataQuality: { degradedCounts },
             recentImports: recentImports.map((r) => ({
                 id: r.id,
                 organizationId: r.organization_id,
@@ -106,7 +134,9 @@ router.get('/dashboard', async (req, res) => {
                 details: a.details,
                 createdAt: a.created_at
             })),
-            pendingHospitalsList
+            pendingHospitalsList: pendingPagination.requested
+                ? pageEnvelope(pendingHospitalsList, pendingHospitals, pendingPagination.page, pendingPagination.limit)
+                : pendingHospitalsList
         });
     }
     catch (e) {
@@ -116,14 +146,29 @@ router.get('/dashboard', async (req, res) => {
 router.get('/hospitals', async (req, res) => {
     try {
         const status = req.query.status;
+        const { page, limit, skip, requested } = parsePagination(req, 20, 100);
+        const search = String(req.query.search || req.query.q || '').trim();
+        const region = String(req.query.region || '').trim();
+        const organizationType = String(req.query.type || '').trim();
         const where = {};
         if (status)
             where.status = status;
         else
             where.organization_type = { not: 'MOH' };
-        if (!status)
-            where.organization_type = { not: 'MOH' };
-        const orgs = await prisma.organization.findMany({ where, orderBy: { created_at: 'desc' }, take: 200 });
+        if (organizationType)
+            where.organization_type = organizationType;
+        if (region)
+            where.region = region;
+        if (search)
+            where.OR = [
+                { organization_name: { contains: search, mode: 'insensitive' } },
+                { organization_name_ar: { contains: search, mode: 'insensitive' } },
+                { region: { contains: search, mode: 'insensitive' } }
+            ];
+        const [total, orgs] = await Promise.all([
+            prisma.organization.count({ where }),
+            prisma.organization.findMany({ where, orderBy: [{ created_at: 'desc' }, { id: 'desc' }], skip, take: limit })
+        ]);
         const enriched = await Promise.all(orgs.map(async (o) => {
             const [users, patientsLinked, encounters, imports] = await Promise.all([
                 prisma.user.count({ where: { organization_id: o.id } }),
@@ -142,7 +187,7 @@ router.get('/hospitals', async (req, res) => {
                 stats: { users, patientsLinked, encounters, imports }
             };
         }));
-        res.json(enriched);
+        res.json(requested ? pageEnvelope(enriched, total, page, limit) : enriched);
     }
     catch (e) {
         res.status(500).json({ error: 'Failed to load hospitals', details: e.message });
@@ -273,14 +318,27 @@ router.get('/users', async (req, res) => {
         const limit = Math.min(Math.max(parseInt(String(req.query.limit || '20'), 10) || 20, 5), 50);
         const skip = (page - 1) * limit;
         const roleFilter = req.query.role;
+        const statusFilter = req.query.status;
+        const organizationFilter = String(req.query.organization_id || '').trim();
         const where = {};
         if (q)
-            where.OR = [{ username: { contains: q, mode: 'insensitive' } }, { full_name: { contains: q, mode: 'insensitive' } }, { email: { contains: q, mode: 'insensitive' } }];
+            where.OR = [
+                { username: { contains: q, mode: 'insensitive' } },
+                { full_name: { contains: q, mode: 'insensitive' } },
+                { email: { contains: q, mode: 'insensitive' } },
+                { phone: { contains: q, mode: 'insensitive' } }
+            ];
         if (roleFilter)
             where.role = { role_code: roleFilter };
+        if (statusFilter === 'active')
+            where.is_active = true;
+        if (statusFilter === 'inactive')
+            where.is_active = false;
+        if (organizationFilter)
+            where.organization_id = organizationFilter;
         const [total, users] = await Promise.all([
             prisma.user.count({ where }),
-            prisma.user.findMany({ where, include: { role: true, organization: true }, orderBy: { created_at: 'desc' }, skip, take: limit })
+            prisma.user.findMany({ where, include: { role: true, organization: true }, orderBy: [{ created_at: 'desc' }, { id: 'desc' }], skip, take: limit })
         ]);
         const mapped = users.map((u) => ({
             id: u.id,
@@ -297,7 +355,7 @@ router.get('/users', async (req, res) => {
             patientProfileId: u.patient_profile_id,
             createdAt: u.created_at
         }));
-        if (req.query.q || req.query.page || req.query.role)
+        if (req.query.q || req.query.page || req.query.role || req.query.status || req.query.organization_id)
             return res.json({ items: mapped, total, page, pageSize: limit, totalPages: Math.ceil(total / limit) });
         res.json(mapped);
     }
@@ -412,9 +470,90 @@ router.patch('/users/:id/status', async (req, res) => {
         const user = await prisma.user.findUnique({ where: { id } });
         if (!user)
             return res.status(404).json({ error: 'User not found' });
+        if (req.user.role?.role_code !== 'SYS_ADMIN') {
+            const targetRole = await prisma.role.findUnique({ where: { id: user.role_id } });
+            if (targetRole?.role_code === 'SYS_ADMIN' || targetRole?.role_code === 'MOH_ADMIN') {
+                return res.status(403).json({ error: 'لا يمكنك تغيير حالة مستخدم بدرجة SYS_ADMIN أو MOH_ADMIN' });
+            }
+        }
         const updated = await prisma.user.update({ where: { id }, data: { is_active } });
         await prisma.auditLog.create({ data: { entity_type: 'User', entity_id: id, action: is_active ? 'USER_ACTIVATED' : 'USER_DEACTIVATED', actor_id: req.user.id, organization_id: req.user.organization_id, details: `${is_active ? 'Activated' : 'Deactivated'} user ${updated.username}` } }).catch(() => { });
         res.json({ success: true, user: { id: updated.id, username: updated.username, isActive: updated.is_active } });
+    }
+    catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+router.patch('/users/:id', async (req, res) => {
+    if (req.user.role?.role_code === 'MOH_AUDITOR')
+        return res.status(403).json({ error: 'MOH_AUDITOR read-only' });
+    try {
+        const id = req.params.id;
+        const { full_name, email, phone } = req.body || {};
+        if (id === req.user.id && full_name === '')
+            return res.status(400).json({ error: 'الاسم الكامل مطلوب' });
+        const target = await prisma.user.findUnique({ where: { id }, include: { role: true } });
+        if (!target)
+            return res.status(404).json({ error: 'User not found' });
+        const actorRole = req.user.role?.role_code;
+        if (actorRole !== 'SYS_ADMIN' && ['SYS_ADMIN', 'MOH_ADMIN'].includes(target.role.role_code)) {
+            return res.status(403).json({ error: 'لا يمكنك تعديل مستخدم بدرجة SYS_ADMIN أو MOH_ADMIN' });
+        }
+        const data = {};
+        if (full_name !== undefined) {
+            const value = String(full_name).trim();
+            if (value.length < 2 || value.length > 200)
+                return res.status(400).json({ error: 'الاسم الكامل غير صالح' });
+            data.full_name = value;
+        }
+        if (email !== undefined) {
+            const value = email == null ? '' : String(email).trim().toLowerCase();
+            if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))
+                return res.status(400).json({ error: 'البريد الإلكتروني غير صالح' });
+            const duplicate = value ? await prisma.user.findFirst({ where: { email: value, id: { not: id } } }) : null;
+            if (duplicate)
+                return res.status(409).json({ error: 'البريد الإلكتروني مستخدم مسبقاً' });
+            data.email = value || null;
+        }
+        if (phone !== undefined) {
+            const value = phone == null ? '' : String(phone).replace(/[\s\-\(\)]/g, '');
+            if (value && !/^(05\d{8}|\+9665\d{8}|9665\d{8})$/.test(value))
+                return res.status(400).json({ error: 'رقم الجوال غير صالح' });
+            data.phone = value ? (value.startsWith('05') ? '+966' + value.substring(1) : value.startsWith('966') ? '+' + value : value) : null;
+        }
+        if (!Object.keys(data).length)
+            return res.status(400).json({ error: 'لا توجد بيانات للتعديل' });
+        const updated = await prisma.user.update({ where: { id }, data, include: { role: true, organization: true } });
+        await prisma.auditLog.create({ data: {
+                entity_type: 'User', entity_id: id, action: 'USER_PROFILE_UPDATED',
+                actor_id: req.user.id, organization_id: req.user.organization_id,
+                old_values: JSON.stringify({ full_name: target.full_name, email: target.email, phone: target.phone }),
+                new_values: JSON.stringify(data), details: `Updated user profile ${target.username} by ${req.user.username}`
+            } }).catch(() => { });
+        res.json({ success: true, user: { id: updated.id, username: updated.username, fullName: updated.full_name, email: updated.email, phone: updated.phone } });
+    }
+    catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+router.patch('/users/:id/password', async (req, res) => {
+    if (req.user.role?.role_code === 'MOH_AUDITOR')
+        return res.status(403).json({ error: 'MOH_AUDITOR read-only' });
+    try {
+        const id = req.params.id;
+        const { password } = req.body || {};
+        if (typeof password !== 'string' || password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+            return res.status(400).json({ error: 'كلمة المرور ضعيفة: 8 أحرف مع حروف وأرقام' });
+        }
+        const target = await prisma.user.findUnique({ where: { id }, include: { role: true } });
+        if (!target)
+            return res.status(404).json({ error: 'User not found' });
+        if (req.user.role?.role_code !== 'SYS_ADMIN' && ['SYS_ADMIN', 'MOH_ADMIN'].includes(target.role.role_code)) {
+            return res.status(403).json({ error: 'لا يمكنك إعادة ضبط كلمة مرور SYS_ADMIN أو MOH_ADMIN' });
+        }
+        await prisma.user.update({ where: { id }, data: { password_hash: await bcrypt.hash(password, 10) } });
+        await prisma.auditLog.create({ data: { entity_type: 'User', entity_id: id, action: 'USER_PASSWORD_RESET', actor_id: req.user.id, organization_id: req.user.organization_id, details: `Reset password for ${target.username} by ${req.user.username}` } }).catch(() => { });
+        res.json({ success: true });
     }
     catch (e) {
         res.status(500).json({ error: e.message });
@@ -439,16 +578,16 @@ router.patch('/users/:id/role', async (req, res) => {
         const target = await prisma.user.findUnique({ where: { id } });
         if (!target)
             return res.status(404).json({ error: 'User not found' });
+        const oldRole = await prisma.role.findUnique({ where: { id: target.role_id } });
         if (target.role_id && actorRole !== 'SYS_ADMIN') {
-            const targetRole = await prisma.role.findUnique({ where: { id: target.role_id } });
-            if (targetRole?.role_code === 'SYS_ADMIN' || targetRole?.role_code === 'MOH_ADMIN')
+            if (oldRole?.role_code === 'SYS_ADMIN' || oldRole?.role_code === 'MOH_ADMIN')
                 return res.status(403).json({ error: 'لا يمكنك تعديل مستخدم بدرجة MOH_ADMIN/SYS_ADMIN' });
         }
         const role = await prisma.role.findUnique({ where: { role_code } });
         if (!role)
             return res.status(404).json({ error: 'Role not found' });
         const updated = await prisma.user.update({ where: { id }, data: { role_id: role.id } });
-        await prisma.auditLog.create({ data: { entity_type: 'User', entity_id: id, action: 'USER_ROLE_CHANGED', actor_id: req.user.id, organization_id: req.user.organization_id, old_values: JSON.stringify({ old_role: (await prisma.role.findUnique({ where: { id: target.role_id } }))?.role_code }), new_values: JSON.stringify({ role_code }), details: `Changed role for ${updated.username} to ${role_code} by ${actorRole}` } }).catch(() => { });
+        await prisma.auditLog.create({ data: { entity_type: 'User', entity_id: id, action: 'USER_ROLE_CHANGED', actor_id: req.user.id, organization_id: req.user.organization_id, old_values: JSON.stringify({ old_role: oldRole?.role_code }), new_values: JSON.stringify({ role_code }), details: `Changed role for ${updated.username} to ${role_code} by ${actorRole}` } }).catch(() => { });
         res.json({ success: true });
     }
     catch (e) {
@@ -457,8 +596,27 @@ router.patch('/users/:id/role', async (req, res) => {
 });
 router.get('/organization-changes', async (req, res) => {
     try {
-        const list = await prisma.organizationChangeRequest.findMany({ where: { status: 'PENDING' }, include: { organization: true, requester: true }, orderBy: { created_at: 'desc' }, take: 50 });
-        res.json(list.map((r) => ({ id: r.id, organizationId: r.organization_id, organizationName: r.organization?.organization_name, organizationNameAr: r.organization?.organization_name_ar, field: r.field, oldValue: r.old_value, newValue: r.new_value, status: r.status, requestedBy: r.requester?.full_name || r.requested_by, createdAt: r.created_at })));
+        const { page, limit, skip, requested } = parsePagination(req, 20, 100);
+        const status = String(req.query.status || 'PENDING');
+        const field = String(req.query.field || '').trim();
+        const search = String(req.query.search || req.query.q || '').trim();
+        const where = { status };
+        if (field)
+            where.field = field;
+        if (search)
+            where.OR = [
+                { field: { contains: search, mode: 'insensitive' } },
+                { new_value: { contains: search, mode: 'insensitive' } },
+                { old_value: { contains: search, mode: 'insensitive' } },
+                { organization: { organization_name: { contains: search, mode: 'insensitive' } } },
+                { organization: { organization_name_ar: { contains: search, mode: 'insensitive' } } }
+            ];
+        const [total, list] = await Promise.all([
+            prisma.organizationChangeRequest.count({ where }),
+            prisma.organizationChangeRequest.findMany({ where, include: { organization: true, requester: true }, orderBy: [{ created_at: 'desc' }, { id: 'desc' }], skip, take: limit })
+        ]);
+        const items = list.map((r) => ({ id: r.id, organizationId: r.organization_id, organizationName: r.organization?.organization_name, organizationNameAr: r.organization?.organization_name_ar, field: r.field, oldValue: r.old_value, newValue: r.new_value, status: r.status, requestedBy: r.requester?.full_name || r.requested_by, createdAt: r.created_at }));
+        res.json(requested ? pageEnvelope(items, total, page, limit) : items);
     }
     catch (e) {
         res.status(500).json({ error: e.message });
@@ -497,35 +655,61 @@ router.post('/organization-changes/:id/reject', async (req, res) => {
 });
 router.get('/patients', async (req, res) => {
     try {
-        const take = Math.min(parseInt(req.query.take) || 100, 200);
-        const search = (req.query.search || '').trim();
-        let patients = [];
+        const page = Math.max(parseInt(String(req.query.page || '1'), 10) || 1, 1);
+        const pageSize = Math.min(Math.max(parseInt(String(req.query.limit || req.query.take || '20'), 10) || 20, 5), 50);
+        const search = String(req.query.search || req.query.q || '').trim();
+        const status = String(req.query.status || '').trim();
+        const gender = String(req.query.gender || '').trim();
+        const organizationId = String(req.query.organization_id || '').trim();
+        const where = {};
         if (search) {
-            patients = await prisma.patient.findMany({
-                where: { OR: [{ internal_id: { contains: search } }, { first_name: { contains: search } }, { last_name: { contains: search } }, { first_name_ar: { contains: search } }, { identifiers: { some: { value: { contains: search } } } }] },
-                include: { identifiers: true },
-                orderBy: { created_at: 'desc' },
-                take
-            });
+            where.OR = [
+                { internal_id: { contains: search, mode: 'insensitive' } },
+                { first_name: { contains: search, mode: 'insensitive' } },
+                { last_name: { contains: search, mode: 'insensitive' } },
+                { first_name_ar: { contains: search, mode: 'insensitive' } },
+                { last_name_ar: { contains: search, mode: 'insensitive' } },
+                { phone: { contains: search, mode: 'insensitive' } },
+                { identifiers: { some: { value: { contains: search, mode: 'insensitive' } } } }
+            ];
         }
-        else {
-            patients = await prisma.patient.findMany({ include: { identifiers: true }, orderBy: { created_at: 'desc' }, take });
-        }
-        res.json(patients.map((p) => ({
-            id: p.id,
-            internalId: p.internal_id,
-            firstName: p.first_name,
-            lastName: p.last_name,
-            firstNameAr: p.first_name_ar,
-            lastNameAr: p.last_name_ar,
-            gender: p.gender,
-            birthDate: p.birth_date ? p.birth_date.toISOString().split('T')[0] : null,
-            phone: p.phone,
-            email: p.email,
-            identifiers: p.identifiers,
-            status: p.status,
-            createdAt: p.created_at
-        })));
+        if (status)
+            where.status = status;
+        if (gender)
+            where.gender = gender;
+        if (organizationId)
+            where.organizations = { some: { organization_id: organizationId, active: true } };
+        const [total, patients] = await Promise.all([
+            prisma.patient.count({ where }),
+            prisma.patient.findMany({
+                where,
+                include: { identifiers: { where: { is_active: true }, take: 3 } },
+                orderBy: [{ created_at: 'desc' }, { id: 'desc' }],
+                skip: (page - 1) * pageSize,
+                take: pageSize
+            })
+        ]);
+        res.json({
+            items: patients.map((p) => ({
+                id: p.id,
+                internalId: p.internal_id,
+                firstName: p.first_name,
+                lastName: p.last_name,
+                firstNameAr: p.first_name_ar,
+                lastNameAr: p.last_name_ar,
+                gender: p.gender,
+                birthDate: p.birth_date ? p.birth_date.toISOString().split('T')[0] : null,
+                phone: p.phone,
+                email: p.email,
+                identifiers: p.identifiers,
+                status: p.status,
+                createdAt: p.created_at
+            })),
+            total,
+            page,
+            pageSize,
+            totalPages: Math.ceil(total / pageSize)
+        });
     }
     catch (e) {
         res.status(500).json({ error: e.message });
@@ -549,24 +733,44 @@ router.get('/patients/:id/longitudinal', async (req, res) => {
 });
 router.get('/verification-queue', async (req, res) => {
     try {
+        const { page, limit, skip, requested } = parsePagination(req, 20, 100);
+        const search = String(req.query.search || req.query.q || '').trim();
+        const type = String(req.query.type || '').toLowerCase();
+        const patientFilter = search ? { patient: { internal_id: { contains: search, mode: 'insensitive' } } } : {};
+        const query = (model, verification_status) => model.findMany({
+            where: { verification_status, ...patientFilter },
+            orderBy: [{ created_at: 'desc' }, { id: 'desc' }], skip: requested && type ? skip : 0,
+            take: requested && type ? limit : 50, include: { patient: true }
+        });
         const [allergies, medications, conditions, procedures, family, vitals, profiles] = await Promise.all([
-            prisma.patientReportedAllergy.findMany({ where: { verification_status: 'UNVERIFIED' }, orderBy: { created_at: 'desc' }, take: 50, include: { patient: true } }).catch(() => []),
-            prisma.patientReportedMedication.findMany({ where: { verification_status: 'UNVERIFIED' }, orderBy: { created_at: 'desc' }, take: 50, include: { patient: true } }).catch(() => []),
-            prisma.patientReportedCondition.findMany({ where: { verification_status: 'UNVERIFIED' }, orderBy: { created_at: 'desc' }, take: 50, include: { patient: true } }).catch(() => []),
-            prisma.patientReportedProcedure.findMany({ where: { verification_status: 'UNVERIFIED' }, orderBy: { created_at: 'desc' }, take: 50, include: { patient: true } }).catch(() => []),
-            prisma.familyMember.findMany({ where: { verification_status: 'UNVERIFIED' }, orderBy: { created_at: 'desc' }, take: 50, include: { patient: true } }).catch(() => []),
-            prisma.patientReportedVitalObservation.findMany({ where: { verification_status: 'UNVERIFIED' }, orderBy: { created_at: 'desc' }, take: 50, include: { patient: true } }).catch(() => []),
-            prisma.patientProfile.findMany({ where: { verification_status: 'SELF_REPORTED' }, orderBy: { created_at: 'desc' }, take: 50, include: { patient: true } }).catch(() => [])
+            query(prisma.patientReportedAllergy, 'UNVERIFIED'),
+            query(prisma.patientReportedMedication, 'UNVERIFIED'),
+            query(prisma.patientReportedCondition, 'UNVERIFIED'),
+            query(prisma.patientReportedProcedure, 'UNVERIFIED'),
+            query(prisma.familyMember, 'UNVERIFIED'),
+            query(prisma.patientReportedVitalObservation, 'UNVERIFIED'),
+            query(prisma.patientProfile, 'SELF_REPORTED')
         ]);
-        res.json({
+        const output = {
             allergies: allergies.map((a) => ({ id: a.id, patientId: a.patient_id, patientInternalId: a.patient?.internal_id, allergenName: a.allergen_name, reactionText: a.reaction_text, severity: a.reaction_severity, createdAt: a.created_at })),
             medications: medications.map((m) => ({ id: m.id, patientId: m.patient_id, medicationName: m.medication_name, dose: m.dose, frequency: m.frequency, createdAt: m.created_at })),
             conditions: conditions.map((c) => ({ id: c.id, patientId: c.patient_id, conditionName: c.condition_name, status: c.status, createdAt: c.created_at })),
             procedures: procedures.map((p) => ({ id: p.id, patientId: p.patient_id, procedureName: p.procedure_name, procedureDate: p.procedure_date, createdAt: p.created_at })),
-            family,
-            vitals,
+            family: family.map((f) => ({ id: f.id, patientId: f.patient_id, patientInternalId: f.patient?.internal_id, relationship: f.relationship, conditionName: f.condition_name, createdAt: f.created_at })),
+            vitals: vitals.map((v) => ({ id: v.id, patientId: v.patient_id, patientInternalId: v.patient?.internal_id, observationName: v.observation_display || v.observation_type, code: v.observation_code, value: v.value_quantity ?? v.value_text, unit: v.value_unit, createdAt: v.created_at })),
             profiles: profiles.map((p) => ({ id: p.id, patientId: p.patient_id, preferredFirstName: p.preferred_first_name, emergencyContactName: p.emergency_contact_name, createdAt: p.created_at }))
-        });
+        };
+        if (requested && type) {
+            const keyMap = { allergy: 'allergies', allergies: 'allergies', medication: 'medications', medications: 'medications', condition: 'conditions', conditions: 'conditions', procedure: 'procedures', procedures: 'procedures', family: 'family', vital: 'vitals', vitals: 'vitals', profile: 'profiles', profiles: 'profiles' };
+            const key = keyMap[type];
+            if (!(key in output))
+                return res.status(400).json({ error: 'Unknown verification type' });
+            const modelMap = { allergies: prisma.patientReportedAllergy, medications: prisma.patientReportedMedication, conditions: prisma.patientReportedCondition, procedures: prisma.patientReportedProcedure, family: prisma.familyMember, vitals: prisma.patientReportedVitalObservation, profiles: prisma.patientProfile };
+            const statusMap = { profiles: 'SELF_REPORTED' };
+            const total = await modelMap[key].count({ where: { verification_status: statusMap[key] || 'UNVERIFIED', ...patientFilter } });
+            return res.json(pageEnvelope(output[key], total, page, limit));
+        }
+        res.json(output);
     }
     catch (e) {
         res.status(500).json({ error: e.message });
@@ -594,6 +798,9 @@ router.post('/verification/:type/:id/verify', async (req, res) => {
         const model = map[type];
         if (!model)
             return res.status(400).json({ error: 'Unknown verification type' });
+        const existing = await prisma[model].findUnique({ where: { id }, select: { id: true } });
+        if (!existing)
+            return res.status(404).json({ error: 'Verification item not found' });
         const updated = await prisma[model].update({ where: { id }, data: { verification_status: decision } });
         await prisma.auditLog.create({ data: { entity_type: model, entity_id: id, action: `VERIFICATION_${decision}`, actor_id: req.user.id, organization_id: req.user.organization_id, details: `Verified ${type} ${id} as ${decision}: ${notes || ''}` } }).catch(() => { });
         res.json({ success: true, updated });
@@ -647,9 +854,22 @@ router.patch('/patients/:id/identity', async (req, res) => {
 });
 router.get('/audit', async (req, res) => {
     try {
-        const take = Math.min(parseInt(req.query.take) || 50, 200);
-        const logs = await prisma.auditLog.findMany({ orderBy: { created_at: 'desc' }, take });
-        res.json(logs.map((l) => ({
+        const { page, limit, skip, requested } = parsePagination(req, 50, 200);
+        const action = String(req.query.action || '').trim();
+        const entityType = String(req.query.entity_type || '').trim();
+        const actorId = String(req.query.actor_id || '').trim();
+        const where = {};
+        if (action)
+            where.action = { contains: action, mode: 'insensitive' };
+        if (entityType)
+            where.entity_type = entityType;
+        if (actorId)
+            where.actor_id = actorId;
+        const [total, logs] = await Promise.all([
+            prisma.auditLog.count({ where }),
+            prisma.auditLog.findMany({ where, orderBy: [{ created_at: 'desc' }, { id: 'desc' }], skip, take: limit })
+        ]);
+        const items = logs.map((l) => ({
             id: l.id,
             entityType: l.entity_type,
             entityId: l.entity_id,
@@ -660,7 +880,8 @@ router.get('/audit', async (req, res) => {
             newValues: l.new_values,
             details: l.details,
             createdAt: l.created_at
-        })));
+        }));
+        res.json(requested ? pageEnvelope(items, total, page, limit) : items);
     }
     catch (e) {
         res.status(500).json({ error: e.message });
@@ -668,8 +889,14 @@ router.get('/audit', async (req, res) => {
 });
 router.get('/mpi/duplicates', async (req, res) => {
     try {
-        const dups = await prisma.duplicateCandidate.findMany({ orderBy: { flagged_at: 'desc' }, take: 50 });
-        res.json(dups);
+        const { page, limit, skip, requested } = parsePagination(req, 20, 100);
+        const status = String(req.query.status || '').trim();
+        const where = status ? { status } : {};
+        const [total, dups] = await Promise.all([
+            prisma.duplicateCandidate.count({ where }),
+            prisma.duplicateCandidate.findMany({ where, orderBy: [{ flagged_at: 'desc' }, { id: 'desc' }], skip, take: requested ? limit : 50 })
+        ]);
+        res.json(requested ? pageEnvelope(dups, total, page, limit) : dups);
     }
     catch (e) {
         res.status(500).json({ error: e.message });
