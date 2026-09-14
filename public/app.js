@@ -17,8 +17,17 @@ const appAuth = {
   user: (() => { try { return JSON.parse(localStorage.getItem('shiep_user') || 'null'); } catch { return null; } })(),
 
   init() {
+    // The legacy #auth-overlay starts hidden (see index.html) and must stay hidden
+    // until the session is verified — otherwise the old login flashes on every
+    // redirect from /auth/login.html while /api/auth/me is in flight.
+    const overlay = document.getElementById('auth-overlay');
+    if (overlay) overlay.style.display = 'none';
     fetch('/api/auth/me', { credentials: 'include' }).then(async r=>{
-      if(!r.ok){ await this.logout(); return; }
+      if(!r.ok){
+        try { localStorage.removeItem('shiep_role'); localStorage.removeItem('shiep_user'); } catch(e) {}
+        location.replace('/auth/login.html');
+        return;
+      }
       try {
         const fresh = await r.json();
         if (fresh && fresh.fullName) {
@@ -223,6 +232,7 @@ const appAuth = {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           full_name: fullname,
           username: username,
@@ -299,6 +309,7 @@ const appAuth = {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ username: userField, password: passField })
       });
       const data = await res.json();
@@ -342,7 +353,9 @@ const appAuth = {
     if (!overlay) return;
 
     if (!this.currentRole) {
-      overlay.style.display = 'flex';
+      // Single login UI is /auth/login.html — never resurrect the legacy overlay.
+      overlay.style.display = 'none';
+      if (!location.pathname.startsWith('/auth/')) location.replace('/auth/login.html');
     } else {
       overlay.style.display = 'none';
       this.applyRolePermissions();
