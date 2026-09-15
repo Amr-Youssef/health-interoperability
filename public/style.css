@@ -2943,7 +2943,8 @@ pre, code, .mono-code, .json-display {
 
 /* ---------- Large phones (≤640px) ---------- */
 @media (max-width: 640px) {
-  html { font-size: 14px; }
+  /* Phones read larger than desktop: 15.5px root scales all rem text up */
+  html { font-size: 15.5px; }
   .main-content { padding: 14px 12px 60px; }
   /* Prevent iOS auto-zoom: 16px minimum on all text entry */
   .form-input,
@@ -2961,18 +2962,18 @@ pre, code, .mono-code, .json-display {
   .table-card { overflow-x: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
   .table-card table,
   .data-table { min-width: 600px; }
-  .data-table th, .data-table td { padding: 9px 10px; font-size: 0.78rem; }
+  .data-table th, .data-table td { padding: 9px 10px; font-size: 0.85rem; }
   .btn, .nav-item, .endpoint-btn { min-height: 44px; }
   .top-header #mobile-menu-btn { width: 44px; height: 44px; flex: 0 0 44px; }
   .top-header { gap: 10px; margin-bottom: 14px; padding-bottom: 10px; justify-content: flex-start; }
   .header-title-wrap h1 {
-    font-size: 1.05rem;
+    font-size: 1.15rem;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
-  #page-subtitle { font-size: 0.75rem; }
+  #page-subtitle { font-size: 0.82rem; }
   /* Phones: status pills live in the monitoring pane — header keeps title + actions */
   .header-live-stats { display: none; }
   /* Compact identity chip: avatar + name only */
@@ -3055,7 +3056,7 @@ pre, code, .mono-code, .json-display {
   .stack-table thead { display: none; }
   .stack-table, .stack-table tbody { display: block; width: 100%; }
   .stack-table tr { display: block; width: 100%; background: var(--m3-surface-container); border-radius: var(--radius-md); padding: 6px 14px; margin-bottom: 10px; }
-  .stack-table td { display: block; width: 100%; padding: 7px 0; font-size: 0.82rem; background: transparent !important; text-align: right; }
+  .stack-table td { display: block; width: 100%; padding: 7px 0; font-size: 0.88rem; background: transparent !important; text-align: right; }
   .stack-table tbody td:first-child { position: static; box-shadow: none; background: var(--m3-surface-container-low) !important; margin: 2px -6px 6px; padding: 8px 10px; border-radius: var(--radius-sm); font-weight: 700; }
   .stack-table td[colspan] { text-align: center; }
   .stack-table td .btn { min-height: 44px; }
@@ -3088,16 +3089,16 @@ pre, code, .mono-code, .json-display {
   .metric-value { font-size: 1.1rem; }
   .metric-label { font-size: 0.7rem; }
   .pdf-patient-grid, .pdf-kpi-bar { grid-template-columns: 1fr; }
-  .header-title-wrap h1 { font-size: 1rem; }
+  .header-title-wrap h1 { font-size: 1.1rem; }
   /* Smallest phones: title carries the context alone */
   #page-subtitle { display: none; }
-  .card-header h3 { font-size: 0.9rem; }
-  .banner-text h4 { font-size: 0.9rem; }
+  .card-header h3 { font-size: 1rem; }
+  .banner-text h4 { font-size: 0.95rem; }
   /* Smallest phones: tighter drawer rhythm, targets stay 44px via coarse-pointer */
   .nav-item { padding: 9px 12px; gap: 10px; }
   .nav-menu { gap: 0; }
   .brand { margin-bottom: 12px; }
-  .banner-text p { font-size: 0.78rem; }
+  .banner-text p { font-size: 0.85rem; }
   .auth-modal { padding: 22px 16px 18px; }
   .quick-chips-grid { grid-template-columns: 1fr; }
   .source-details { padding: 10px; }
@@ -4427,7 +4428,7 @@ body.sidebar-collapsed .logout-btn .label {
     text-align: left;
   }
   #audit-table td:not([colspan])::before {
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     font-weight: 700;
     color: var(--m3-on-surface-muted);
     flex-shrink: 0;
@@ -4502,7 +4503,7 @@ body.sidebar-collapsed .logout-btn .label {
     text-align: left;
   }
   #audit-quarantine-table td:not([colspan])::before {
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     font-weight: 700;
     color: var(--m3-on-surface-muted);
     flex-shrink: 0;
@@ -4591,7 +4592,7 @@ body.sidebar-collapsed .logout-btn .label {
     text-align: left;
   }
   #audit-chain-tbody td:not([colspan])::before {
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     font-weight: 700;
     color: var(--m3-on-surface-muted);
     flex-shrink: 0;
