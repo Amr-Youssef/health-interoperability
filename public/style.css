@@ -4664,6 +4664,86 @@ body.sidebar-collapsed .logout-btn .label {
 }
 
 /* =========================================
+   APPOINTMENTS — "مواعيدي" card redesign on phones (≤640px)
+   Rows carry data-labels, so the card is re-sequenced into a scannable
+   WHEN → STATUS → WHERE flow; the patient-id fragment is demoted from
+   the headline and actions become full-width stacked buttons.
+   ========================================= */
+#pane-appointments {
+  min-width: 0;
+  overflow-x: clip;
+}
+
+@media (max-width: 640px) {
+  /* Legend strip becomes a breathing grid instead of a dense paragraph */
+  #pane-appointments .rx-card-body > div:first-child {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 10px;
+    font-size: 0.8rem;
+    line-height: 1.8;
+  }
+  /* Neutralize the generic first-cell headline band — a patient-id
+     fragment is not a headline */
+  #pane-appointments .rx-table tbody td:first-child {
+    background: transparent !important;
+    margin: 0;
+    padding: 8px 0;
+    border-radius: 0;
+    box-shadow: none;
+    position: static;
+  }
+  /* Headline: appointment date/time, bold and first */
+  #appointments-tbody td[data-label="الموعد"] {
+    order: -3;
+    background: var(--m3-surface-container-low) !important;
+    margin: 2px -6px 6px;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    font-weight: 800;
+    font-size: 0.95rem;
+  }
+  /* Scannable sequence after the headline */
+  #appointments-tbody td[data-label="الحالة"] { order: -2; }
+  #appointments-tbody td[data-label="المنشأة"] { order: -1; }
+  #appointments-tbody td[data-label="النوع والطبيب"] { order: 0; }
+  #appointments-tbody td[data-label="الإذن"] { order: 1; }
+  #appointments-tbody td[data-label="إجراء"] { order: 2; }
+  /* Patient ref demoted to a quiet last line */
+  #appointments-tbody td[data-label="المريض"] {
+    order: 3;
+    color: var(--m3-on-surface-muted);
+    font-size: 0.75rem;
+  }
+  /* Actions: label on top, full-width stacked buttons below */
+  #appointments-tbody td[data-label="إجراء"] {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  #appointments-tbody td[data-label="إجراء"]::before {
+    max-width: 100%;
+  }
+  #appointments-tbody td[data-label="إجراء"] .rx-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+  }
+  #appointments-tbody td[data-label="إجراء"] .rx-actions .btn {
+    width: 100%;
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* One calm legend column on the smallest screens */
+  #pane-appointments .rx-card-body > div:first-child {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =========================================
    TOP HEADER — compact phone design (≤640px)
    One slim utility row (chip + two icon-only squares) above the full-width
    primary action. Live status stays desktop/tablet-only — noise on phones.
