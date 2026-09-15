@@ -1204,10 +1204,21 @@ body.light-theme .btn-secondary:hover,
 @media (max-width: 768px) {
   .metrics-lead { grid-template-columns: 1fr; }
   .metric-value-lg { font-size: 1.8rem; }
+  /* Phones & small tablets: 5-item compact strips (monitoring / auditor / CDS)
+     stop squeezing 3-up — 2 calm columns with wrapping labels. */
+  .metrics-compact { grid-template-columns: repeat(2, 1fr); }
+  .metric-compact .metric-label,
+  .metric-compact .metric-sub {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
 }
 
 @media (max-width: 480px) {
-  .metrics-compact { grid-template-columns: 1fr 1fr; }
+  /* Smallest phones: one calm column — Arabic labels stay fully readable. */
+  .metrics-compact { grid-template-columns: 1fr; }
+  .metric-value-lg { font-size: 1.6rem; }
 }
 
 /* =========================================
@@ -4180,3 +4191,555 @@ body.sidebar-collapsed .logout-btn .label {
 }
 
 /* Crescent glow retired: flat systematized red via --m3-error (explicit sizes + flex-shrink above already guard WebKit). */
+
+/* =========================================
+   MONITORING + HOSPITAL ONBOARDING — Mobile (RTL-first)
+   #pane-monitoring (لوحة المراقبة والتكامل) + #pane-onboarding (إضافة المستشفيات)
+   Tokens only (var(--*)) per DESIGN_SYSTEM.
+   ========================================= */
+#pane-monitoring,
+#pane-onboarding {
+  min-width: 0;
+  overflow-x: clip;
+}
+
+/* ---------- ≤1024px: onboarding 2-col studio stacks ---------- */
+@media (max-width: 1024px) {
+  /* Outer studio grid (inline style grid-template-columns:1fr 1fr) + any
+     inner 2-col form grids fall back to one column explicitly. */
+  #pane-onboarding > div[style*="grid-template-columns:1fr 1fr"],
+  #pane-onboarding > div[style*="grid-template-columns: 1fr 1fr"],
+  #pane-onboarding form div[style*="grid-template-columns:1fr 1fr"],
+  #pane-onboarding form div[style*="grid-template-columns: 1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+  /* Monitor source cards keep breathing room on small laptops */
+  #sources-monitoring-grid {
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  }
+}
+
+/* ---------- ≤768px: tablet portrait ---------- */
+@media (max-width: 768px) {
+  /* Workflow steps strip (1 → 2 → 3) becomes a vertical timeline */
+  #pane-onboarding > div[style*="display:flex"][style*="flex-wrap"] {
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+  #pane-onboarding > div[style*="display:flex"][style*="flex-wrap"] > span[style*="color:var(--m3-on-surface-muted)"] {
+    display: none;
+  }
+  /* Source cards: header wraps instead of squeezing title + status */
+  #pane-monitoring .source-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  #pane-monitoring .source-title-wrap {
+    min-width: 0;
+    flex: 1 1 180px;
+  }
+  #pane-monitoring .source-title-wrap h4 {
+    overflow-wrap: anywhere;
+  }
+  #pane-monitoring .detail-row {
+    gap: 8px;
+  }
+  #pane-monitoring .detail-row code {
+    overflow-wrap: anywhere;
+    text-align: left;
+  }
+  /* Auditor: integrity + overview rows wrap calmly */
+  #auditor-integrity-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  #auditor-integrity-row .btn {
+    width: 100%;
+    min-height: 44px;
+  }
+  #audit-records-pagination {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    text-align: center;
+  }
+  #audit-records-pagination > span:last-child {
+    display: flex;
+    gap: 8px;
+  }
+  #audit-records-pagination .btn {
+    flex: 1 1 120px;
+    min-height: 44px;
+  }
+  /* Auditor filter bar: each filter becomes full width */
+  #auditor-records-section .card.table-card > div:first-child > div {
+    flex: 1 1 140px;
+    min-width: 0;
+  }
+  #auditor-records-section .form-select,
+  #auditor-records-section .form-input {
+    width: 100%;
+  }
+  /* Onboarding: dropzone sample buttons breathe */
+  #pane-onboarding .file-dropzone {
+    text-align: center;
+  }
+  #pane-onboarding .file-dropzone h4 {
+    line-height: 1.8;
+    overflow-wrap: anywhere;
+  }
+}
+
+/* ---------- ≤640px: large phones ---------- */
+@media (max-width: 640px) {
+  /* Auditor filters: one full-width column, big touch targets */
+  #auditor-records-section .card.table-card > div:first-child {
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+  #auditor-records-section .card.table-card > div:first-child > div {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+  #auditor-records-section .card.table-card > div:first-child > div:last-child {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  #auditor-records-section .card.table-card > div:first-child .btn {
+    width: 100%;
+    min-height: 44px;
+  }
+  /* Stacked audit cards: expanded detail grid goes single column */
+  #audit-records-body tr[id^="audit-row-"] div[style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+  }
+  /* Stacked audit cards: 3 row actions (تفاصيل/المسار/دليل) wrap full width */
+  #audit-records-body td[style*="white-space:nowrap"],
+  #audit-quarantine-body td[style*="white-space:nowrap"] {
+    white-space: normal !important;
+    display: flex !important;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  #audit-records-body td[style*="white-space:nowrap"] .btn,
+  #audit-quarantine-body td[style*="white-space:nowrap"] .btn {
+    flex: 1 1 calc(50% - 4px);
+    min-height: 44px;
+  }
+  /* Connector + trace sheets already handled globally; keep provenance rows calm */
+  #auditor-trace-body div[style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+  }
+  #auditor-trace-body div[style*="space-between"] {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  #auditor-trace-body .btn {
+    width: 100%;
+    min-height: 44px;
+  }
+  /* Onboarding forms: every submit becomes a full-width primary action */
+  #form-onboard-hospital button[type="submit"],
+  #form-ingest-custom button[type="submit"],
+  #pane-onboarding #btn-browse-file,
+  #pane-onboarding .btn-sample-file {
+    width: 100%;
+    min-height: 44px;
+  }
+  #pane-onboarding div[style*="display:flex; gap:8px; flex-wrap:wrap"] {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  #pane-onboarding div[style*="display:flex; gap:8px; flex-wrap:wrap"] .btn {
+    width: 100%;
+  }
+  /* Ingest payload textarea: comfortable thumb-first height */
+  #ingest-payload-json {
+    min-height: 140px;
+  }
+  /* Onboarded hospitals stacked cards: long IDs wrap, badges don't clip */
+  #onboarded-hospitals-tbody td code,
+  #onboarded-hospitals-tbody td small {
+    overflow-wrap: anywhere;
+    word-break: break-all;
+  }
+  #onboarded-hospitals-tbody .badge {
+    white-space: normal;
+    text-align: center;
+  }
+  /* Section titles wrap on narrow screens */
+  #pane-monitoring .section-title,
+  #pane-onboarding .section-title {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  #pane-monitoring .section-title h3,
+  #pane-onboarding .section-title h3 {
+    font-size: 1rem;
+    overflow-wrap: anywhere;
+  }
+}
+
+/* ---------- ≤480px: small phones ---------- */
+@media (max-width: 480px) {
+  /* Source card internals go fully stacked */
+  #pane-monitoring .source-card {
+    padding: 14px;
+  }
+  #pane-monitoring .detail-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+  #pane-monitoring .status-indicator {
+    align-self: flex-start;
+  }
+  /* Single action per row on the smallest screens */
+  #audit-records-body td[style*="white-space:nowrap"] .btn,
+  #audit-quarantine-body td[style*="white-space:nowrap"] .btn {
+    flex: 1 1 100%;
+  }
+}
+
+/* =========================================
+   PIPELINE AUDIT STREAM (#audit-table) — labeled log cards on phones
+   Rows are JS-rendered without data-labels, so column names are injected
+   per-column via nth-child. Full-row notes (colspan) stay plain captions.
+   ========================================= */
+@media (max-width: 640px) {
+  /* Neutralize the generic "first-cell header band": here cell 1 is just
+     the timestamp, so all five cells render as uniform labeled rows. */
+  #audit-table.stack-table tbody td:first-child {
+    position: static;
+    box-shadow: none;
+    background: transparent !important;
+    margin: 0;
+    padding: 7px 0;
+    border-radius: 0;
+    font-weight: 400;
+  }
+  #audit-table td:not([colspan]) {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    text-align: left;
+  }
+  #audit-table td:not([colspan])::before {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--m3-on-surface-muted);
+    flex-shrink: 0;
+    max-width: 38%;
+    text-align: right;
+    padding-top: 2px;
+  }
+  #audit-table tbody td:nth-child(1):not([colspan])::before { content: "الوقت"; }
+  #audit-table tbody td:nth-child(2):not([colspan])::before { content: "الحدث والعملية"; }
+  #audit-table tbody td:nth-child(3):not([colspan])::before { content: "الكيان المستهدف"; }
+  #audit-table tbody td:nth-child(4):not([colspan])::before { content: "المعرف القياسي"; }
+  #audit-table tbody td:nth-child(5):not([colspan])::before { content: "التفاصيل والمسار"; }
+  /* Values never force width: mono hashes wrap, details breathe */
+  #audit-table td:not([colspan]) > * { min-width: 0; }
+  #audit-table td code { overflow-wrap: anywhere; word-break: break-all; }
+  /* Action reads as a status badge instead of bare code */
+  #audit-table tbody td:nth-child(2) code {
+    background: var(--m3-secondary-container);
+    color: var(--m3-on-secondary-container);
+    padding: 3px 8px;
+    border-radius: var(--radius-pill);
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  /* Timestamp stays quiet and tabular */
+  #audit-table tbody td:nth-child(1) code {
+    color: var(--m3-on-surface-variant);
+    background: transparent;
+    padding: 0;
+    white-space: nowrap;
+  }
+  /* Details: label on top, full-width body below for long transform paths */
+  #audit-table tbody td:nth-child(5):not([colspan]) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    text-align: right;
+  }
+  #audit-table tbody td:nth-child(5):not([colspan])::before {
+    max-width: 100%;
+  }
+  #audit-table tbody td:nth-child(5) {
+    line-height: 1.8;
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 480px) {
+  #audit-table tbody td:nth-child(2) code { white-space: normal; text-align: center; }
+}
+
+/* =========================================
+   QUARANTINE TABLE (#audit-quarantine-table) — labeled log cards on phones
+   Same language as #audit-table: neutralized first-cell band, per-column
+   labels, full-width failure reason, wrapped المسار/دليل actions.
+   ========================================= */
+@media (max-width: 640px) {
+  #audit-quarantine-table.stack-table tbody td:first-child {
+    position: static;
+    box-shadow: none;
+    background: transparent !important;
+    margin: 0;
+    padding: 7px 0;
+    border-radius: 0;
+    font-weight: 400;
+  }
+  #audit-quarantine-table td:not([colspan]) {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    text-align: left;
+  }
+  #audit-quarantine-table td:not([colspan])::before {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--m3-on-surface-muted);
+    flex-shrink: 0;
+    max-width: 38%;
+    text-align: right;
+    padding-top: 2px;
+  }
+  #audit-quarantine-table tbody td:nth-child(1):not([colspan])::before { content: "وقت الفشل"; }
+  #audit-quarantine-table tbody td:nth-child(2):not([colspan])::before { content: "المصدر"; }
+  #audit-quarantine-table tbody td:nth-child(3):not([colspan])::before { content: "معرف الرسالة"; }
+  #audit-quarantine-table tbody td:nth-child(4):not([colspan])::before { content: "المرحلة"; }
+  #audit-quarantine-table tbody td:nth-child(5):not([colspan])::before { content: "سبب الفشل"; }
+  #audit-quarantine-table tbody td:nth-child(6):not([colspan])::before { content: "إجراءات"; }
+  #audit-quarantine-table td:not([colspan]) > * { min-width: 0; }
+  #audit-quarantine-table td code { overflow-wrap: anywhere; word-break: break-all; }
+  /* Timestamp stays quiet and tabular */
+  #audit-quarantine-table tbody td:nth-child(1) code {
+    color: var(--m3-on-surface-variant);
+    background: transparent;
+    padding: 0;
+    white-space: nowrap;
+  }
+  /* Failure reason: label on top, full-width body below (keeps inline error tone) */
+  #audit-quarantine-table tbody td:nth-child(5):not([colspan]) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    text-align: right;
+    line-height: 1.8;
+    overflow-wrap: anywhere;
+  }
+  #audit-quarantine-table tbody td:nth-child(5):not([colspan])::before {
+    max-width: 100%;
+  }
+  /* Actions: label on its own line, المسار/دليل share the row below */
+  #audit-quarantine-table tbody td:nth-child(6):not([colspan]) {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  #audit-quarantine-table tbody td:nth-child(6):not([colspan])::before {
+    flex: 1 1 100%;
+    max-width: 100%;
+  }
+}
+
+/* =========================================
+   SECURITY / AUDIT HASH CHAIN (#pane-security) — labeled cards on phones
+   Chain table carries no id, so it is scoped via pane + #audit-chain-tbody.
+   Hash cells keep hash + copy-button sharing one row under their label.
+   ========================================= */
+#pane-security {
+  min-width: 0;
+  overflow-x: clip;
+}
+
+@media (max-width: 640px) {
+  /* Search + verify stack full width instead of a fixed 200px field */
+  #pane-security .actions-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  #pane-security #audit-search {
+    width: 100% !important;
+    flex: 1 1 100%;
+  }
+  #pane-security .actions-group .btn {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  /* Neutralize the generic first-cell band: cell 1 is just the block number */
+  #pane-security .stack-table tbody td:first-child {
+    position: static;
+    box-shadow: none;
+    background: transparent !important;
+    margin: 0;
+    padding: 7px 0;
+    border-radius: 0;
+    font-weight: 400;
+  }
+  #audit-chain-tbody td:not([colspan]) {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    text-align: left;
+  }
+  #audit-chain-tbody td:not([colspan])::before {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--m3-on-surface-muted);
+    flex-shrink: 0;
+    max-width: 38%;
+    text-align: right;
+    padding-top: 2px;
+  }
+  #audit-chain-tbody td:nth-child(1):not([colspan])::before { content: "الكتلة"; }
+  #audit-chain-tbody td:nth-child(2):not([colspan])::before { content: "نوع الإجراء"; }
+  #audit-chain-tbody td:nth-child(3):not([colspan])::before { content: "المنفذ"; }
+  #audit-chain-tbody td:nth-child(4):not([colspan])::before { content: "الكيان والهدف"; }
+  #audit-chain-tbody td:nth-child(5):not([colspan])::before { content: "الوقت"; }
+  #audit-chain-tbody td:nth-child(6):not([colspan])::before { content: "البصمة السابقة"; }
+  #audit-chain-tbody td:nth-child(7):not([colspan])::before { content: "البصمة الحالية"; }
+  #audit-chain-tbody td:not([colspan]) > * { min-width: 0; }
+  #audit-chain-tbody td code,
+  #audit-chain-tbody td strong {
+    overflow-wrap: anywhere;
+    word-break: break-all;
+  }
+  /* Block number bold, action as a badge, timestamp quiet */
+  #audit-chain-tbody td:nth-child(1) code { font-weight: 700; }
+  #audit-chain-tbody td:nth-child(2) code {
+    background: var(--m3-secondary-container);
+    color: var(--m3-on-secondary-container);
+    padding: 3px 8px;
+    border-radius: var(--radius-pill);
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  #audit-chain-tbody td:nth-child(5) code {
+    color: var(--m3-on-surface-variant);
+    background: transparent;
+    padding: 0;
+    white-space: nowrap;
+  }
+  /* Hash cells: label on its own line, hash + copy share the row below */
+  #audit-chain-tbody td:nth-child(6):not([colspan]),
+  #audit-chain-tbody td:nth-child(7):not([colspan]) {
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+  #audit-chain-tbody td:nth-child(6):not([colspan])::before,
+  #audit-chain-tbody td:nth-child(7):not([colspan])::before {
+    flex: 1 1 100%;
+    max-width: 100%;
+  }
+  #audit-chain-tbody td:nth-child(6) code,
+  #audit-chain-tbody td:nth-child(7) code,
+  #audit-chain-tbody td:nth-child(7) strong {
+    flex: 1 1 120px;
+  }
+  /* Copy buttons are bare `.btn` (transparent on desktop) — visible touch target on phones */
+  #audit-chain-tbody .btn {
+    flex: 0 0 auto;
+    min-height: 44px;
+    min-width: 64px;
+    background: var(--m3-surface-container-highest);
+    color: var(--m3-on-surface);
+    padding: 8px 14px;
+    font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 480px) {
+  #audit-chain-tbody td:nth-child(2) code { white-space: normal; text-align: center; }
+  #audit-chain-tbody .btn { flex: 1 1 100%; }
+}
+
+/* =========================================
+   TOP HEADER — compact phone design (≤640px)
+   One slim utility row (chip + two icon-only squares) above the full-width
+   primary action. Live status stays desktop/tablet-only — noise on phones.
+   Icon-only utilities keep their aria-labels for screen readers.
+   ========================================= */
+@media (max-width: 640px) {
+  .top-header {
+    padding-top: 10px;
+  }
+  /* Live status: desktop/tablet only — hidden on phones */
+  .header-live-stats {
+    display: none;
+  }
+  /* Utility row: chip grows with ellipsis, theme + refresh are 40px squares */
+  .header-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    overflow: visible;
+    padding-bottom: 0;
+  }
+  .header-actions .btn {
+    min-height: 40px;
+  }
+  /* Identity: flat text row (no heavy pill) sharing the utility row */
+  #header-session-chip {
+    flex: 1 1 auto;
+    width: auto;
+    max-width: none;
+    min-width: 0;
+    order: -1;
+    background: transparent;
+    padding: 0 2px;
+    gap: 8px;
+    min-height: 40px;
+  }
+  #header-session-chip .header-avatar {
+    width: 24px;
+    height: 24px;
+  }
+  #header-session-chip .header-avatar svg {
+    width: 12px;
+    height: 12px;
+  }
+  #header-session-chip .header-session-text strong {
+    font-size: 0.75rem;
+    max-width: 110px;
+  }
+  #btn-theme-toggle,
+  #btn-refresh {
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+    min-height: 40px;
+    padding: 0;
+    order: -1;
+  }
+  #btn-theme-toggle #theme-toggle-text,
+  #btn-refresh span {
+    display: none;
+  }
+  #btn-run-pipeline {
+    flex: 1 1 100%;
+    order: 0;
+    min-height: 48px;
+    font-size: 0.86rem;
+  }
+  #btn-run-pipeline span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+/* Press feedback on drawer triggers (motion-safe via the global reduce rules) */
+#mobile-menu-btn:active,
+.drawer-close-btn:active {
+  transform: scale(0.94);
+}
