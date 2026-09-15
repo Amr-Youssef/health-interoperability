@@ -449,9 +449,8 @@ body.light-theme .sidebar,
   gap: 2px;
   flex-grow: 1;
   overflow-y: auto;
-  padding-top: 8px;
-  border-top: 1px solid rgba(255,255,255,0.06);
-  margin-top: 8px;
+  padding-top: 10px;
+  margin-top: 10px;
   /* Quiet scrolling: sidebar is always dark, so use sidebar tokens (theme-proof) */
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;
@@ -517,10 +516,9 @@ body.light-theme .sidebar,
   color: var(--sidebar-on-surface);
 }
 
-/* Active item speaks the interface accent: primary-tinted track + solid primary icon (btn-primary language) + hairline ring */
+/* Active item speaks the interface accent: primary-tinted track + solid primary icon (btn-primary language) */
 .nav-item.active {
   background: color-mix(in srgb, var(--m3-primary) 24%, var(--sidebar-item-active));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--m3-primary) 38%, transparent);
   color: var(--sidebar-on-surface);
   font-weight: 600;
 }
@@ -534,7 +532,6 @@ body.light-theme .sidebar,
   padding-top: 14px;
   margin-top: 10px;
   background: var(--sidebar-bg);
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .version-tag {
@@ -2847,7 +2844,6 @@ pre, code, .mono-code, .json-display {
     position: sticky;
     bottom: 0;
     background: var(--sidebar-bg);
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
     padding-top: 10px;
     margin-top: 8px;
   }
